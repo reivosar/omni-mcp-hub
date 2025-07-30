@@ -1,0 +1,63 @@
+# MCP Server Configuration
+
+server:
+  port: 3000
+  
+sources:
+  # GitHub リポジトリ（個別認証可能）
+  - type: github
+    owner: microsoft
+    repo: vscode
+    branch: main
+    token: ${GITHUB_TOKEN_PUBLIC}  # パブリック用トークン
+    
+  - type: github
+    owner: facebook
+    repo: react
+    branch: main
+    # token未設定 = デフォルトトークン使用
+    
+  - type: github
+    owner: your-private-org
+    repo: private-repo
+    branch: main
+    token: ${GITHUB_TOKEN_PRIVATE}  # プライベート用トークン
+    
+  - type: github
+    owner: company-org
+    repo: enterprise-repo
+    branch: develop
+    token: ${GITHUB_TOKEN_ENTERPRISE}  # 企業用トークン
+    
+  - type: github
+    owner: personal-account
+    repo: personal-project
+    branch: main
+    token: ${GITHUB_TOKEN_PERSONAL}  # 個人用トークン
+    
+  # ローカルディレクトリ（認証不要）
+  - type: local
+    path: /Users/mac/my-project
+    
+  - type: local
+    path: /Users/mac/Documents/another-project
+
+files:
+  patterns:
+    - CLAUDE.md
+    - README.md
+    - docs/**/*.md
+  max_size: 102400  # 100KB
+
+github:
+  token: ${GITHUB_TOKEN}  # 環境変数から読み込み
+  webhook_secret: ${GITHUB_WEBHOOK_SECRET}
+
+fetch:
+  timeout: 10000      # 10秒
+  retries: 3
+  retry_delay: 1000   # 1秒
+  max_depth: 2
+
+cache:
+  ttl: 300  # 5分

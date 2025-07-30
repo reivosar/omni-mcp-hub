@@ -1,0 +1,74 @@
+# Environment variables (contains sensitive tokens)
+.env
+.env.local
+.env.*.local
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+.nyc_output/
+
+# Temporary folders
+tmp/
+temp/
+
+# Cache directories
+.cache/
+.parcel-cache/
+
+# GitHub tokens and secrets (extra safety)
+*token*
+*secret*
+*key*
+*password*
+
+# Docker
+.dockerignore
+
+# Test artifacts
+test-results/
+coverage/
+
+# Runtime config (may contain sensitive data)
+config.local.yaml
+config.local.yml
+*.local.yaml
+*.local.yml

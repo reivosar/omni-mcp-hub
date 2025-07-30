@@ -26,8 +26,11 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Copy test config
-      run: cp config.test.yaml config.yaml
+    - name: Setup test environment
+      run: |
+        cp config.test.yaml config.yaml
+        echo "GITHUB_TOKEN_TEST=test-token" >> $GITHUB_ENV
+        echo "GITHUB_WEBHOOK_SECRET_TEST=test-secret" >> $GITHUB_ENV
 
     - name: Run unit tests
       run: npm run test:unit
@@ -57,8 +60,11 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Copy test config
-      run: cp config.test.yaml config.yaml
+    - name: Setup test environment
+      run: |
+        cp config.test.yaml config.yaml
+        echo "GITHUB_TOKEN_TEST=test-token" >> $GITHUB_ENV
+        echo "GITHUB_WEBHOOK_SECRET_TEST=test-secret" >> $GITHUB_ENV
 
     - name: Run performance tests
       run: npm test -- --testPathPattern=performance --verbose

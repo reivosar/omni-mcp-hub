@@ -7,7 +7,7 @@ export class GitManager {
   private git: SimpleGit;
 
   constructor() {
-    this.reposDir = process.env.REPOS_DIR || '/app/repos';
+    this.reposDir = process.env.REPOS_DIR || '/tmp/repos';
     this.git = simpleGit();
     
     // Ensure repos directory exists

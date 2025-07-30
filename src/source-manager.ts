@@ -13,7 +13,7 @@ export class OmniSourceManager {
     this.configLoader = new ConfigLoader();
 
     // Register handlers
-    this.sourceManager.registerHandler('github', new GitHubHandler('/app/repos'));
+    this.sourceManager.registerHandler('github', new GitHubHandler('/tmp/repos'));
     this.sourceManager.registerHandler('local', new LocalHandler());
   }
 

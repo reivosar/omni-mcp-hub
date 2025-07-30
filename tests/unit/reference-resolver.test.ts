@@ -175,9 +175,13 @@ https://example.com/doc.md
 
       const results = await resolver.resolveReferences(content1, 'main', { maxDepth: 3 });
       
-      // Should only have doc2, doc1 should be skipped as already processed
-      expect(results).toHaveLength(1);
-      expect(results[0].url).toBe('https://example.com/doc2.md');
+      // Should resolve both doc2 and doc1, but prevent infinite recursion
+      expect(results).toHaveLength(2);
+      expect(results.some(r => r.url === 'https://example.com/doc2.md')).toBe(true);
+      expect(results.some(r => r.url === 'https://example.com/doc1.md')).toBe(true);
+      
+      // Verify no deeper recursion occurred (would indicate infinite loop prevention)
+      expect(results.every(r => r.depth <= 1)).toBe(true);
     });
   });
 

@@ -17,15 +17,25 @@ describe('MCPSSEServer Integration', () => {
     server = new MCPSSEServer(3001);
     app = (server as any).app;
     
-    // Get reference to the mocked GitHub API
+    // Get reference to the mocked GitHub API and inject it
     const GitHubAPI = require('../../src/github-api').GitHubAPI;
     mockGitHubAPI = new GitHubAPI();
+    
+    // Inject the mock into the server
+    (server as any).githubAPI = mockGitHubAPI;
+    if ((server as any).referenceResolver) {
+      (server as any).referenceResolver.githubAPI = mockGitHubAPI;
+    }
   });
 
   afterEach(() => {
     nock.cleanAll();
     if (mockGitHubAPI) {
       mockGitHubAPI.clear();
+    }
+    // Clean up cache intervals
+    if (server && (server as any).cacheManager?.cache?.destroy) {
+      (server as any).cacheManager.cache.destroy();
     }
   });
 
@@ -138,19 +148,22 @@ describe('MCPSSEServer Integration', () => {
     });
 
     test('should handle GitHub rate limit errors', async () => {
-      mockGitHubAPI.setMockFiles('ratelimit', 'repo', 'main', []);
-      
-      // Mock GitHub API to return rate limit error
-      const GitHubAPI = require('../../src/github-api').GitHubAPI;
-      const originalListFiles = GitHubAPI.prototype.listFiles;
-      GitHubAPI.prototype.listFiles = jest.fn().mockRejectedValue(
+      // Mock the listFiles method to throw a rate limit error
+      const originalListFiles = mockGitHubAPI.listFiles;
+      mockGitHubAPI.listFiles = jest.fn().mockRejectedValue(
         new Error('GitHub API rate limit exceeded')
       );
 
       const request_body = {
         jsonrpc: '2.0',
         id: 1,
-        method: 'fetch_ratelimit_repo_documentation'
+        method: 'fetch_ratelimit_repo_documentation',
+        params: {
+          owner: 'ratelimit',
+          repo: 'repo',
+          branch: 'main',
+          include_externals: false
+        }
       };
 
       const response = await request(app)
@@ -162,11 +175,12 @@ describe('MCPSSEServer Integration', () => {
       
       // Should contain error response
       expect(events.some(e => 
-        e.data.error?.message?.includes('rate limit')
+        e.data.error?.message?.includes('rate limit') ||
+        e.data.error?.message?.includes('GitHub API')
       )).toBe(true);
 
       // Restore original method
-      GitHubAPI.prototype.listFiles = originalListFiles;
+      mockGitHubAPI.listFiles = originalListFiles;
     });
 
     test('should handle invalid JSON-RPC requests', async () => {

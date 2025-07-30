@@ -8,14 +8,25 @@ export interface CacheInterface {
 export class MemoryCache implements CacheInterface {
   private cache = new Map<string, { value: any; expiry: number }>();
   private defaultTTL: number;
+  private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor(defaultTTLSeconds: number = 300) { // 5 minutes default
     this.defaultTTL = defaultTTLSeconds;
     
-    // Cleanup expired entries every minute
-    setInterval(() => {
-      this.cleanup();
-    }, 60000);
+    // Cleanup expired entries every minute (only in non-test environments)
+    if (process.env.NODE_ENV !== 'test') {
+      this.cleanupInterval = setInterval(() => {
+        this.cleanup();
+      }, 60000);
+    }
+  }
+
+  destroy(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.cache.clear();
   }
 
   async get<T>(key: string): Promise<T | null> {

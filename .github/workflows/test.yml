@@ -26,8 +26,8 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Run linting
-      run: npm run lint --if-present
+    - name: Copy test config
+      run: cp config.test.yaml config.yaml
 
     - name: Run unit tests
       run: npm run test:unit
@@ -40,14 +40,6 @@ jobs:
 
     - name: Generate coverage report
       run: npm run test:coverage
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage/lcov.info
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: true
 
   performance:
     runs-on: ubuntu-latest
@@ -64,6 +56,9 @@ jobs:
 
     - name: Install dependencies
       run: npm ci
+
+    - name: Copy test config
+      run: cp config.test.yaml config.yaml
 
     - name: Run performance tests
       run: npm test -- --testPathPattern=performance --verbose

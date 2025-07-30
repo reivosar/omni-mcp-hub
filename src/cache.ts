@@ -59,10 +59,12 @@ export class MemoryCache implements CacheInterface {
 
   // Utility methods for debugging/monitoring
   size(): number {
+    this.cleanup();
     return this.cache.size;
   }
 
   keys(): string[] {
+    this.cleanup();
     return Array.from(this.cache.keys());
   }
 }

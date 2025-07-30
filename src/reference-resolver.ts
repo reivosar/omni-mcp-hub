@@ -31,6 +31,19 @@ export class ReferenceResolver {
     const refs = this.extractExternalReferences(content);
     const results: ExternalReferenceResult[] = [];
 
+    // If maxDepth is 0, just return the extracted references without fetching
+    if (maxDepth === 0) {
+      for (const ref of refs) {
+        results.push({
+          url: ref,
+          content: '',
+          references: [],
+          depth: 0
+        });
+      }
+      return results;
+    }
+
     for (const ref of refs) {
       // Skip if already processed (prevent infinite loops)
       if (this.processedUrls.has(ref)) {
@@ -39,14 +52,8 @@ export class ReferenceResolver {
       
       this.processedUrls.add(ref);
 
-      // At maxDepth, just return URL info without fetching
-      if (depth === maxDepth) {
-        results.push({
-          url: ref,
-          content: '', // No content fetched at max depth
-          references: [],
-          depth
-        });
+      // At or beyond maxDepth, skip processing
+      if (depth >= maxDepth) {
         continue;
       }
 
@@ -59,11 +66,22 @@ export class ReferenceResolver {
           { timeout, retries, retryDelay }
         );
 
-        // Recursively resolve references in the fetched content first
-        let nestedRefs: ExternalReferenceResult[] = [];
-        if (depth < maxDepth && resolvedContent && !resolvedContent.startsWith('Error:')) {
+        // Extract nested references from the fetched content
+        const nestedRefUrls = this.extractExternalReferences(resolvedContent);
+        
+        // First, add the current result
+        const result: ExternalReferenceResult = {
+          url: ref,
+          content: resolvedContent,
+          references: nestedRefUrls,
+          depth
+        };
+        results.push(result);
+
+        // Then recursively resolve nested references if not at max depth
+        if (depth + 1 < maxDepth && resolvedContent && !resolvedContent.startsWith('Error:')) {
           try {
-            nestedRefs = await this.resolveReferences(
+            const nestedRefs = await this.resolveReferences(
               resolvedContent,
               branch,
               options,
@@ -74,15 +92,6 @@ export class ReferenceResolver {
             console.warn(`Failed to resolve nested references in ${ref}:`, error);
           }
         }
-
-        const result: ExternalReferenceResult = {
-          url: ref,
-          content: resolvedContent,
-          references: nestedRefs.map(r => r.url),
-          depth
-        };
-
-        results.push(result);
       } catch (error) {
         console.error(`Failed to fetch reference ${ref}:`, error);
         results.push({

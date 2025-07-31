@@ -104,6 +104,16 @@ export class MCPSSEServer {
     this.app.get('/healthz', (req, res) => {
       res.json({ status: 'ok' });
     });
+
+    // GitHub webhook endpoint
+    this.app.post('/webhook', async (req, res) => {
+      try {
+        await this.handleWebhook(req, res);
+      } catch (error) {
+        console.error('Webhook error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    });
   }
 
   private async handleJSONRPCRequest(req: express.Request, res: express.Response) {
@@ -358,6 +368,83 @@ export class MCPSSEServer {
       id: id || null,
       error: { code, message }
     } as JSONRPCResponse);
+  }
+
+  private async handleWebhook(req: express.Request, res: express.Response) {
+    const event = req.headers['x-github-event'] as string;
+    const signature = req.headers['x-hub-signature-256'] as string;
+    const delivery = req.headers['x-github-delivery'] as string;
+    
+    // Verify signature if webhook secret is configured
+    const config = this.configLoader.getConfig();
+    if (config.github.webhook_secret && signature) {
+      const crypto = require('crypto');
+      const expectedSignature = 'sha256=' + crypto
+        .createHmac('sha256', config.github.webhook_secret)
+        .update(JSON.stringify(req.body))
+        .digest('hex');
+      
+      if (signature !== expectedSignature) {
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+    } else if (config.github.webhook_secret && !signature) {
+      return res.status(401).json({ error: 'Missing signature' });
+    }
+
+    const payload = req.body;
+    
+    // Handle different webhook events
+    switch (event) {
+      case 'push':
+        await this.handlePushWebhook(payload);
+        break;
+      case 'pull_request':
+        await this.handlePullRequestWebhook(payload);
+        break;
+      case 'repository':
+        await this.handleRepositoryWebhook(payload);
+        break;
+      default:
+        // Ignore unknown events
+        console.log(`Ignoring webhook event: ${event}`);
+        break;
+    }
+
+    res.json({ status: 'ok', event });
+  }
+
+  private async handlePushWebhook(payload: any) {
+    if (payload.repository) {
+      const owner = payload.repository.owner.login;
+      const repo = payload.repository.name;
+      const branch = payload.ref?.replace('refs/heads/', '') || 'main';
+      
+      // Invalidate cache for this specific branch
+      await this.cacheManager.invalidateBranch(owner, repo, branch);
+      console.log(`Cache invalidated for ${owner}/${repo}@${branch} via push webhook`);
+    }
+  }
+
+  private async handlePullRequestWebhook(payload: any) {
+    if (payload.repository) {
+      const owner = payload.repository.owner.login;
+      const repo = payload.repository.name;
+      
+      // Invalidate cache for default branch
+      await this.cacheManager.invalidateRepo(owner, repo);
+      console.log(`Cache invalidated for ${owner}/${repo} via pull request webhook`);
+    }
+  }
+
+  private async handleRepositoryWebhook(payload: any) {
+    if (payload.repository) {
+      const owner = payload.repository.owner.login;
+      const repo = payload.repository.name;
+      
+      // Invalidate all cache for this repository
+      await this.cacheManager.invalidateRepo(owner, repo);
+      console.log(`All cache invalidated for ${owner}/${repo} via repository webhook`);
+    }
   }
 
   start() {

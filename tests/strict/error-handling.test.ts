@@ -46,8 +46,15 @@ describe('Error Handling and Edge Cases', () => {
     server = new MCPSSEServer(3005);
     app = (server as any).app;
     
+    // Get reference to the mocked GitHub API and inject it
     const GitHubAPI = require('../../src/github-api').GitHubAPI;
     mockGitHubAPI = new GitHubAPI();
+    
+    // Inject the mock into the server
+    (server as any).githubAPI = mockGitHubAPI;
+    if ((server as any).referenceResolver) {
+      (server as any).referenceResolver.githubAPI = mockGitHubAPI;
+    }
   });
 
   afterEach(() => {

@@ -57,8 +57,15 @@ describe('Cache and Webhook Integration Tests', () => {
     app = (server as any).app;
     cacheManager = (server as any).cacheManager;
     
+    // Get reference to the mocked GitHub API and inject it
     const GitHubAPI = require('../../src/github-api').GitHubAPI;
     mockGitHubAPI = new GitHubAPI();
+    
+    // Inject the mock into the server
+    (server as any).githubAPI = mockGitHubAPI;
+    if ((server as any).referenceResolver) {
+      (server as any).referenceResolver.githubAPI = mockGitHubAPI;
+    }
   });
 
   afterEach(() => {

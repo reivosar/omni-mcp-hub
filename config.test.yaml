@@ -1,7 +1,7 @@
 # Test configuration for MCP Server
 
 server:
-  port: 3001
+  port: 3010
 
 sources:
   - type: github
@@ -33,7 +33,7 @@ fetch:
   timeout: 5000
   retries: 2
   retry_delay: 500
-  max_depth: 1
+  max_depth: 2
 
 cache:
   ttl: 60  # 1 minute for tests

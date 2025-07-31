@@ -81,7 +81,7 @@ npm run test:manual
 
 ### SSE Endpoint
 
-**Single endpoint**: `POST /mcp`
+**Single endpoint**: `POST /sse`
 
 #### Request Format (JSON-RPC 2.0)
 ```json
@@ -121,7 +121,7 @@ data: {"jsonrpc":"2.0","id":1,"result":{"status":"complete"}}
   "servers": {
     "omni-mcp-hub": {
       "type": "sse",
-      "url": "http://localhost:3000/mcp"
+      "url": "http://localhost:3000/sse"
     }
   }
 }
@@ -129,7 +129,7 @@ data: {"jsonrpc":"2.0","id":1,"result":{"status":"complete"}}
 
 #### Direct HTTP Usage
 ```javascript
-const response = await fetch('http://localhost:3000/mcp', {
+const response = await fetch('http://localhost:3000/sse', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',

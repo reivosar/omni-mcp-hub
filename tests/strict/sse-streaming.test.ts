@@ -70,7 +70,7 @@ describe('SSE Streaming Format Validation', () => {
       mockGitHubAPI.setMockFileContent('testorg', 'testrepo', 'CLAUDE.md', 'main', 'Test content');
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -108,7 +108,7 @@ describe('SSE Streaming Format Validation', () => {
 
     test('should send proper HTTP headers for SSE', async () => {
       const response = await request(app)
-        .get('/mcp')
+        .get('/sse')
         .expect(200);
 
       expect(response.headers['content-type']).toContain('text/event-stream');
@@ -123,7 +123,7 @@ describe('SSE Streaming Format Validation', () => {
       mockGitHubAPI.setMockFileContent('testorg', 'testrepo', 'doc2/CLAUDE.md', 'main', 'Content 2');
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -166,7 +166,7 @@ Code block:
       mockGitHubAPI.setMockFileContent('testorg', 'testrepo', 'CLAUDE.md', 'main', specialContent);
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -199,7 +199,7 @@ Code block:
       mockGitHubAPI.setMockFileContent('testorg', 'testrepo', 'CLAUDE.md', 'main', 'Content');
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 42,
@@ -239,7 +239,7 @@ Code block:
       mockGitHubAPI.setMockFileContent('testorg', 'testrepo', 'doc3/CLAUDE.md', 'main', 'Content 3');
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -269,7 +269,7 @@ Code block:
       const startTime = Date.now();
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -297,7 +297,7 @@ Code block:
       const startTime = Date.now();
       
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -325,7 +325,7 @@ Code block:
       });
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -353,7 +353,7 @@ Code block:
       const startTime = Date.now();
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -380,7 +380,7 @@ Code block:
       mockGitHubAPI.setMockFileContent('testorg', 'testrepo', 'CLAUDE.md', 'main', 'Content');
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -396,18 +396,17 @@ Code block:
       expect(lastEvent.data.result.status).toBe('complete');
       
       // Stream should end properly
-      expect(response.text).toMatch(/\\n\\n$/); // Should end with double newline
+      expect(response.text).toMatch(/\n\n$/); // Should end with double newline
     });
 
     test('should terminate stream on error', async () => {
-      const GitHubAPI = require('../../src/github-api').GitHubAPI;
-      const originalListFiles = GitHubAPI.prototype.listFiles;
-      GitHubAPI.prototype.listFiles = jest.fn().mockRejectedValue(
+      // Mock the listFiles method to throw an error
+      mockGitHubAPI.listFiles = jest.fn().mockRejectedValue(
         new Error('Test error')
       );
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -421,8 +420,6 @@ Code block:
       const errorEvent = events.find(e => e.data.error);
       expect(errorEvent?.data.id).toBe(1);
       expect(errorEvent?.data.error.message).toContain('Test error');
-
-      GitHubAPI.prototype.listFiles = originalListFiles;
     });
   });
 

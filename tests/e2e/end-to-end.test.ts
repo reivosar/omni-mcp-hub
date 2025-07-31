@@ -1,12 +1,16 @@
 import { spawn } from 'child_process';
 import { setTimeout } from 'timers/promises';
 import fetch from 'node-fetch';
+import nock from 'nock';
 
 describe('End-to-End Tests', () => {
   let serverProcess: any;
-  const serverPort = 3002;
+  const serverPort = 3010;
 
   beforeAll(async () => {
+    // Allow real network connections to localhost for E2E tests
+    nock.enableNetConnect('localhost');
+    
     // Start the server process with test config
     serverProcess = spawn('npx', ['ts-node', 'src/server.ts'], {
       env: { 
@@ -18,12 +22,21 @@ describe('End-to-End Tests', () => {
       stdio: 'pipe'
     });
 
+    // Capture server output for debugging if needed
+    // serverProcess.stdout.on('data', (data: any) => {
+    //   console.log('Server stdout:', data.toString());
+    // });
+    
+    // serverProcess.stderr.on('data', (data: any) => {
+    //   console.error('Server stderr:', data.toString());
+    // });
+
     // Wait for server to start
-    await setTimeout(2000);
+    await setTimeout(3000);
 
     // Check if server is running
     let serverReady = false;
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 20; i++) {
       try {
         const response = await fetch(`http://localhost:${serverPort}/healthz`);
         if (response.status === 200) {
@@ -52,6 +65,10 @@ describe('End-to-End Tests', () => {
         serverProcess.kill('SIGKILL');
       }
     }
+    
+    // Restore nock settings
+    nock.cleanAll();
+    nock.disableNetConnect();
   });
 
   describe('Server Health', () => {
@@ -66,7 +83,7 @@ describe('End-to-End Tests', () => {
 
   describe('MCP Protocol', () => {
     test('should handle GET requests with server info', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/mcp`, {
+      const response = await fetch(`http://localhost:${serverPort}/sse`, {
         headers: {
           'Accept': 'text/event-stream'
         }
@@ -93,7 +110,7 @@ describe('End-to-End Tests', () => {
         }
       };
 
-      const response = await fetch(`http://localhost:${serverPort}/mcp`, {
+      const response = await fetch(`http://localhost:${serverPort}/sse`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -121,7 +138,7 @@ describe('End-to-End Tests', () => {
         method: 'test'
       };
 
-      const response = await fetch(`http://localhost:${serverPort}/mcp`, {
+      const response = await fetch(`http://localhost:${serverPort}/sse`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -141,7 +158,7 @@ describe('End-to-End Tests', () => {
 
   describe('CORS Support', () => {
     test('should handle CORS preflight requests', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/mcp`, {
+      const response = await fetch(`http://localhost:${serverPort}/sse`, {
         method: 'OPTIONS',
         headers: {
           'Origin': 'https://example.com',
@@ -156,7 +173,7 @@ describe('End-to-End Tests', () => {
     });
 
     test('should include CORS headers in actual requests', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/mcp`, {
+      const response = await fetch(`http://localhost:${serverPort}/sse`, {
         headers: {
           'Origin': 'https://example.com'
         }
@@ -173,7 +190,7 @@ describe('End-to-End Tests', () => {
     });
 
     test('should handle invalid JSON in POST body', async () => {
-      const response = await fetch(`http://localhost:${serverPort}/mcp`, {
+      const response = await fetch(`http://localhost:${serverPort}/sse`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

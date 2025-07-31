@@ -1,6 +1,6 @@
 const WebSocket = require('ws');
 
-const ws = new WebSocket('ws://localhost:38574/mcp');
+const ws = new WebSocket('ws://localhost:38574/sse');
 
 ws.on('open', function open() {
   console.log('接続成功');

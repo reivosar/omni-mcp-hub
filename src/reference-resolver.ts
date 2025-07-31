@@ -129,7 +129,8 @@ export class ReferenceResolver {
     // Extract GitHub file references (github:owner/repo/path)
     const githubRefRegex = /github:([^\/\s]+\/[^\/\s]+\/[^\s)]+)/g;
     const githubRefs = content.match(githubRefRegex) || [];
-    refs.push(...githubRefs);
+    // Clean up trailing punctuation from GitHub refs
+    refs.push(...githubRefs.map(ref => ref.replace(/[.,!?;]+$/, '')));
 
     // Extract relative references that might be GitHub URLs
     const relativeGitHubRegex = /\.\/[^\s)]+\.md|\.\.\/[^\s)]+\.md/g;

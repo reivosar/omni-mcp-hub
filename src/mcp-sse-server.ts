@@ -54,12 +54,42 @@ export class MCPSSEServer {
       allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'MCP-Protocol-Version']
     }));
     
+    // For webhook signature verification, we need raw body
+    this.app.use('/webhook', express.raw({ type: 'application/json' }));
     this.app.use(express.json());
+    
+    // Error handling middleware for JSON parsing errors
+    this.app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      if (error instanceof SyntaxError && error.message.includes('JSON')) {
+        // For MCP endpoint, return SSE error format
+        if (req.path === '/sse') {
+          res.writeHead(200, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Access-Control-Allow-Origin': '*'
+          });
+          
+          this.sendSSEMessage(res, {
+            jsonrpc: '2.0',
+            id: undefined,
+            error: {
+              code: -32700,
+              message: 'Parse error',
+              data: 'Invalid JSON format'
+            }
+          } as any);
+          res.end();
+          return;
+        }
+      }
+      next(error);
+    });
   }
 
   private setupRoutes() {
     // Single MCP endpoint for both GET and POST
-    this.app.all('/mcp', async (req, res) => {
+    this.app.all('/sse', async (req, res) => {
       // Set SSE headers
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
@@ -172,7 +202,13 @@ export class MCPSSEServer {
 
       // Check cache first
       const cacheKey = `${owner}:${repo}:${branch}:${include_externals}`;
-      let cachedData = await this.cacheManager.getMCPData(owner, repo, branch, include_externals);
+      let cachedData = null;
+      
+      try {
+        cachedData = await this.cacheManager.getMCPData(owner, repo, branch, include_externals);
+      } catch (error) {
+        console.warn('Cache error, falling back to fresh data:', error);
+      }
       
       if (cachedData) {
         // Stream cached data
@@ -191,6 +227,8 @@ export class MCPSSEServer {
           timestamp: new Date().toISOString()
         }
       });
+
+
 
     } catch (error) {
       console.error('Documentation fetch error:', error);
@@ -256,7 +294,13 @@ export class MCPSSEServer {
       }
     });
 
-    const claudeFiles = await this.githubAPI.listFiles(owner, repo, branch, 'CLAUDE.md');
+    let claudeFiles: string[];
+    try {
+      claudeFiles = await this.githubAPI.listFiles(owner, repo, branch, 'CLAUDE.md');
+    } catch (error) {
+      // If listFiles fails, throw the error to be caught by the parent
+      throw error;
+    }
     
     // Stream each file as it's fetched with progress
     for (let i = 0; i < claudeFiles.length; i++) {
@@ -365,7 +409,7 @@ export class MCPSSEServer {
   private sendSSEError(res: express.Response, id: string | number | undefined, code: number, message: string) {
     this.sendSSEMessage(res, {
       jsonrpc: '2.0',
-      id: id || null,
+      id: id !== undefined ? id : null,
       error: { code, message }
     } as JSONRPCResponse);
   }
@@ -377,21 +421,53 @@ export class MCPSSEServer {
     
     // Verify signature if webhook secret is configured
     const config = this.configLoader.getConfig();
-    if (config.github.webhook_secret && signature) {
-      const crypto = require('crypto');
-      const expectedSignature = 'sha256=' + crypto
-        .createHmac('sha256', config.github.webhook_secret)
-        .update(JSON.stringify(req.body))
-        .digest('hex');
-      
-      if (signature !== expectedSignature) {
-        return res.status(401).json({ error: 'Invalid signature' });
-      }
-    } else if (config.github.webhook_secret && !signature) {
-      return res.status(401).json({ error: 'Missing signature' });
+    // For webhook verification, prioritize environment variable over config
+    // This allows tests to override config by setting/deleting env vars
+    let webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
+    if (webhookSecret === undefined) {
+      webhookSecret = config.github.webhook_secret;
     }
-
-    const payload = req.body;
+    // If the secret is an empty string, treat it as no secret
+    if (webhookSecret === '') {
+      webhookSecret = undefined;
+    }
+    let payload: any;
+    
+    // Handle raw body for signature verification
+    if (Buffer.isBuffer(req.body)) {
+      const rawBody = req.body.toString();
+      payload = JSON.parse(rawBody);
+      
+      if (webhookSecret && signature) {
+        const crypto = require('crypto');
+        const expectedSignature = 'sha256=' + crypto
+          .createHmac('sha256', webhookSecret)
+          .update(rawBody)
+          .digest('hex');
+        
+        if (signature !== expectedSignature) {
+          return res.status(401).json({ error: 'Invalid signature' });
+        }
+      } else if (webhookSecret && !signature) {
+        return res.status(401).json({ error: 'Missing signature' });
+      }
+    } else {
+      // Fallback for regular JSON body
+      payload = req.body;
+      if (webhookSecret && signature) {
+        const crypto = require('crypto');
+        const expectedSignature = 'sha256=' + crypto
+          .createHmac('sha256', webhookSecret)
+          .update(JSON.stringify(req.body))
+          .digest('hex');
+        
+        if (signature !== expectedSignature) {
+          return res.status(401).json({ error: 'Invalid signature' });
+        }
+      } else if (webhookSecret && !signature) {
+        return res.status(401).json({ error: 'Missing signature' });
+      }
+    }
     
     // Handle different webhook events
     switch (event) {
@@ -451,7 +527,7 @@ export class MCPSSEServer {
     this.app.listen(this.port, () => {
       console.log(`MCP SSE Server started on port ${this.port}`);
       console.log(`Compatible with idosal/git-mcp clients`);
-      console.log(`Endpoint: http://localhost:${this.port}/mcp`);
+      console.log(`Endpoint: http://localhost:${this.port}/sse`);
     });
   }
 }

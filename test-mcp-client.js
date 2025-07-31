@@ -17,7 +17,7 @@ async function testMCPServer() {
   };
 
   try {
-    const response = await fetch('http://localhost:3000/mcp', {
+    const response = await fetch('http://localhost:3000/sse', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -89,7 +89,7 @@ async function testMCPServerInfo() {
   console.log('\nTesting server info endpoint...');
   
   try {
-    const response = await fetch('http://localhost:3000/mcp', {
+    const response = await fetch('http://localhost:3000/sse', {
       method: 'GET',
       headers: {
         'Accept': 'text/event-stream'

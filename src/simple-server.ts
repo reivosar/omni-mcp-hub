@@ -31,7 +31,7 @@ class SimpleMCPServer {
     this.port = parseInt(process.env.MCP_PORT || '38574');
     this.wss = new WebSocket.Server({ 
       port: this.port,
-      path: '/mcp'
+      path: '/sse'
     });
 
     console.log(`Simple MCP Hub started on port ${this.port}`);

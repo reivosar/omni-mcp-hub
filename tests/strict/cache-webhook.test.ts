@@ -10,7 +10,7 @@ jest.mock('../../src/github-api', () => ({
 
 function parseSSEStream(text: string): Array<{ event: string; data: any }> {
   const events: Array<{ event: string; data: any }> = [];
-  const lines = text.split('\\n');
+  const lines = text.split('\n');
   
   let currentEvent = '';
   let currentData = '';
@@ -50,7 +50,7 @@ describe('Cache and Webhook Integration Tests', () => {
   let cacheManager: any;
 
   beforeEach(() => {
-    // Set webhook secret for testing
+    // Set webhook secret for testing BEFORE creating the server
     process.env.GITHUB_WEBHOOK_SECRET = 'test-secret-key';
     
     server = new MCPSSEServer(3007);
@@ -85,7 +85,7 @@ describe('Cache and Webhook Integration Tests', () => {
 
       // First request - cache miss
       const firstResponse = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -104,7 +104,7 @@ describe('Cache and Webhook Integration Tests', () => {
 
       // Second request - should be cache hit
       const secondResponse = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 2,
@@ -130,7 +130,7 @@ describe('Cache and Webhook Integration Tests', () => {
 
       // Request with include_externals=false
       await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -141,7 +141,7 @@ describe('Cache and Webhook Integration Tests', () => {
 
       // Request with include_externals=true (should be cache miss)
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 2,
@@ -165,7 +165,7 @@ describe('Cache and Webhook Integration Tests', () => {
 
       // Request for main branch
       await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -176,7 +176,7 @@ describe('Cache and Webhook Integration Tests', () => {
 
       // Request for develop branch (should be cache miss)
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 2,
@@ -205,7 +205,7 @@ describe('Cache and Webhook Integration Tests', () => {
 
       // Immediate request should be cache hit
       let response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -222,7 +222,7 @@ describe('Cache and Webhook Integration Tests', () => {
 
       // Next request should be cache miss
       response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 2,
@@ -272,7 +272,7 @@ describe('Cache and Webhook Integration Tests', () => {
       const signature = generateWebhookSignature(payloadString, 'test-secret-key');
 
       await request(app)
-        .post('/webhook/github')
+        .post('/webhook')
         .set('X-Hub-Signature-256', signature)
         .set('X-GitHub-Event', 'push')
         .set('X-GitHub-Delivery', 'test-delivery-id')
@@ -311,7 +311,7 @@ describe('Cache and Webhook Integration Tests', () => {
       const signature = generateWebhookSignature(payloadString, 'test-secret-key');
 
       await request(app)
-        .post('/webhook/github')
+        .post('/webhook')
         .set('X-Hub-Signature-256', signature)
         .set('X-GitHub-Event', 'pull_request')
         .send(webhookPayload)
@@ -340,7 +340,7 @@ describe('Cache and Webhook Integration Tests', () => {
       const signature = generateWebhookSignature(payloadString, 'test-secret-key');
 
       await request(app)
-        .post('/webhook/github')
+        .post('/webhook')
         .set('X-Hub-Signature-256', signature)
         .set('X-GitHub-Event', 'repository')
         .send(webhookPayload)
@@ -365,7 +365,7 @@ describe('Cache and Webhook Integration Tests', () => {
       const invalidSignature = 'sha256=invalid-signature';
 
       const response = await request(app)
-        .post('/webhook/github')
+        .post('/webhook')
         .set('X-Hub-Signature-256', invalidSignature)
         .set('X-GitHub-Event', 'push')
         .send(webhookPayload)
@@ -375,7 +375,8 @@ describe('Cache and Webhook Integration Tests', () => {
     });
 
     test('should handle webhooks without signature when secret is not configured', async () => {
-      delete process.env.GITHUB_WEBHOOK_SECRET;
+      // Set environment variable to empty string to disable webhook validation
+      process.env.GITHUB_WEBHOOK_SECRET = '';
       
       // Recreate server without webhook secret
       server = new MCPSSEServer(3007);
@@ -390,7 +391,7 @@ describe('Cache and Webhook Integration Tests', () => {
       };
 
       await request(app)
-        .post('/webhook/github')
+        .post('/webhook')
         .set('X-GitHub-Event', 'push')
         .send(webhookPayload)
         .expect(200);
@@ -409,7 +410,7 @@ describe('Cache and Webhook Integration Tests', () => {
       const signature = generateWebhookSignature(payloadString, 'test-secret-key');
 
       await request(app)
-        .post('/webhook/github')
+        .post('/webhook')
         .set('X-Hub-Signature-256', signature)
         .set('X-GitHub-Event', 'unknown_event')
         .send(webhookPayload)
@@ -429,7 +430,7 @@ describe('Cache and Webhook Integration Tests', () => {
       const signature = generateWebhookSignature(payloadString, 'test-secret-key');
 
       await request(app)
-        .post('/webhook/github')
+        .post('/webhook')
         .set('X-Hub-Signature-256', signature)
         .set('X-GitHub-Event', 'push')
         .send(malformedPayload)
@@ -446,7 +447,7 @@ describe('Cache and Webhook Integration Tests', () => {
 
       // First request - populates cache
       await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -470,7 +471,7 @@ describe('Cache and Webhook Integration Tests', () => {
       const signature = generateWebhookSignature(payloadString, 'test-secret-key');
 
       await request(app)
-        .post('/webhook/github')
+        .post('/webhook')
         .set('X-Hub-Signature-256', signature)
         .set('X-GitHub-Event', 'push')
         .send(webhookPayload)
@@ -478,7 +479,7 @@ describe('Cache and Webhook Integration Tests', () => {
 
       // Next request should get fresh content
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 2,
@@ -524,7 +525,7 @@ describe('Cache and Webhook Integration Tests', () => {
       const signature = generateWebhookSignature(payloadString, 'test-secret-key');
 
       await request(app)
-        .post('/webhook/github')
+        .post('/webhook')
         .set('X-Hub-Signature-256', signature)
         .set('X-GitHub-Event', 'push')
         .send(webhookPayload)

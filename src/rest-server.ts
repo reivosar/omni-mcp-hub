@@ -57,7 +57,7 @@ export class RESTServer {
     });
 
     // Main MCP endpoint
-    this.app.get('/:owner/:repo/mcp', async (req, res) => {
+    this.app.get('/:owner/:repo/sse', async (req, res) => {
       try {
         const { owner, repo } = req.params;
         const branch = req.query.branch as string || 'main';

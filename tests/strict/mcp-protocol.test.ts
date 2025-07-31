@@ -17,7 +17,7 @@ interface SSEEvent {
 
 function parseSSEStream(text: string): SSEEvent[] {
   const events: SSEEvent[] = [];
-  const lines = text.split('\\n');
+  const lines = text.split('\n');
   
   let currentEvent = '';
   let currentData = '';
@@ -65,11 +65,19 @@ describe('MCP Protocol Strict Compliance Tests', () => {
     }
   });
 
+  beforeAll(() => {
+    nock.enableNetConnect(/^(127\.0\.0\.1|localhost|example\.com)/);
+  });
+
   afterEach(() => {
     nock.cleanAll();
     if (mockGitHubAPI) {
       mockGitHubAPI.clear();
     }
+  });
+
+  afterAll(() => {
+    nock.disableNetConnect();
   });
 
   describe('External Reference Extraction and Fetching', () => {
@@ -101,7 +109,7 @@ Direct link: https://direct.example.com/info.md
         .reply(200, '# Info\\nDirect link content.');
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -148,7 +156,7 @@ Also github:thirdorg/thirdrepo/GUIDE.md.
       mockGitHubAPI.setMockFileContent('thirdorg', 'thirdrepo', 'GUIDE.md', 'develop', 'External GUIDE content');
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -187,7 +195,7 @@ See [broken link](https://broken.example.com/missing.md) for info.
         .reply(404, 'Not Found');
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -230,7 +238,7 @@ Final documentation here.
         .get('/api.md').reply(200, apiContent);
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -271,7 +279,7 @@ Also github:otherorg/otherrepo/README.md.
       nock('https://example.com').get('/guide.md').reply(200, 'Should not be fetched');
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -310,7 +318,7 @@ See [guide](https://example.com/guide.md).
         .reply(200, 'External guide content');
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -343,7 +351,7 @@ See [guide](https://example.com/guide.md).
 
       // Test main branch
       const mainResponse = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -358,7 +366,7 @@ See [guide](https://example.com/guide.md).
 
       // Test develop branch
       const devResponse = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 2,
@@ -377,7 +385,7 @@ See [guide](https://example.com/guide.md).
       mockGitHubAPI.setMockFileContent('testorg', 'testrepo', 'CLAUDE.md', 'main', 'Main branch content');
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -404,7 +412,7 @@ See github:otherorg/otherrepo/README.md
       mockGitHubAPI.setMockFileContent('otherorg', 'otherrepo', 'README.md', 'feature', 'Feature branch external content');
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,
@@ -436,7 +444,7 @@ See [docs](https://github.com/otherorg/otherrepo/blob/main/docs/README.md)
         .reply(200, 'Normalized external content');
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send({
           jsonrpc: '2.0',
           id: 1,

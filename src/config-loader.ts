@@ -75,6 +75,10 @@ export class ConfigLoader {
     return this.config!;
   }
   
+  clearCache(): void {
+    this.config = null;
+  }
+  
   getSources(): SourceConfig[] {
     return this.getConfig().sources;
   }

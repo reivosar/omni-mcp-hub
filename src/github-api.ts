@@ -44,7 +44,7 @@ export class GitHubAPI {
       throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
     }
 
-    const data: GitHubTreeResponse = await response.json();
+    const data = await response.json() as GitHubTreeResponse;
     
     // Filter files matching the pattern
     const matchingFiles = data.tree
@@ -81,7 +81,7 @@ export class GitHubAPI {
       throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
     }
 
-    const data: GitHubFileResponse = await response.json();
+    const data = await response.json() as GitHubFileResponse;
     
     if (data.encoding === 'base64') {
       return Buffer.from(data.content, 'base64').toString('utf-8');
@@ -113,7 +113,7 @@ export class GitHubAPI {
     }
 
     const response = await fetch(`${this.baseURL}/rate_limit`, { headers });
-    const data = await response.json();
+    const data = await response.json() as any;
     
     return {
       remaining: data.resources.core.remaining,

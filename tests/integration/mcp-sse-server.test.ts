@@ -39,10 +39,10 @@ describe('MCPSSEServer Integration', () => {
     }
   });
 
-  describe('GET /mcp', () => {
+  describe('GET /sse', () => {
     test('should return server info via SSE', async () => {
       const response = await request(app)
-        .get('/mcp')
+        .get('/sse')
         .expect('Content-Type', /text\/event-stream/)
         .expect(200);
 
@@ -52,7 +52,7 @@ describe('MCPSSEServer Integration', () => {
     });
   });
 
-  describe('POST /mcp - JSON-RPC requests', () => {
+  describe('POST /sse - JSON-RPC requests', () => {
     test('should handle valid fetch documentation request', async () => {
       // Setup mock data
       mockGitHubAPI.setMockFiles('testuser', 'testrepo', 'main', [
@@ -77,7 +77,7 @@ describe('MCPSSEServer Integration', () => {
       };
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send(request_body)
         .expect('Content-Type', /text\/event-stream/)
         .expect(200);
@@ -129,7 +129,7 @@ describe('MCPSSEServer Integration', () => {
       };
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send(request_body)
         .expect(200);
 
@@ -167,7 +167,7 @@ describe('MCPSSEServer Integration', () => {
       };
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send(request_body)
         .expect(200);
 
@@ -191,7 +191,7 @@ describe('MCPSSEServer Integration', () => {
       };
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send(invalid_request)
         .expect(200);
 
@@ -211,7 +211,7 @@ describe('MCPSSEServer Integration', () => {
       };
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send(request_body)
         .expect(200);
 
@@ -234,7 +234,7 @@ describe('MCPSSEServer Integration', () => {
       };
 
       const response = await request(app)
-        .post('/mcp')
+        .post('/sse')
         .send(request_body)
         .expect(200);
 
@@ -263,7 +263,7 @@ describe('MCPSSEServer Integration', () => {
   describe('CORS handling', () => {
     test('should handle CORS preflight requests', async () => {
       await request(app)
-        .options('/mcp')
+        .options('/sse')
         .set('Origin', 'https://example.com')
         .set('Access-Control-Request-Method', 'POST')
         .set('Access-Control-Request-Headers', 'Content-Type')
@@ -272,7 +272,7 @@ describe('MCPSSEServer Integration', () => {
 
     test('should include CORS headers in responses', async () => {
       const response = await request(app)
-        .get('/mcp')
+        .get('/sse')
         .expect(200);
 
       expect(response.headers['access-control-allow-origin']).toBe('*');

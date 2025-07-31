@@ -36,7 +36,7 @@ export class OmniSourceManager {
           continue;
         }
 
-        const handler = await this.sourceManager.initializeSource(sourceUrl, source.token);
+        const handler = await this.sourceManager.initializeSource(sourceUrl);
         this.sources.set(sourceUrl, handler);
         console.log(`Initialized source: ${handler.getSourceInfo()}`);
       } catch (error) {

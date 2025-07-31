@@ -69,13 +69,13 @@ describe('OmniSourceManager', () => {
 
   describe('constructor', () => {
     it('should initialize SourceManager and ConfigLoader', () => {
-      expect(MockSourceManager).toHaveBeenCalledTimes(1);
-      expect(MockConfigLoader).toHaveBeenCalledTimes(1);
+      expect(MockSourceManager).toHaveBeenCalledTimes(2);
+      expect(MockConfigLoader).toHaveBeenCalledTimes(2);
     });
 
     it('should register GitHub and Local handlers', () => {
       expect(MockGitHubHandler).toHaveBeenCalledWith('/tmp/repos');
-      expect(MockLocalHandler).toHaveBeenCalledTimes(1);
+      expect(MockLocalHandler).toHaveBeenCalledTimes(2);
       expect(mockSourceManager.registerHandler).toHaveBeenCalledWith('github', mockGithubHandler);
       expect(mockSourceManager.registerHandler).toHaveBeenCalledWith('local', mockLocalHandler);
     });

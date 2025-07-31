@@ -58,7 +58,7 @@ describe('GitHubHandler', () => {
 
       expect(mockGit.clone).toHaveBeenCalledWith(
         'https://github.com/owner/repo.git',
-        expectedLocalDir,
+        '/tmp/repos/github-owner-repo',
         ['--depth', '1', '--single-branch']
       );
       expect(mockFs.removeSync).not.toHaveBeenCalled();
@@ -71,10 +71,10 @@ describe('GitHubHandler', () => {
 
       await githubHandler.initialize(repoPath);
 
-      expect(mockFs.removeSync).toHaveBeenCalledWith(expectedLocalDir);
+      expect(mockFs.removeSync).toHaveBeenCalledWith('/tmp/repos/github-owner-repo');
       expect(mockGit.clone).toHaveBeenCalledWith(
         'https://github.com/owner/repo.git',
-        expectedLocalDir,
+        '/tmp/repos/github-owner-repo',
         ['--depth', '1', '--single-branch']
       );
     });
@@ -202,7 +202,7 @@ describe('GitHubHandler', () => {
       const result = await githubHandler.getFile(fileName);
 
       expect(result).toBe(content);
-      expect(mockFs.readFileSync).toHaveBeenCalledWith(path.join(expectedLocalDir, fileName), 'utf-8');
+      expect(mockFs.readFileSync).toHaveBeenCalledWith('/tmp/repos/github-owner-repo/test.md', 'utf-8');
     });
 
     it('should return null when file does not exist', async () => {

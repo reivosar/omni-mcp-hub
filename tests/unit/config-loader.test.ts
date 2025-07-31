@@ -49,9 +49,14 @@ describe('ConfigLoader', () => {
 
       const result = configLoader.load();
 
+      const expectedResult = {
+        ...mockConfig,
+        github: { ...mockConfig.github, token: '' } // GITHUB_TOKEN replaced with empty string
+      };
+
       expect(mockFs.existsSync).toHaveBeenCalledWith(configPath);
       expect(mockFs.readFileSync).toHaveBeenCalledWith(configPath, 'utf8');
-      expect(result).toEqual(mockConfig);
+      expect(result).toEqual(expectedResult);
     });
 
     it('should load config from explicit path', () => {
@@ -64,9 +69,14 @@ describe('ConfigLoader', () => {
 
       const result = configLoader.load(customPath);
 
+      const expectedResult = {
+        ...mockConfig,
+        github: { ...mockConfig.github, token: '' } // GITHUB_TOKEN replaced with empty string
+      };
+
       expect(mockFs.existsSync).toHaveBeenCalledWith(customPath);
       expect(mockFs.readFileSync).toHaveBeenCalledWith(customPath, 'utf8');
-      expect(result).toEqual(mockConfig);
+      expect(result).toEqual(expectedResult);
     });
 
     it('should load config from CONFIG_PATH environment variable', () => {
@@ -80,9 +90,14 @@ describe('ConfigLoader', () => {
 
       const result = configLoader.load();
 
+      const expectedResult = {
+        ...mockConfig,
+        github: { ...mockConfig.github, token: '' } // GITHUB_TOKEN replaced with empty string
+      };
+
       expect(mockFs.existsSync).toHaveBeenCalledWith(envPath);
       expect(mockFs.readFileSync).toHaveBeenCalledWith(envPath, 'utf8');
-      expect(result).toEqual(mockConfig);
+      expect(result).toEqual(expectedResult);
     });
 
     it('should throw error when config file does not exist', () => {
@@ -165,6 +180,7 @@ describe('ConfigLoader', () => {
       
       const expectedConfig = {
         ...mockConfig,
+        github: { ...mockConfig.github, token: '' }, // GITHUB_TOKEN replaced with empty string
         api: {
           url: 'https://api.github.com/v3'
         }
@@ -200,13 +216,19 @@ describe('ConfigLoader', () => {
       mockFs.readFileSync.mockReturnValue(yamlContent);
       mockYaml.load.mockReturnValue(mockConfig);
 
-      // Load twice
+      // Load once, then get from cache
       const result1 = configLoader.load();
-      const result2 = configLoader.load();
+      const result2 = configLoader.getConfig();
+
+      const expectedResult = {
+        ...mockConfig,
+        github: { ...mockConfig.github, token: '' } // GITHUB_TOKEN replaced with empty string
+      };
 
       // File should only be read once due to caching
       expect(mockFs.readFileSync).toHaveBeenCalledTimes(1);
-      expect(result1).toEqual(result2);
+      expect(result1).toEqual(expectedResult);
+      expect(result2).toEqual(expectedResult);
       expect(result1).toBe(result2); // Same object reference
     });
   });

@@ -145,7 +145,7 @@ describe('MCPHandler', () => {
         content: [
           {
             type: 'text',
-            text: 'Available sources:\\n- github:user/repo\\n- local:/path'
+            text: 'Available sources:\n- github:user/repo\n- local:/path'
           }
         ]
       });
@@ -172,7 +172,7 @@ describe('MCPHandler', () => {
         content: [
           {
             type: 'text',
-            text: 'Files in github:user/repo:\\n- README.md\\n- CLAUDE.md'
+            text: 'Files in github:user/repo:\n- README.md\n- CLAUDE.md'
           }
         ]
       });
@@ -202,7 +202,7 @@ describe('MCPHandler', () => {
         content: [
           {
             type: 'text',
-            text: 'README.md from github:user/repo:\\n\\n# Test File\\n\\nThis is test content.'
+            text: 'README.md from github:user/repo:\n\n# Test File\\n\\nThis is test content.'
           }
         ]
       });

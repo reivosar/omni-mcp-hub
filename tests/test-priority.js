@@ -3,9 +3,9 @@ const WebSocket = require('ws');
 const ws = new WebSocket('ws://localhost:38574/sse');
 
 ws.on('open', function open() {
-  console.log('優先順位テスト開始！');
+  console.log('Priority test started!');
   
-  // バンドル取得でどちらが優先されるかテスト
+  // Test which one is prioritized in bundle retrieval
   ws.send(JSON.stringify({
     jsonrpc: '2.0',
     id: 1,
@@ -24,15 +24,15 @@ ws.on('message', function message(data) {
   
   if (response.result && response.result.content) {
     const content = response.result.content[0].text;
-    console.log('バンドル内容:');
+    console.log('Bundle content:');
     console.log(content);
     
-    // どちらが含まれているかチェック
-    if (content.includes('だっちゃ')) {
-      console.log('ラムちゃんが含まれています！');
+    // Check which one is included
+    if (content.includes('daccha')) {
+      console.log('Lum is included!');
     }
-    if (content.includes('なのだ')) {
-      console.log('れれれのおじさんが含まれています！');
+    if (content.includes('nanoda')) {
+      console.log('Rerere no Ojisan is included!');
     }
   }
   
@@ -40,9 +40,9 @@ ws.on('message', function message(data) {
 });
 
 ws.on('error', function error(err) {
-  console.error('エラー:', err);
+  console.error('Error:', err);
 });
 
 ws.on('close', function close() {
-  console.log('テスト完了');
+  console.log('Test completed');
 });

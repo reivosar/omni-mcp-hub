@@ -3,9 +3,9 @@ const WebSocket = require('ws');
 const ws = new WebSocket('ws://localhost:38574/sse');
 
 ws.on('open', function open() {
-  console.log('接続成功');
+  console.log('Connected successfully');
   
-  // ツール一覧を取得
+  // Get list of tools
   ws.send(JSON.stringify({
     jsonrpc: '2.0',
     id: 1,
@@ -15,14 +15,14 @@ ws.on('open', function open() {
 
 ws.on('message', function message(data) {
   const response = JSON.parse(data.toString());
-  console.log('受信:', JSON.stringify(response, null, 2));
+  console.log('Received:', JSON.stringify(response, null, 2));
   ws.close();
 });
 
 ws.on('error', function error(err) {
-  console.error('エラー:', err);
+  console.error('Error:', err);
 });
 
 ws.on('close', function close() {
-  console.log('切断');
+  console.log('Disconnected');
 });

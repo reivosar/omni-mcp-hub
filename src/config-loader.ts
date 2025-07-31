@@ -12,7 +12,7 @@ export interface SourceConfig {
   repo?: string;
   branch?: string;
   path?: string;
-  token?: string;  // 個別認証トークン
+  token?: string;
 }
 
 export interface FilesConfig {
@@ -58,7 +58,6 @@ export class ConfigLoader {
     const fileContents = fs.readFileSync(filePath, 'utf8');
     const rawConfig = yaml.load(fileContents) as any;
     
-    // 環境変数の置換
     const configStr = JSON.stringify(rawConfig);
     const replacedStr = configStr.replace(/\${(\w+)}/g, (match, envVar) => {
       return process.env[envVar] || '';

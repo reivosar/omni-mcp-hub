@@ -3,9 +3,9 @@ const WebSocket = require('ws');
 const ws = new WebSocket('ws://localhost:38574/sse');
 
 ws.on('open', function open() {
-  console.log('デバッグテスト開始');
+  console.log('Debug test started');
   
-  // 個別にlumフォルダのREADME.mdを取得
+  // Get README.md from lum folder individually
   ws.send(JSON.stringify({
     jsonrpc: '2.0',
     id: 1,
@@ -24,14 +24,14 @@ ws.on('message', function message(data) {
   const response = JSON.parse(data.toString());
   
   if (response.id === 1) {
-    console.log('lumフォルダのREADME.md内容:');
+    console.log('lum folder README.md content:');
     if (response.result && response.result.content) {
       console.log(response.result.content[0].text);
     } else {
-      console.log('エラー:', JSON.stringify(response, null, 2));
+      console.log('Error:', JSON.stringify(response, null, 2));
     }
     
-    // 次にrerere-ojisanフォルダをテスト
+    // Next, test rerere-ojisan folder
     ws.send(JSON.stringify({
       jsonrpc: '2.0',
       id: 2,
@@ -45,20 +45,20 @@ ws.on('message', function message(data) {
       }
     }));
   } else if (response.id === 2) {
-    console.log('\nrerere-ojisanフォルダのREADME.md内容:');
+    console.log('\nrerere-ojisan folder README.md content:');
     if (response.result && response.result.content) {
       console.log(response.result.content[0].text);
     } else {
-      console.log('エラー:', JSON.stringify(response, null, 2));
+      console.log('Error:', JSON.stringify(response, null, 2));
     }
     ws.close();
   }
 });
 
 ws.on('error', function error(err) {
-  console.error('エラー:', err);
+  console.error('Error:', err);
 });
 
 ws.on('close', function close() {
-  console.log('デバッグ終了');
+  console.log('Debug finished');
 });

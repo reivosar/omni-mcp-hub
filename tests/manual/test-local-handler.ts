@@ -1,10 +1,10 @@
-import { LocalHandler } from './handlers/local-handler';
+import { LocalHandler } from '../../src/handlers/local-handler';
 import * as path from 'path';
 
 async function testLocalHandler() {
   console.log('Testing LocalHandler...');
   
-  const testDataPath = path.join(__dirname, '../test-data');
+  const testDataPath = path.join(__dirname, '../../test-data');
   const handler = new LocalHandler();
   
   try {

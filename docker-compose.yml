@@ -4,10 +4,10 @@ services:
   omni-mcp-hub:
     build: .
     ports:
-      - "38574:38574"
+      - "${MCP_PORT:-38574}:${MCP_PORT:-38574}"
     environment:
       - NODE_ENV=production
-      - MCP_PORT=38574
+      - MCP_PORT=${MCP_PORT:-38574}
       - REPOS_DIR=/app/repos
       # Specify sources to initialize on startup  
       - SOURCES=github:anthropics/claude-code,local:/app/test-data/lum,local:/app/test-data/rerere-ojisan

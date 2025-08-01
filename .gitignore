@@ -68,6 +68,7 @@ test-results/
 coverage/
 
 # Runtime config (may contain sensitive data)
+config.yaml
 config.local.yaml
 config.local.yml
 *.local.yaml

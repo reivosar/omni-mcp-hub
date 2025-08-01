@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:24-alpine3.21 AS builder
 
 WORKDIR /app
 
@@ -14,16 +14,39 @@ RUN npm ci
 # Copy application code
 COPY . .
 
-# Copy test data
-COPY test-data /app/test-data
-
 # Build TypeScript
 RUN npm run build
+
+# Production stage
+FROM node:24-alpine3.21
+
+WORKDIR /app
+
+# Update packages for security
+RUN apk update && apk upgrade && apk add --no-cache git
+
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm ci --omit=dev
+
+# Copy built application from builder
+COPY --from=builder /app/dist ./dist
+
+# Copy necessary files
+COPY config.yaml.example ./
 
 # Create directory for cloned repositories
 RUN mkdir -p /app/repos
 
-# Expose MCP WebSocket port
-EXPOSE 38574
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 
-CMD ["npm", "start"]
+# Change ownership
+RUN chown -R nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
+
+CMD ["node", "dist/server.js"]

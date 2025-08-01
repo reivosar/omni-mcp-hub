@@ -15,7 +15,7 @@ describe('End-to-End Tests', () => {
     serverProcess = spawn('npx', ['ts-node', 'src/server.ts'], {
       env: { 
         ...process.env, 
-        CONFIG_PATH: './config.test.yaml',
+        CONFIG_PATH: './tests/config.test.yaml',
         GITHUB_TOKEN_TEST: 'test-token',
         GITHUB_WEBHOOK_SECRET_TEST: 'test-webhook-secret'
       },

@@ -27,4 +27,4 @@ process.env.GITHUB_TOKEN_TEST = 'test-token';
 process.env.GITHUB_WEBHOOK_SECRET_TEST = 'test-webhook-secret';
 
 // Set config path for tests
-process.env.CONFIG_PATH = './config.test.yaml';
+process.env.CONFIG_PATH = './tests/config.test.yaml';

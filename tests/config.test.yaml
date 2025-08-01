@@ -1,0 +1,26 @@
+# Test configuration for MCP Server
+# Minimal configuration for running tests
+
+server:
+  port: 3010
+
+sources:
+  # Test sources with minimal configuration
+  - url: github:microsoft/vscode
+    token: ${GITHUB_TOKEN_TEST}
+    
+  - url: /tmp/test-project
+
+files:
+  patterns:
+    - CLAUDE.md
+  max_size: 10240  # 10KB for tests
+
+fetch:
+  timeout: 5000
+  retries: 2
+  retry_delay: 500
+  max_depth: 2
+
+cache:
+  ttl: 60000  # 1 minute for tests

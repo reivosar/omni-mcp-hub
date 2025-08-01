@@ -445,8 +445,9 @@ describe('MCPSSEServer', () => {
       await webhookHandler(mockReq, mockRes);
 
       expect(consoleErrorSpy).toHaveBeenCalled();
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Internal server error' });
+      // Should return 400 for invalid JSON, not 500 (security improvement)
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Invalid JSON payload' });
       
       consoleErrorSpy.mockRestore();
     });

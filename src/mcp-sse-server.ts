@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import crypto from 'crypto';
 import { GitHubAPI } from './github-api';
 import { CacheManager } from './cache';
 import { ReferenceResolver } from './reference-resolver';
@@ -48,10 +49,18 @@ export class MCPSSEServer {
   }
 
   private setupMiddleware() {
+    // Security: Configure CORS with specific allowed origins instead of wildcard
+    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
+      'http://localhost:3000',
+      'http://localhost:8080',
+      'http://localhost:5173'
+    ];
+    
     this.app.use(cors({
-      origin: '*',
+      origin: allowedOrigins,
       methods: ['GET', 'POST', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'MCP-Protocol-Version']
+      allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'MCP-Protocol-Version'],
+      credentials: true
     }));
     
     // For webhook signature verification, we need raw body
@@ -427,16 +436,26 @@ export class MCPSSEServer {
     // Handle raw body for signature verification
     if (Buffer.isBuffer(req.body)) {
       const rawBody = req.body.toString();
-      payload = JSON.parse(rawBody);
+      
+      try {
+        payload = JSON.parse(rawBody);
+      } catch (error) {
+        console.error('Invalid JSON in webhook payload:', error);
+        return res.status(400).json({ error: 'Invalid JSON payload' });
+      }
       
       if (webhookSecret && signature) {
-        const crypto = require('crypto');
         const expectedSignature = 'sha256=' + crypto
           .createHmac('sha256', webhookSecret)
           .update(rawBody)
           .digest('hex');
         
-        if (signature !== expectedSignature) {
+        // Use timing-safe comparison to prevent timing attacks
+        const signatureBuffer = Buffer.from(signature);
+        const expectedBuffer = Buffer.from(expectedSignature);
+        
+        if (signatureBuffer.length !== expectedBuffer.length || 
+            !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
           return res.status(401).json({ error: 'Invalid signature' });
         }
       } else if (webhookSecret && !signature) {
@@ -446,13 +465,25 @@ export class MCPSSEServer {
       // Fallback for regular JSON body
       payload = req.body;
       if (webhookSecret && signature) {
-        const crypto = require('crypto');
+        let bodyString: string;
+        try {
+          bodyString = JSON.stringify(req.body);
+        } catch (error) {
+          console.error('Failed to stringify request body:', error);
+          return res.status(400).json({ error: 'Invalid request body' });
+        }
+        
         const expectedSignature = 'sha256=' + crypto
           .createHmac('sha256', webhookSecret)
-          .update(JSON.stringify(req.body))
+          .update(bodyString)
           .digest('hex');
         
-        if (signature !== expectedSignature) {
+        // Use timing-safe comparison to prevent timing attacks
+        const signatureBuffer = Buffer.from(signature);
+        const expectedBuffer = Buffer.from(expectedSignature);
+        
+        if (signatureBuffer.length !== expectedBuffer.length || 
+            !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
           return res.status(401).json({ error: 'Invalid signature' });
         }
       } else if (webhookSecret && !signature) {

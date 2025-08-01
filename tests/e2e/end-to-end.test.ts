@@ -158,17 +158,20 @@ describe('End-to-End Tests', () => {
 
   describe('CORS Support', () => {
     test('should handle CORS preflight requests', async () => {
+      // Use an allowed origin from the default CORS configuration
       const response = await fetch(`http://localhost:${serverPort}/sse`, {
         method: 'OPTIONS',
         headers: {
-          'Origin': 'https://example.com',
+          'Origin': 'http://localhost:3000',
           'Access-Control-Request-Method': 'POST',
           'Access-Control-Request-Headers': 'Content-Type'
         }
       });
 
       expect(response.status).toBe(204);
-      expect(response.headers.get('access-control-allow-origin')).toBe('*');
+      // CORS origin should now be the specific origin, not wildcard for security
+      const allowedOrigin = response.headers.get('access-control-allow-origin');
+      expect(allowedOrigin).toBe('http://localhost:3000'); // Should match the request origin
       expect(response.headers.get('access-control-allow-methods')).toContain('POST');
     });
 

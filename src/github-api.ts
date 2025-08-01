@@ -46,11 +46,16 @@ export class GitHubAPI {
 
     const data = await response.json() as GitHubTreeResponse;
     
+    // Ensure data.tree exists and is an array
+    if (!data || !Array.isArray(data.tree)) {
+      return [];
+    }
+    
     // Filter files matching the pattern
     const matchingFiles = data.tree
-      .filter(item => item.type === 'blob')
+      .filter(item => item && item.type === 'blob' && item.path)
       .map(item => item.path)
-      .filter(path => this.matchesPattern(path, pattern));
+      .filter(path => path && this.matchesPattern(path, pattern));
 
     return matchingFiles;
   }

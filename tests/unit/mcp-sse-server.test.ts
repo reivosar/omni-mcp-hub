@@ -42,10 +42,6 @@ describe('MCPSSEServer', () => {
       retry_delay: 1000,
       max_depth: 3
     },
-    github: {
-      token: 'test-token',
-      webhook_secret: 'test-secret'
-    },
     server: {
       port: 3000
     },
@@ -337,7 +333,6 @@ describe('MCPSSEServer', () => {
       // Mock config to return empty secret
       mockConfigLoader.getConfig.mockReturnValue({
         ...mockConfig,
-        github: { ...mockConfig.github, webhook_secret: '' },
         sources: [],
         files: { patterns: ['CLAUDE.md'], max_size: 1048576 },
         cache: { ttl: 300000, cleanup_interval: 60000 }
@@ -358,8 +353,9 @@ describe('MCPSSEServer', () => {
     });
 
     it('should reject webhook with invalid signature', async () => {
-      // Create new server instance to ensure crypto mock is applied
-      const newServer = new MCPSSEServer(3001);
+      // Set webhook secret in environment  
+      const originalSecret = process.env.GITHUB_WEBHOOK_SECRET;
+      process.env.GITHUB_WEBHOOK_SECRET = 'test-secret';
       
       // Temporarily change the expected signature in the mock body to trigger mismatch
       const originalSignature = mockReq.headers['x-hub-signature-256'];
@@ -372,11 +368,20 @@ describe('MCPSSEServer', () => {
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalledWith({ error: 'Invalid signature' });
       
-      // Restore original signature
+      // Restore original values
       mockReq.headers['x-hub-signature-256'] = originalSignature;
+      if (originalSecret !== undefined) {
+        process.env.GITHUB_WEBHOOK_SECRET = originalSecret;
+      } else {
+        delete process.env.GITHUB_WEBHOOK_SECRET;
+      }
     });
 
     it('should reject webhook with missing signature when secret configured', async () => {
+      // Set webhook secret in environment
+      const originalSecret = process.env.GITHUB_WEBHOOK_SECRET;
+      process.env.GITHUB_WEBHOOK_SECRET = 'test-secret';
+      
       delete mockReq.headers['x-hub-signature-256'];
       
       const webhookHandler = mockApp.post.mock.calls.find((call: any) => call[0] === '/webhook')[1];
@@ -385,6 +390,13 @@ describe('MCPSSEServer', () => {
 
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalledWith({ error: 'Missing signature' });
+      
+      // Restore environment
+      if (originalSecret !== undefined) {
+        process.env.GITHUB_WEBHOOK_SECRET = originalSecret;
+      } else {
+        delete process.env.GITHUB_WEBHOOK_SECRET;
+      }
     });
 
     it('should handle pull_request webhook', async () => {

@@ -4,43 +4,38 @@ server:
   port: 3000
   
 sources:
-  # GitHub リポジトリ（個別認証可能）
-  - type: github
-    owner: microsoft
-    repo: vscode
-    branch: main
+  # GitHub リポジトリ（自動判別対応）
+  - url: https://github.com/microsoft/vscode
     token: ${GITHUB_TOKEN_PUBLIC}  # パブリック用トークン
     
-  - type: github
-    owner: facebook
-    repo: react
-    branch: main
+  - url: github:facebook/react@main
     # token未設定 = デフォルトトークン使用
     
-  - type: github
-    owner: your-private-org
-    repo: private-repo
-    branch: main
+  - url: your-private-org/private-repo@main
     token: ${GITHUB_TOKEN_PRIVATE}  # プライベート用トークン
     
-  - type: github
-    owner: company-org
-    repo: enterprise-repo
-    branch: develop
+  - url: company-org/enterprise-repo@develop
     token: ${GITHUB_TOKEN_ENTERPRISE}  # 企業用トークン
     
-  - type: github
-    owner: personal-account
-    repo: personal-project
-    branch: main
+  - url: personal-account/personal-project
     token: ${GITHUB_TOKEN_PERSONAL}  # 個人用トークン
     
-  # ローカルディレクトリ（認証不要）
-  - type: local
-    path: /Users/mac/my-project
+  # ローカルディレクトリ（自動判別対応）
+  - url: /Users/mac/my-project
+    
+  - url: ./Documents/another-project
+  
+  - url: file:///absolute/path/to/project
+    
+  # 従来形式（互換性維持）
+  - type: github
+    owner: legacy-org
+    repo: legacy-repo
+    branch: main
+    token: ${GITHUB_TOKEN_LEGACY}
     
   - type: local
-    path: /Users/mac/Documents/another-project
+    path: /Users/mac/legacy-project
 
 files:
   patterns:
@@ -49,10 +44,6 @@ files:
     - docs/**/*.md
   max_size: 102400  # 100KB
 
-github:
-  token: ${GITHUB_TOKEN}  # 環境変数から読み込み
-  webhook_secret: ${GITHUB_WEBHOOK_SECRET}
-
 fetch:
   timeout: 10000      # 10秒
   retries: 3
@@ -60,4 +51,4 @@ fetch:
   max_depth: 2
 
 cache:
-  ttl: 300  # 5分
+  ttl: 300  # 5分（キャッシュ有効期限）

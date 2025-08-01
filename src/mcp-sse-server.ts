@@ -297,6 +297,10 @@ export class MCPSSEServer {
     let claudeFiles: string[];
     try {
       claudeFiles = await this.githubAPI.listFiles(owner, repo, branch, 'CLAUDE.md');
+      // Ensure claudeFiles is always an array
+      if (!Array.isArray(claudeFiles)) {
+        claudeFiles = [];
+      }
     } catch (error) {
       // If listFiles fails, throw the error to be caught by the parent
       throw error;
@@ -390,16 +394,6 @@ export class MCPSSEServer {
     await this.cacheManager.setMCPData(owner, repo, branch, includeExternals, result, 300);
   }
 
-  // Legacy methods kept for backward compatibility (not used in new implementation)
-  private extractExternalReferences(content: string): string[] {
-    console.warn('Using legacy extractExternalReferences - consider migrating to ReferenceResolver');
-    return [];
-  }
-
-  private async fetchExternalContent(ref: string): Promise<string> {
-    console.warn('Using legacy fetchExternalContent - consider migrating to ReferenceResolver');
-    throw new Error('Legacy method - use ReferenceResolver instead');
-  }
 
   private sendSSEMessage(res: express.Response, message: JSONRPCNotification | JSONRPCResponse) {
     res.write(`event: message\n`);
@@ -422,11 +416,8 @@ export class MCPSSEServer {
     // Verify signature if webhook secret is configured
     const config = this.configLoader.getConfig();
     // For webhook verification, prioritize environment variable over config
-    // This allows tests to override config by setting/deleting env vars
+    // Webhook secret comes from environment variable only
     let webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
-    if (webhookSecret === undefined) {
-      webhookSecret = config.github.webhook_secret;
-    }
     // If the secret is an empty string, treat it as no secret
     if (webhookSecret === '') {
       webhookSecret = undefined;

@@ -34,7 +34,6 @@ describe('ConfigLoader', () => {
         { type: 'github', owner: 'test', repo: 'repo', branch: 'main' }
       ],
       files: { patterns: ['CLAUDE.md'], max_size: 100000 },
-      github: { token: '${GITHUB_TOKEN}', webhook_secret: 'secret' },
       fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
       cache: { ttl: 300 }
     };
@@ -51,7 +50,6 @@ describe('ConfigLoader', () => {
 
       const expectedResult = {
         ...mockConfig,
-        github: { ...mockConfig.github, token: '' } // GITHUB_TOKEN replaced with empty string
       };
 
       expect(mockFs.existsSync).toHaveBeenCalledWith(configPath);
@@ -71,7 +69,6 @@ describe('ConfigLoader', () => {
 
       const expectedResult = {
         ...mockConfig,
-        github: { ...mockConfig.github, token: '' } // GITHUB_TOKEN replaced with empty string
       };
 
       expect(mockFs.existsSync).toHaveBeenCalledWith(customPath);
@@ -92,7 +89,6 @@ describe('ConfigLoader', () => {
 
       const expectedResult = {
         ...mockConfig,
-        github: { ...mockConfig.github, token: '' } // GITHUB_TOKEN replaced with empty string
       };
 
       expect(mockFs.existsSync).toHaveBeenCalledWith(envPath);
@@ -110,21 +106,37 @@ describe('ConfigLoader', () => {
 
     it('should replace environment variables in config', () => {
       process.env.GITHUB_TOKEN = 'test-token-123';
-      process.env.WEBHOOK_SECRET = 'webhook-secret-456';
+      process.env.API_KEY = 'api-key-456';
       
       const configWithEnvVars = {
         ...mockConfig,
-        github: { 
-          token: '${GITHUB_TOKEN}', 
-          webhook_secret: '${WEBHOOK_SECRET}' 
+        sources: [
+          { 
+            type: 'github', 
+            owner: 'test', 
+            repo: 'repo', 
+            branch: 'main',
+            token: '${GITHUB_TOKEN}'
+          }
+        ],
+        api: {
+          key: '${API_KEY}'
         }
       };
       
       const expectedConfig = {
         ...mockConfig,
-        github: { 
-          token: 'test-token-123', 
-          webhook_secret: 'webhook-secret-456' 
+        sources: [
+          { 
+            type: 'github', 
+            owner: 'test', 
+            repo: 'repo', 
+            branch: 'main',
+            token: 'test-token-123'
+          }
+        ],
+        api: {
+          key: 'api-key-456'
         }
       };
 
@@ -142,17 +154,33 @@ describe('ConfigLoader', () => {
     it('should replace undefined environment variables with empty string', () => {
       const configWithEnvVars = {
         ...mockConfig,
-        github: { 
-          token: '${UNDEFINED_TOKEN}', 
-          webhook_secret: 'static-secret' 
+        sources: [
+          { 
+            type: 'github', 
+            owner: 'test', 
+            repo: 'repo', 
+            branch: 'main',
+            token: '${UNDEFINED_TOKEN}'
+          }
+        ],
+        api: {
+          secret: 'static-secret'
         }
       };
       
       const expectedConfig = {
         ...mockConfig,
-        github: { 
-          token: '', 
-          webhook_secret: 'static-secret' 
+        sources: [
+          { 
+            type: 'github', 
+            owner: 'test', 
+            repo: 'repo', 
+            branch: 'main',
+            token: ''
+          }
+        ],
+        api: {
+          secret: 'static-secret'
         }
       };
 
@@ -180,7 +208,6 @@ describe('ConfigLoader', () => {
       
       const expectedConfig = {
         ...mockConfig,
-        github: { ...mockConfig.github, token: '' }, // GITHUB_TOKEN replaced with empty string
         api: {
           url: 'https://api.github.com/v3'
         }
@@ -222,7 +249,6 @@ describe('ConfigLoader', () => {
 
       const expectedResult = {
         ...mockConfig,
-        github: { ...mockConfig.github, token: '' } // GITHUB_TOKEN replaced with empty string
       };
 
       // File should only be read once due to caching
@@ -239,7 +265,6 @@ describe('ConfigLoader', () => {
         server: { port: 3000 },
         sources: [],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
-        github: { token: 'test' },
         fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
         cache: { ttl: 300 }
       };
@@ -268,7 +293,6 @@ describe('ConfigLoader', () => {
         server: { port: 3000 },
         sources: [],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
-        github: { token: 'test' },
         fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
         cache: { ttl: 300 }
       };
@@ -292,7 +316,6 @@ describe('ConfigLoader', () => {
         server: { port: 3000 },
         sources: [],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
-        github: { token: 'test' },
         fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
         cache: { ttl: 300 }
       };
@@ -331,7 +354,6 @@ describe('ConfigLoader', () => {
           { type: 'local', path: '/path/to/local' }
         ],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
-        github: { token: 'test' },
         fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
         cache: { ttl: 300 }
       };
@@ -358,7 +380,6 @@ describe('ConfigLoader', () => {
           { type: 'github', owner: 'org2', repo: 'repo2', branch: 'develop' }
         ],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
-        github: { token: 'test' },
         fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
         cache: { ttl: 300 }
       };
@@ -383,7 +404,6 @@ describe('ConfigLoader', () => {
           { type: 'local', path: '/path/to/local' }
         ],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
-        github: { token: 'test' },
         fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
         cache: { ttl: 300 }
       };
@@ -404,7 +424,6 @@ describe('ConfigLoader', () => {
         server: { port: 3000 },
         sources: [],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
-        github: { token: 'test' },
         fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
         cache: { ttl: 300 }
       };

@@ -121,7 +121,7 @@ export class RESTServer {
     this.app.get('/:owner/:repo/raw/*', async (req, res) => {
       try {
         const { owner, repo } = req.params;
-        const filePath = req.params[0];
+        const filePath = req.path.split(`/${owner}/${repo}/raw/`)[1] || '';
         const branch = req.query.branch as string || 'main';
         const authToken = this.extractAuthToken(req);
 
@@ -158,7 +158,7 @@ export class RESTServer {
     });
 
     // GitHub webhook endpoint
-    this.app.post('/webhook/github', (req, res) => {
+    this.app.post('/webhook/github', async (req, res) => {
       const signature = req.get('X-Hub-Signature-256');
       const event = req.get('X-GitHub-Event');
       const delivery = req.get('X-GitHub-Delivery');

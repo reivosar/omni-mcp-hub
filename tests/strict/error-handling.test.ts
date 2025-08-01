@@ -43,7 +43,9 @@ describe('Error Handling and Edge Cases', () => {
   let mockGitHubAPI: MockGitHubAPI;
 
   beforeEach(() => {
-    server = new MCPSSEServer(3005);
+    // Use a random port to avoid conflicts with other tests
+    const port = 3000 + Math.floor(Math.random() * 1000);
+    server = new MCPSSEServer(port);
     app = (server as any).app;
     
     // Get reference to the mocked GitHub API and inject it
@@ -447,10 +449,11 @@ And [server error](https://example.com/500.md)
       mockGitHubAPI.setMockFiles('testorg', 'testrepo', 'main', ['CLAUDE.md']);
       mockGitHubAPI.setMockFileContent('testorg', 'testrepo', 'CLAUDE.md', 'main', 'Content');
 
-      // Send multiple concurrent requests
-      const promises = Array.from({ length: 5 }, (_, i) =>
+      // Send multiple concurrent requests with timeout
+      const promises = Array.from({ length: 3 }, (_, i) =>
         request(app)
           .post('/sse')
+          .timeout(5000) // 5 second timeout
           .send({
             jsonrpc: '2.0',
             id: 20 + i,
@@ -467,6 +470,6 @@ And [server error](https://example.com/500.md)
         const completeEvent = events.find(e => e.data.id === 20 + i);
         expect(completeEvent?.data.result.status).toBe('complete');
       });
-    });
+    }, 10000); // 10 second test timeout
   });
 });

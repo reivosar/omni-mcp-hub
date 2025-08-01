@@ -14,7 +14,8 @@
     "test:integration": "jest --testPathPattern=integration",
     "test:unit": "jest --testPathPattern=unit",
     "test:e2e": "jest --testPathPattern=e2e",
-    "test:manual": "node test-mcp-client.js"
+    "test:manual": "node test-mcp-client.js",
+    "cli": "ts-node src/cli-helpers.ts"
   },
   "keywords": [
     "mcp",
@@ -31,7 +32,8 @@
     "fs-extra": "^11.2.0",
     "js-yaml": "^4.1.0",
     "node-fetch": "^2.7.0",
-    "simple-git": "^3.22.0"
+    "simple-git": "^3.22.0",
+    "ws": "^8.14.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
@@ -41,6 +43,7 @@
     "@types/node": "^20.8.0",
     "@types/node-fetch": "^2.6.11",
     "@types/supertest": "^6.0.2",
+    "@types/ws": "^8.5.9",
     "eventsource": "^2.0.2",
     "jest": "^29.7.0",
     "nock": "^13.5.4",

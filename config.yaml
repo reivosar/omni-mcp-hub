@@ -1,0 +1,60 @@
+# Omni MCP Hub Configuration
+# This file configures the MCP hub server that aggregates documentation from multiple sources
+
+# Server configuration
+server:
+  port: 3000  # Port number for the HTTP server (default: 3000)
+
+# Source repositories and directories
+# Each source can specify its own authentication token
+sources:
+  # GitHub repositories - various URL formats supported
+  - url: https://github.com/microsoft/vscode
+    token: ${GITHUB_TOKEN_VSCODE}  # Optional: Per-source GitHub token
+    
+  - url: github:facebook/react@main
+    token: ${GITHUB_TOKEN_REACT}
+    
+  - url: anthropics/claude-mcp@develop  # Short format: owner/repo@branch
+    token: ${GITHUB_TOKEN_CLAUDE}
+    
+  # Private repositories with dedicated tokens
+  - url: https://github.com/your-org/private-repo
+    token: ${GITHUB_TOKEN_PRIVATE}  # Required for private repos
+    
+  # Local file system paths
+  - url: /absolute/path/to/local/project
+  
+  - url: ./relative/path/to/project
+  
+  - url: file:///Users/username/Documents/my-project
+
+  # Legacy format (still supported)
+  - type: github
+    owner: company
+    repo: enterprise-app
+    branch: main
+    token: ${GITHUB_TOKEN_ENTERPRISE}
+    
+  - type: local
+    path: /opt/shared/documentation
+
+# File search configuration
+files:
+  patterns:
+    - "CLAUDE.md"          # Primary documentation files
+    - "*.claude.md"        # Alternative naming pattern
+    - "docs/CLAUDE.md"     # Nested documentation
+  max_size: 1048576        # Maximum file size in bytes (1MB)
+
+# External fetch configuration
+fetch:
+  timeout: 30000           # Request timeout in milliseconds (30s)
+  retries: 3               # Number of retry attempts for failed requests
+  retry_delay: 1000        # Initial delay between retries in ms (exponential backoff)
+  max_depth: 3             # Maximum depth for recursive reference resolution
+
+# Cache configuration
+cache:
+  ttl: 300000              # Time-to-live in milliseconds (5 minutes)
+  # Note: Cache is automatically invalidated via webhooks

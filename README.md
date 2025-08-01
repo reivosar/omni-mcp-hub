@@ -24,13 +24,18 @@ npm install
 
 ### 2. Configuration
 
+The repository includes a default `config.yaml` file with example sources. You can:
+
 ```bash
-# Copy example configuration
+# Use the default config.yaml (with example sources)
+# or create your own based on config.yaml.example
 cp config.yaml.example config.yaml
 
 # Edit config.yaml with your sources
 # See config.yaml.example for detailed options
 ```
+
+**Important**: The `config.yaml` file is required for the application to run. It contains the server configuration and source definitions.
 
 ### 3. Environment Setup
 

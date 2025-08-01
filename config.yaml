@@ -58,3 +58,23 @@ fetch:
 cache:
   ttl: 300000              # Time-to-live in milliseconds (5 minutes)
   # Note: Cache is automatically invalidated via webhooks
+
+# Security Configuration
+# IMPORTANT: These should be set as environment variables, not in this file
+# 
+# Required environment variables:
+# - GITHUB_WEBHOOK_SECRET: Secret for validating GitHub webhooks
+# - ALLOWED_ORIGINS: Comma-separated list of allowed CORS origins
+#   Example: ALLOWED_ORIGINS=https://app.example.com,https://dashboard.example.com
+#
+# GitHub tokens (one per source as needed):
+# - GITHUB_TOKEN_VSCODE: Token for accessing VSCode repo
+# - GITHUB_TOKEN_REACT: Token for accessing React repo
+# - GITHUB_TOKEN_PRIVATE: Token for private repositories
+# etc.
+
+# Example environment setup:
+# export GITHUB_WEBHOOK_SECRET=your_webhook_secret_here
+# export ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
+# export GITHUB_TOKEN_VSCODE=ghp_xxxxxxxxxxxxxxxxxxxx
+# export GITHUB_TOKEN_PRIVATE=ghp_yyyyyyyyyyyyyyyyyyyy

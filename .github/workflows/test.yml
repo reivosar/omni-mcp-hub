@@ -28,7 +28,7 @@ jobs:
 
     - name: Setup test environment
       run: |
-        cp tests/config.test.yaml config.yaml
+        cp tests/mcp-sources.test.yaml mcp-sources.yaml
         echo "GITHUB_TOKEN_TEST=test-token" >> $GITHUB_ENV
         echo "GITHUB_WEBHOOK_SECRET_TEST=test-secret" >> $GITHUB_ENV
 
@@ -62,7 +62,7 @@ jobs:
 
     - name: Setup test environment
       run: |
-        cp tests/config.test.yaml config.yaml
+        cp tests/mcp-sources.test.yaml mcp-sources.yaml
         echo "GITHUB_TOKEN_TEST=test-token" >> $GITHUB_ENV
         echo "GITHUB_WEBHOOK_SECRET_TEST=test-secret" >> $GITHUB_ENV
 

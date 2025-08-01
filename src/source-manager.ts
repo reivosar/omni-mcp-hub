@@ -1,16 +1,16 @@
 import { SourceManager, SourceHandler } from './source-handler';
 import { GitHubHandler } from './handlers/github-handler';
 import { LocalHandler } from './handlers/local-handler';
-import { ConfigLoader } from './config-loader';
+import { SourceConfigManager } from './source-config-manager';
 
 export class OmniSourceManager {
   private sourceManager: SourceManager;
   private sources = new Map<string, SourceHandler>();
-  private configLoader: ConfigLoader;
+  private configLoader: SourceConfigManager;
 
   constructor() {
     this.sourceManager = new SourceManager();
-    this.configLoader = new ConfigLoader();
+    this.configLoader = new SourceConfigManager();
 
     // Register handlers
     this.sourceManager.registerHandler('github', new GitHubHandler('/tmp/repos'));

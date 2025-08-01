@@ -1,0 +1,15 @@
+# Omni MCP Hub Configuration Example
+# Copy to config.yaml and customize as needed
+# Most settings are handled via environment variables
+
+sources:
+  # GitHub repository examples
+  - url: https://github.com/microsoft/vscode
+    token: ${GITHUB_TOKEN}
+    
+  - url: github:owner/repo@main
+    token: ${GITHUB_TOKEN}
+    
+  # Local directory examples  
+  - url: /path/to/local/project
+  - url: ./relative/path

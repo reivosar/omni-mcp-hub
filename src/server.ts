@@ -1,12 +1,12 @@
 import { MCPSSEServer } from './mcp-sse-server';
-import { ConfigLoader } from './config-loader';
+import { SourceConfigManager } from './source-config-manager';
 
 class OmniMCPServer {
   private mcpServer: MCPSSEServer;
-  private configLoader: ConfigLoader;
+  private configLoader: SourceConfigManager;
 
   constructor() {
-    this.configLoader = new ConfigLoader();
+    this.configLoader = new SourceConfigManager();
     const config = this.configLoader.getConfig();
     this.mcpServer = new MCPSSEServer(config.server.port);
   }

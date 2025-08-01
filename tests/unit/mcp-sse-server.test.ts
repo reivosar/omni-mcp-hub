@@ -3,7 +3,7 @@ import { MCPSSEServer } from '../../src/mcp-sse-server';
 import { GitHubAPI } from '../../src/github-api';
 import { CacheManager } from '../../src/cache';
 import { ReferenceResolver } from '../../src/reference-resolver';
-import { ConfigLoader } from '../../src/config-loader';
+import { SourceConfigManager } from '../../src/source-config-manager';
 
 // Mock all dependencies
 jest.mock('express');
@@ -25,12 +25,12 @@ const MockExpress = express as jest.MockedFunction<typeof express>;
 const MockGitHubAPI = GitHubAPI as jest.MockedClass<typeof GitHubAPI>;
 const MockCacheManager = CacheManager as jest.MockedClass<typeof CacheManager>;
 const MockReferenceResolver = ReferenceResolver as jest.MockedClass<typeof ReferenceResolver>;
-const MockConfigLoader = ConfigLoader as jest.MockedClass<typeof ConfigLoader>;
+const MockSourceConfigManager = SourceConfigManager as jest.MockedClass<typeof SourceConfigManager>;
 
 describe('MCPSSEServer', () => {
   let server: MCPSSEServer;
   let mockApp: any;
-  let mockConfigLoader: jest.Mocked<ConfigLoader>;
+  let mockConfigLoader: jest.Mocked<SourceConfigManager>;
   let mockGithubAPI: jest.Mocked<GitHubAPI>;
   let mockCacheManager: jest.Mocked<CacheManager>;
   let mockReferenceResolver: jest.Mocked<ReferenceResolver>;
@@ -74,7 +74,7 @@ describe('MCPSSEServer', () => {
       getSources: jest.fn(),
       getSourcesAsEnvFormat: jest.fn()
     } as any;
-    MockConfigLoader.mockImplementation(() => mockConfigLoader);
+    MockSourceConfigManager.mockImplementation(() => mockConfigLoader);
 
     // Mock GitHub API
     mockGithubAPI = {
@@ -118,12 +118,12 @@ describe('MCPSSEServer', () => {
     it('should initialize with default port', () => {
       const defaultServer = new MCPSSEServer();
       expect(MockExpress).toHaveBeenCalled();
-      expect(MockConfigLoader).toHaveBeenCalled();
+      expect(MockSourceConfigManager).toHaveBeenCalled();
     });
 
     it('should initialize with custom port', () => {
       expect(MockExpress).toHaveBeenCalled();
-      expect(MockConfigLoader).toHaveBeenCalled();
+      expect(MockSourceConfigManager).toHaveBeenCalled();
       expect(MockGitHubAPI).toHaveBeenCalled();
       expect(MockCacheManager).toHaveBeenCalled();
       expect(MockReferenceResolver).toHaveBeenCalledWith(mockGithubAPI);

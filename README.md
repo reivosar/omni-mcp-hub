@@ -24,18 +24,24 @@ npm install
 
 ### 2. Configuration
 
-The repository includes a default `config.yaml` file with example sources. You can:
+The server can run with either a configuration file or environment variables:
 
+**Option 1: Configuration file (recommended for complex setups)**
 ```bash
-# Use the default config.yaml (with example sources)
-# or create your own based on config.yaml.example
-cp config.yaml.example config.yaml
+# Create your configuration from the example
+cp mcp-sources.yaml.example mcp-sources.yaml
 
-# Edit config.yaml with your sources
-# See config.yaml.example for detailed options
+# Edit mcp-sources.yaml with your sources
+# See mcp-sources.yaml.example for detailed options
 ```
 
-**Important**: The `config.yaml` file is required for the application to run. It contains the server configuration and source definitions.
+**Option 2: Environment variables only (simple setups)**
+```bash
+# Define sources directly via environment variable
+export SOURCES="github:microsoft/vscode,local:/path/to/project"
+```
+
+The server will automatically use environment variables if no configuration file is found.
 
 ### 3. Environment Setup
 
@@ -176,7 +182,7 @@ omni-mcp-hub/
 │   ├── cache.ts            # Caching layer
 │   └── config-loader.ts    # Configuration
 ├── tests/              # Test suites
-├── config.yaml         # Your configuration
+├── mcp-sources.yaml    # Your configuration
 └── package.json
 ```
 

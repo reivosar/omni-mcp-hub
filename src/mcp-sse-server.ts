@@ -5,7 +5,7 @@ import { GitHubAPI } from './github-api';
 import { CacheManager } from './cache';
 import { ReferenceResolver } from './reference-resolver';
 import { FetchUtils } from './fetch-utils';
-import { ConfigLoader } from './config-loader';
+import { SourceConfigManager } from './source-config-manager';
 import type {
   JSONRPCRequest,
   JSONRPCResponse,
@@ -24,11 +24,11 @@ export class MCPSSEServer {
   private referenceResolver: ReferenceResolver;
   private port: number;
   private fetchOptions: FetchOptions;
-  private configLoader: ConfigLoader;
+  private configLoader: SourceConfigManager;
 
   constructor(port: number = 3000) {
     this.app = express();
-    this.configLoader = new ConfigLoader();
+    this.configLoader = new SourceConfigManager();
     const config = this.configLoader.getConfig();
     
     this.githubAPI = new GitHubAPI();

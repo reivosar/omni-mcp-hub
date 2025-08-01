@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import { ConfigLoader } from '../../src/config-loader';
+import { SourceConfigManager } from '../../src/source-config-manager';
 
 // Mock fs module
 jest.mock('fs');
@@ -11,12 +11,12 @@ const mockFs = fs as jest.Mocked<typeof fs>;
 jest.mock('js-yaml');
 const mockYaml = yaml as jest.Mocked<typeof yaml>;
 
-describe('ConfigLoader', () => {
-  let configLoader: ConfigLoader;
+describe('SourceConfigManager', () => {
+  let configLoader: SourceConfigManager;
   const originalEnv = process.env;
 
   beforeEach(() => {
-    configLoader = new ConfigLoader();
+    configLoader = new SourceConfigManager();
     jest.clearAllMocks();
     // Reset environment variables
     process.env = { ...originalEnv };
@@ -39,7 +39,7 @@ describe('ConfigLoader', () => {
     };
 
     it('should load config from default path', () => {
-      const configPath = path.join(process.cwd(), 'config.yaml');
+      const configPath = path.join(process.cwd(), 'mcp-sources.yaml');
       const yamlContent = yaml.dump(mockConfig);
       
       mockFs.existsSync.mockReturnValue(true);
@@ -58,7 +58,7 @@ describe('ConfigLoader', () => {
     });
 
     it('should load config from explicit path', () => {
-      const customPath = '/custom/config.yaml';
+      const customPath = '/custom/mcp-sources.yaml';
       const yamlContent = yaml.dump(mockConfig);
       
       mockFs.existsSync.mockReturnValue(true);
@@ -77,7 +77,7 @@ describe('ConfigLoader', () => {
     });
 
     it('should load config from CONFIG_PATH environment variable', () => {
-      const envPath = '/env/config.yaml';
+      const envPath = '/env/mcp-sources.yaml';
       process.env.CONFIG_PATH = envPath;
       const yamlContent = yaml.dump(mockConfig);
       
@@ -96,12 +96,18 @@ describe('ConfigLoader', () => {
       expect(result).toEqual(expectedResult);
     });
 
-    it('should throw error when config file does not exist', () => {
-      const configPath = path.join(process.cwd(), 'config.yaml');
-      
+    it('should return default config when config file does not exist', () => {
       mockFs.existsSync.mockReturnValue(false);
 
-      expect(() => configLoader.load()).toThrow(`Configuration file not found: ${configPath}`);
+      const result = configLoader.load();
+
+      expect(result).toEqual({
+        server: { port: 3000 },
+        sources: [],
+        files: { patterns: ['CLAUDE.md'], max_size: 1048576 },
+        fetch: { timeout: 30000, retries: 3, retry_delay: 1000, max_depth: 3 },
+        cache: { ttl: 300000 }
+      });
     });
 
     it('should replace environment variables in config', () => {

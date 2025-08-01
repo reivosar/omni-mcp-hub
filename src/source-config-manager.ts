@@ -40,14 +40,15 @@ export interface Config {
   cache: CacheConfig;
 }
 
-export class ConfigLoader {
+export class SourceConfigManager {
   private config: Config | null = null;
   
   load(configPath?: string): Config {
-    const filePath = configPath || process.env.CONFIG_PATH || path.join(process.cwd(), 'config.yaml');
+    const filePath = configPath || process.env.CONFIG_PATH || path.join(process.cwd(), 'mcp-sources.yaml');
     
     if (!fs.existsSync(filePath)) {
-      throw new Error(`Configuration file not found: ${filePath}`);
+      this.config = this.getDefaultConfig();
+      return this.config;
     }
     
     const fileContents = fs.readFileSync(filePath, 'utf8');
@@ -182,6 +183,47 @@ export class ConfigLoader {
     throw new Error(`Unable to auto-detect source type for URL: ${url}`);
   }
   
+  /**
+   * Get default configuration from environment variables
+   */
+  private getDefaultConfig(): Config {
+    return {
+      server: {
+        port: parseInt(process.env.MCP_PORT || process.env.PORT || '3000', 10)
+      },
+      sources: this.getSourcesFromEnv(),
+      files: {
+        patterns: (process.env.FILE_PATTERNS?.split(',') || ['CLAUDE.md']),
+        max_size: parseInt(process.env.MAX_FILE_SIZE || '1048576', 10)
+      },
+      fetch: {
+        timeout: parseInt(process.env.FETCH_TIMEOUT || '30000', 10),
+        retries: parseInt(process.env.FETCH_RETRIES || '3', 10),
+        retry_delay: parseInt(process.env.FETCH_RETRY_DELAY || '1000', 10),
+        max_depth: parseInt(process.env.FETCH_MAX_DEPTH || '3', 10)
+      },
+      cache: {
+        ttl: parseInt(process.env.CACHE_TTL || '300000', 10)
+      }
+    };
+  }
+
+  /**
+   * Parse sources from SOURCES environment variable
+   */
+  private getSourcesFromEnv(): SourceConfig[] {
+    const sourcesEnv = process.env.SOURCES;
+    if (!sourcesEnv) return [];
+
+    return sourcesEnv.split(',').map(source => {
+      const trimmed = source.trim();
+      if (trimmed.includes(':')) {
+        return this.parseSourceUrl(trimmed);
+      }
+      return { type: 'local', path: trimmed };
+    }).filter(Boolean) as SourceConfig[];
+  }
+
   /**
    * Helper method to display source configuration examples
    */

@@ -1,5 +1,5 @@
 import { OmniSourceManager } from '../../src/source-manager';
-import { ConfigLoader } from '../../src/config-loader';
+import { SourceConfigManager } from '../../src/source-config-manager';
 import { SourceManager, SourceHandler } from '../../src/source-handler';
 import { GitHubHandler } from '../../src/handlers/github-handler';
 import { LocalHandler } from '../../src/handlers/local-handler';
@@ -10,14 +10,14 @@ jest.mock('../../src/source-handler');
 jest.mock('../../src/handlers/github-handler');
 jest.mock('../../src/handlers/local-handler');
 
-const MockConfigLoader = ConfigLoader as jest.MockedClass<typeof ConfigLoader>;
+const MockSourceConfigManager = SourceConfigManager as jest.MockedClass<typeof SourceConfigManager>;
 const MockSourceManager = SourceManager as jest.MockedClass<typeof SourceManager>;
 const MockGitHubHandler = GitHubHandler as jest.MockedClass<typeof GitHubHandler>;
 const MockLocalHandler = LocalHandler as jest.MockedClass<typeof LocalHandler>;
 
 describe('OmniSourceManager', () => {
   let omniSourceManager: OmniSourceManager;
-  let mockConfigLoader: jest.Mocked<ConfigLoader>;
+  let mockConfigLoader: jest.Mocked<SourceConfigManager>;
   let mockSourceManager: jest.Mocked<SourceManager>;
   let mockGithubHandler: jest.Mocked<GitHubHandler>;
   let mockLocalHandler: jest.Mocked<LocalHandler>;
@@ -38,7 +38,7 @@ describe('OmniSourceManager', () => {
     delete process.env.BUNDLE_MODE;
 
     // Create mock instances
-    mockConfigLoader = new MockConfigLoader() as jest.Mocked<ConfigLoader>;
+    mockConfigLoader = new MockSourceConfigManager() as jest.Mocked<SourceConfigManager>;
     mockSourceManager = new MockSourceManager() as jest.Mocked<SourceManager>;
     mockGithubHandler = new MockGitHubHandler('/tmp/repos') as jest.Mocked<GitHubHandler>;
     mockLocalHandler = new MockLocalHandler() as jest.Mocked<LocalHandler>;
@@ -53,7 +53,7 @@ describe('OmniSourceManager', () => {
     } as jest.Mocked<SourceHandler>;
 
     // Setup constructor mocks
-    MockConfigLoader.mockImplementation(() => mockConfigLoader);
+    MockSourceConfigManager.mockImplementation(() => mockConfigLoader);
     MockSourceManager.mockImplementation(() => mockSourceManager);
     MockGitHubHandler.mockImplementation(() => mockGithubHandler);
     MockLocalHandler.mockImplementation(() => mockLocalHandler);
@@ -68,9 +68,9 @@ describe('OmniSourceManager', () => {
   });
 
   describe('constructor', () => {
-    it('should initialize SourceManager and ConfigLoader', () => {
+    it('should initialize SourceManager and SourceConfigManager', () => {
       expect(MockSourceManager).toHaveBeenCalledTimes(2);
-      expect(MockConfigLoader).toHaveBeenCalledTimes(2);
+      expect(MockSourceConfigManager).toHaveBeenCalledTimes(2);
     });
 
     it('should register GitHub and Local handlers', () => {

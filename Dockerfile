@@ -35,7 +35,7 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 
 # Copy necessary files
-COPY config.yaml.example ./
+COPY mcp-sources.yaml.example ./
 
 # Create directory for cloned repositories
 RUN mkdir -p /app/repos

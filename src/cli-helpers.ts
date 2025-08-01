@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
-import { ConfigLoader } from './config-loader';
+import { SourceConfigManager } from './source-config-manager';
 
 /**
  * CLI help utility for showing configuration examples
  */
 export class CLIHelpers {
   static showConfigExamples(): void {
-    console.log(ConfigLoader.getConfigExamples());
+    console.log(SourceConfigManager.getConfigExamples());
   }
   
   static showAutoDetectionHelp(): void {
@@ -68,7 +68,7 @@ Local:
   
   static validateConfigUrl(url: string): void {
     try {
-      const configLoader = new ConfigLoader();
+      const configLoader = new SourceConfigManager();
       // Any cast to access private method
       const result = (configLoader as any).parseSourceUrl(url);
       

@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import { ConfigLoader } from '../../src/config-loader';
+import { SourceConfigManager } from '../../src/source-config-manager';
 
 // Mock fs module
 jest.mock('fs');
@@ -11,12 +11,12 @@ const mockFs = fs as jest.Mocked<typeof fs>;
 jest.mock('js-yaml');
 const mockYaml = yaml as jest.Mocked<typeof yaml>;
 
-describe('ConfigLoader Auto-Detection', () => {
-  let configLoader: ConfigLoader;
+describe('SourceConfigManager Auto-Detection', () => {
+  let configLoader: SourceConfigManager;
   const originalEnv = process.env;
 
   beforeEach(() => {
-    configLoader = new ConfigLoader();
+    configLoader = new SourceConfigManager();
     jest.clearAllMocks();
     // Reset environment variables
     process.env = { ...originalEnv };
@@ -294,7 +294,7 @@ describe('ConfigLoader Auto-Detection', () => {
 
   describe('getConfigExamples', () => {
     it('should return configuration examples', () => {
-      const examples = ConfigLoader.getConfigExamples();
+      const examples = SourceConfigManager.getConfigExamples();
       
       expect(examples).toContain('Auto-detection enabled configuration examples');
       expect(examples).toContain('url: https://github.com/microsoft/vscode');

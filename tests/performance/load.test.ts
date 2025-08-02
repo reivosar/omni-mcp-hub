@@ -204,9 +204,14 @@ describe('Performance Tests', () => {
       
       // Add many short-lived entries
       const numEntries = 1000;
+      const setPromises = [];
       for (let i = 0; i < numEntries; i++) {
-        await cache.set(`key${i}`, `value${i}`, 0.01); // 10ms TTL
+        setPromises.push(cache.set(`key${i}`, `value${i}`, 0.01)); // 10ms TTL
       }
+      await Promise.all(setPromises);
+      
+      // Give a small delay to ensure all entries are set
+      await new Promise(resolve => setTimeout(resolve, 5));
       
       expect(cache.size()).toBe(numEntries);
       

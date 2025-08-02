@@ -46,6 +46,10 @@ The server will automatically use environment variables if no configuration file
 ### 3. Environment Setup
 
 ```bash
+# Server configuration
+export PORT=3000                      # Server port (default: 3000)
+export MCP_PORT=3000                  # Alternative port variable
+
 # Required: Webhook secret for GitHub
 export GITHUB_WEBHOOK_SECRET=your_webhook_secret_here
 
@@ -55,6 +59,27 @@ export ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
 # GitHub tokens (one per source as needed)
 export GITHUB_TOKEN_PUBLIC=ghp_xxxxxxxxxxxxxxxxxxxx
 export GITHUB_TOKEN_PRIVATE=ghp_yyyyyyyyyyyyyyyyyyyy
+
+# Optional: Sources directly via environment (for simple setups)
+export SOURCES="github:microsoft/vscode,local:/path/to/project"
+
+# Optional: File configuration
+export FILE_PATTERNS="CLAUDE.md,*.claude.md,docs/CLAUDE.md"
+export MAX_FILE_SIZE=1048576          # 1MB file size limit
+
+# Optional: Fetch settings
+export FETCH_TIMEOUT=30000            # 30 seconds
+export FETCH_RETRIES=3                # Number of retries
+export FETCH_RETRY_DELAY=1000         # 1 second between retries
+export FETCH_MAX_DEPTH=3              # Max external reference depth
+
+# Optional: Cache settings
+export CACHE_TTL=300000               # 5 minutes cache TTL
+
+# Optional: Content security
+export CONTENT_VALIDATION_ENABLED=true
+export CONTENT_REJECT_PATTERNS="custom\\s+pattern,another\\s+pattern"
+export CONTENT_REJECT_KEYWORDS="forbidden1,forbidden2"
 ```
 
 ### 4. Run the Server
@@ -75,14 +100,14 @@ npm test
 ### GET /healthz
 Health check endpoint
 ```bash
-curl http://localhost:3000/healthz
+curl http://localhost:${PORT:-3000}/healthz
 # Response: {"status":"ok"}
 ```
 
 ### POST /sse
 MCP-compatible SSE endpoint for fetching documentation
 ```bash
-curl -X POST http://localhost:3000/sse \
+curl -X POST http://localhost:${PORT:-3000}/sse \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -101,7 +126,7 @@ curl -X POST http://localhost:3000/sse \
 GitHub webhook endpoint for cache invalidation
 ```bash
 # Configure in GitHub repository settings
-# Webhook URL: https://your-domain.com/webhook
+# Webhook URL: https://your-domain.com:${PORT:-3000}/webhook
 # Content type: application/json
 # Secret: $GITHUB_WEBHOOK_SECRET
 # Events: Push, Pull Request, Repository
@@ -311,7 +336,33 @@ DEBUG=* npm start
 
 # Check recent webhook deliveries
 gh api /repos/:owner/:repo/hooks
+
+# Test health endpoint
+curl http://localhost:${PORT:-3000}/healthz
+
+# Check environment variables
+env | grep -E "(PORT|MCP_|GITHUB_|ALLOWED_|SOURCES|FILE_|FETCH_|CACHE_|CONTENT_)"
 ```
+
+## Environment Variables Reference
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` / `MCP_PORT` | `3000` | Server port |
+| `GITHUB_WEBHOOK_SECRET` | *(required)* | GitHub webhook verification secret |
+| `ALLOWED_ORIGINS` | *(required)* | CORS allowed origins (comma-separated) |
+| `GITHUB_TOKEN_*` | *(optional)* | Per-source GitHub tokens |
+| `SOURCES` | `""` | Sources list for env-only setup |
+| `FILE_PATTERNS` | `"CLAUDE.md"` | File patterns to search (comma-separated) |
+| `MAX_FILE_SIZE` | `1048576` | Maximum file size in bytes (1MB) |
+| `FETCH_TIMEOUT` | `30000` | Request timeout in milliseconds |
+| `FETCH_RETRIES` | `3` | Number of retry attempts |
+| `FETCH_RETRY_DELAY` | `1000` | Retry delay in milliseconds |
+| `FETCH_MAX_DEPTH` | `3` | Max external reference resolution depth |
+| `CACHE_TTL` | `300000` | Cache TTL in milliseconds (5 minutes) |
+| `CONTENT_VALIDATION_ENABLED` | `true` | Enable content security validation |
+| `CONTENT_REJECT_PATTERNS` | `""` | Custom rejection patterns (comma-separated) |
+| `CONTENT_REJECT_KEYWORDS` | `""` | Custom rejection keywords (comma-separated) |
 
 ## Performance
 

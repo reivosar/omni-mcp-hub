@@ -1,5 +1,5 @@
 import nock from 'nock';
-import { FetchUtils } from '../../src/fetch-utils';
+import { FetchUtils } from '../../src/utils/fetch-utils';
 
 describe('FetchUtils', () => {
   afterEach(() => {

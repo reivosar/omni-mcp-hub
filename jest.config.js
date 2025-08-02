@@ -12,7 +12,7 @@ module.exports = {
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
-    '!src/server.ts', // Entry point
+    '!src/servers/server.ts', // Entry point
   ],
   coverageDirectory: 'coverage',
   coverageReporters: [

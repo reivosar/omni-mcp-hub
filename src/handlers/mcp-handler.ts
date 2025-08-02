@@ -1,4 +1,7 @@
-import { OmniSourceManager } from './source-manager';
+import { Request, Response } from 'express';
+import { BaseClientHandler } from './base-handler';
+import { ClientType, ProtocolType } from '../types/client-types';
+import { OmniSourceManager } from '../sources/source-manager';
 
 interface MCPMessage {
   jsonrpc: string;
@@ -17,11 +20,29 @@ interface MCPResponse {
   };
 }
 
-export class MCPHandler {
+export class MCPHandler extends BaseClientHandler {
   private sourceManager: OmniSourceManager;
 
   constructor(sourceManager: OmniSourceManager) {
+    super(ClientType.CLAUDE, ProtocolType.MCP);
     this.sourceManager = sourceManager;
+  }
+
+  async process(req: Request, res: Response): Promise<void> {
+    try {
+      const message: MCPMessage = req.body;
+      const response = await this.handleMessage(message);
+      res.json(response);
+    } catch (error) {
+      res.status(500).json({
+        jsonrpc: '2.0',
+        id: req.body?.id,
+        error: {
+          code: -32603,
+          message: error instanceof Error ? error.message : 'Unknown error'
+        }
+      });
+    }
   }
 
   async handleMessage(message: MCPMessage): Promise<MCPResponse> {
@@ -69,6 +90,14 @@ export class MCPHandler {
     }
 
     return response;
+  }
+
+  getSupportedMethods(): string[] {
+    return [
+      'initialize',
+      'tools/list',
+      'tools/call'
+    ];
   }
 
   private getAvailableTools() {

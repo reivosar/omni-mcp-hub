@@ -1,8 +1,8 @@
-import { MCPHandler } from '../../src/mcp-handler';
-import { OmniSourceManager } from '../../src/source-manager';
+import { MCPHandler } from '../../src/handlers/mcp-handler';
+import { OmniSourceManager } from '../../src/sources/source-manager';
 
 // Mock the source manager
-jest.mock('../../src/source-manager');
+jest.mock('../../src/sources/source-manager');
 
 const MockSourceManager = OmniSourceManager as jest.MockedClass<typeof OmniSourceManager>;
 

@@ -12,7 +12,7 @@ describe('End-to-End Tests', () => {
     nock.enableNetConnect('localhost');
     
     // Start the server process with test config
-    serverProcess = spawn('npx', ['ts-node', 'src/server.ts'], {
+    serverProcess = spawn('npx', ['ts-node', 'src/servers/server.ts'], {
       env: { 
         ...process.env, 
         CONFIG_PATH: './tests/mcp-sources.test.yaml',

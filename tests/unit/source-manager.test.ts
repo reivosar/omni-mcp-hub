@@ -1,12 +1,12 @@
-import { OmniSourceManager } from '../../src/source-manager';
-import { SourceConfigManager } from '../../src/source-config-manager';
-import { SourceManager, SourceHandler } from '../../src/source-handler';
+import { OmniSourceManager } from '../../src/sources/source-manager';
+import { SourceConfigManager } from '../../src/config/source-config-manager';
+import { SourceManager, SourceHandler } from '../../src/sources/source-handler';
 import { GitHubHandler } from '../../src/handlers/github-handler';
 import { LocalHandler } from '../../src/handlers/local-handler';
 
 // Mock dependencies
-jest.mock('../../src/config-loader');
-jest.mock('../../src/source-handler');
+jest.mock('../../src/config/source-config-manager');
+jest.mock('../../src/sources/source-handler');
 jest.mock('../../src/handlers/github-handler');
 jest.mock('../../src/handlers/local-handler');
 

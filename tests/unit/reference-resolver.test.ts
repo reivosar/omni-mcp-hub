@@ -1,5 +1,5 @@
 import nock from 'nock';
-import { ReferenceResolver } from '../../src/reference-resolver';
+import { ReferenceResolver } from '../../src/utils/reference-resolver';
 import { MockGitHubAPI } from '../__mocks__/github-api';
 
 describe('ReferenceResolver', () => {

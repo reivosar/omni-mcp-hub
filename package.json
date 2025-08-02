@@ -2,11 +2,11 @@
   "name": "omni-mcp-hub",
   "version": "1.0.0",
   "description": "Universal MCP server for GitHub repositories and knowledge integration",
-  "main": "dist/server.js",
+  "main": "dist/servers/server.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/server.js",
-    "dev": "ts-node src/server.ts",
+    "start": "node dist/servers/server.js",
+    "dev": "ts-node src/servers/server.ts",
     "clean": "rm -rf dist",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -15,7 +15,7 @@
     "test:unit": "jest --testPathPattern=unit",
     "test:e2e": "jest --testPathPattern=e2e",
     "test:manual": "node test-mcp-client.js",
-    "cli": "ts-node src/cli-helpers.ts"
+    "cli": "ts-node src/utils/cli-helpers.ts"
   },
   "keywords": [
     "mcp",

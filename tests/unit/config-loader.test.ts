@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import { SourceConfigManager } from '../../src/source-config-manager';
+import { SourceConfigManager } from '../../src/config/source-config-manager';
 
 // Mock fs module
 jest.mock('fs');

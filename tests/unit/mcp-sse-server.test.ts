@@ -1,16 +1,16 @@
 import express from 'express';
-import { MCPSSEServer } from '../../src/mcp-sse-server';
-import { GitHubAPI } from '../../src/github-api';
-import { CacheManager } from '../../src/cache';
-import { ReferenceResolver } from '../../src/reference-resolver';
-import { SourceConfigManager } from '../../src/source-config-manager';
+import { MCPSSEServer } from '../../src/servers/mcp-sse-server';
+import { GitHubAPI } from '../../src/github/github-api';
+import { CacheManager } from '../../src/cache/cache';
+import { ReferenceResolver } from '../../src/utils/reference-resolver';
+import { SourceConfigManager } from '../../src/config/source-config-manager';
 
 // Mock all dependencies
 jest.mock('express');
-jest.mock('../../src/github-api');
-jest.mock('../../src/cache');
-jest.mock('../../src/reference-resolver');
-jest.mock('../../src/config-loader');
+jest.mock('../../src/github/github-api');
+jest.mock('../../src/cache/cache');
+jest.mock('../../src/utils/reference-resolver');
+jest.mock('../../src/config/source-config-manager');
 jest.mock('cors', () => jest.fn(() => (req: any, res: any, next: any) => next()));
 
 // Mock crypto module for webhook signature verification

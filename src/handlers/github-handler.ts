@@ -1,7 +1,7 @@
 import simpleGit, { SimpleGit } from 'simple-git';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { SourceHandler } from '../source-handler';
+import { SourceHandler } from '../sources/source-handler';
 
 export class GitHubHandler implements SourceHandler {
   private repoPath: string = '';

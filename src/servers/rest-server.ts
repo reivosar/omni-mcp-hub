@@ -1,8 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import crypto from 'crypto';
-import { GitHubAPI } from './github-api';
-import { CacheManager } from './cache';
+import { GitHubAPI } from '../github/github-api';
+import { CacheManager } from '../cache/cache';
 
 interface MCPResponse {
   repo: string;

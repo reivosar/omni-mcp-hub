@@ -1,9 +1,9 @@
-import { MCPSSEServer } from '../../src/mcp-sse-server';
+import { MCPSSEServer } from '../../src/servers/mcp-sse-server';
 import { MockGitHubAPI } from '../__mocks__/github-api';
 import { performance } from 'perf_hooks';
 
 // Mock the GitHubAPI
-jest.mock('../../src/github-api', () => ({
+jest.mock('../../src/github/github-api', () => ({
   GitHubAPI: jest.fn().mockImplementation(() => new MockGitHubAPI())
 }));
 
@@ -15,7 +15,7 @@ describe('Performance Tests', () => {
     server = new MCPSSEServer(3003);
     
     // Get reference to the mocked GitHub API
-    const GitHubAPI = require('../../src/github-api').GitHubAPI;
+    const GitHubAPI = require('../../src/github/github-api').GitHubAPI;
     mockGitHubAPI = new GitHubAPI();
   });
 

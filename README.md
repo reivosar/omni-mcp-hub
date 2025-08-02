@@ -176,13 +176,17 @@ When integrated with Claude or other MCP clients, the following tools are availa
 ### Project Structure
 ```
 omni-mcp-hub/
-├── src/                 # Source code
-│   ├── mcp-sse-server.ts   # Main SSE server
-│   ├── github-api.ts       # GitHub API client
-│   ├── cache.ts            # Caching layer
-│   └── config-loader.ts    # Configuration
-├── tests/              # Test suites
-├── mcp-sources.yaml    # Your configuration
+├── src/                      # Source code
+│   ├── types/                # Type definitions
+│   ├── config/               # Configuration management
+│   ├── cache/                # Caching layer
+│   ├── github/               # GitHub API client
+│   ├── handlers/             # Request handlers
+│   ├── sources/              # Source management
+│   ├── utils/                # Utility functions
+│   └── servers/              # Server implementations
+├── tests/                    # Test suites
+├── mcp-sources.yaml          # Your configuration
 └── package.json
 ```
 

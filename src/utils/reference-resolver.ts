@@ -1,6 +1,6 @@
-import { GitHubAPI } from './github-api';
+import { GitHubAPI } from '../github/github-api';
 import { FetchUtils } from './fetch-utils';
-import { ExternalReferenceResult, FetchOptions } from './types';
+import { ExternalReferenceResult, FetchOptions } from '../types/types';
 
 export class ReferenceResolver {
   private githubAPI: GitHubAPI;

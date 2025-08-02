@@ -1,5 +1,5 @@
 import { MCPSSEServer } from './mcp-sse-server';
-import { SourceConfigManager } from './source-config-manager';
+import { SourceConfigManager } from '../config/source-config-manager';
 
 class OmniMCPServer {
   private mcpServer: MCPSSEServer;

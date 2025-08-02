@@ -1,5 +1,5 @@
 import fetch, { Response } from 'node-fetch';
-import { TimeoutFetchOptions } from './types';
+import { TimeoutFetchOptions } from '../types/types';
 
 export class FetchUtils {
   static async fetchWithTimeout(

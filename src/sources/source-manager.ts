@@ -1,7 +1,7 @@
 import { SourceManager, SourceHandler } from './source-handler';
-import { GitHubHandler } from './handlers/github-handler';
-import { LocalHandler } from './handlers/local-handler';
-import { SourceConfigManager } from './source-config-manager';
+import { GitHubHandler } from '../handlers/github-handler';
+import { LocalHandler } from '../handlers/local-handler';
+import { SourceConfigManager } from '../config/source-config-manager';
 
 export class OmniSourceManager {
   private sourceManager: SourceManager;

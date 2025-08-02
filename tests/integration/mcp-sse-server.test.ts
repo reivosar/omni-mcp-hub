@@ -1,10 +1,10 @@
 import request from 'supertest';
 import nock from 'nock';
-import { MCPSSEServer } from '../../src/mcp-sse-server';
+import { MCPSSEServer } from '../../src/servers/mcp-sse-server';
 import { MockGitHubAPI } from '../__mocks__/github-api';
 
 // Mock the GitHubAPI
-jest.mock('../../src/github-api', () => ({
+jest.mock('../../src/github/github-api', () => ({
   GitHubAPI: jest.fn().mockImplementation(() => new MockGitHubAPI())
 }));
 
@@ -18,7 +18,7 @@ describe('MCPSSEServer Integration', () => {
     app = (server as any).app;
     
     // Get reference to the mocked GitHub API and inject it
-    const GitHubAPI = require('../../src/github-api').GitHubAPI;
+    const GitHubAPI = require('../../src/github/github-api').GitHubAPI;
     mockGitHubAPI = new GitHubAPI();
     
     // Inject the mock into the server

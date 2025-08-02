@@ -1,11 +1,11 @@
 import express from 'express';
 import cors from 'cors';
 import crypto from 'crypto';
-import { GitHubAPI } from './github-api';
-import { CacheManager } from './cache';
-import { ReferenceResolver } from './reference-resolver';
-import { FetchUtils } from './fetch-utils';
-import { SourceConfigManager } from './source-config-manager';
+import { GitHubAPI } from '../github/github-api';
+import { CacheManager } from '../cache/cache';
+import { ReferenceResolver } from '../utils/reference-resolver';
+import { FetchUtils } from '../utils/fetch-utils';
+import { SourceConfigManager } from '../config/source-config-manager';
 import type {
   JSONRPCRequest,
   JSONRPCResponse,
@@ -14,7 +14,7 @@ import type {
   StreamProgress,
   FetchOptions,
   CachedData
-} from './types';
+} from '../types/types';
 
 
 export class MCPSSEServer {

@@ -1,6 +1,6 @@
 # Omni MCP Hub Configuration Example
-# Copy to mcp-sources.yaml and customize as needed
-# Most settings are handled via environment variables
+# Copy to mcp-sources.yaml and customize
+# Only sources are required - all other settings have defaults
 
 sources:
   # GitHub repository examples
@@ -14,34 +14,31 @@ sources:
   - url: /path/to/local/project
   - url: ./relative/path
 
-# File settings (optional - these are defaults)
-files:
-  patterns:
-    - "CLAUDE.md"
-    - "*.claude.md"
-    - "docs/CLAUDE.md"
-  max_size: 1048576  # 1MB max file size
+# ============================================
+# ALL SETTINGS BELOW ARE OPTIONAL
+# Default values shown - uncomment to override
+# ============================================
 
-# Fetch settings (optional)
-fetch:
-  timeout: 30000      # 30 seconds
-  retries: 3
-  retry_delay: 1000   # 1 second
-  max_depth: 3        # Max depth for external references
+# files:
+#   patterns:
+#     - "CLAUDE.md"
+#     - "*.claude.md"
+#     - "docs/CLAUDE.md"
+#   max_size: 1048576  # 1MB
 
-# Cache settings (optional)
-cache:
-  ttl: 300000  # 5 minutes cache TTL
+# fetch:
+#   timeout: 30000      # 30 seconds
+#   retries: 3
+#   retry_delay: 1000   # 1 second
+#   max_depth: 3        # Max depth for external references
 
-# Security settings (optional)
-security:
-  content_validation:
-    enabled: true  # Enable/disable content validation
-    # Custom rejection patterns (regex)
-    reject_patterns:
-      - "custom\\s+dangerous\\s+pattern"
-      - "another\\s+pattern"
-    # Additional keywords to block (3+ matches trigger rejection)
-    additional_keywords:
-      - "forbidden_word1"
-      - "forbidden_word2"
+# cache:
+#   ttl: 300000  # 5 minutes
+
+# security:
+#   content_validation:
+#     enabled: true
+#     reject_patterns:
+#       - "custom\\s+dangerous\\s+pattern"
+#     additional_keywords:
+#       - "forbidden_word"

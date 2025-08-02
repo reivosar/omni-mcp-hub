@@ -6,6 +6,29 @@ export interface ServerConfig {
   port: number;
 }
 
+export interface GitHubSourceConfig {
+  url: string;
+  token?: string;
+  owner?: string;
+  repo?: string;
+  branch?: string;
+}
+
+export interface LocalSourceConfig {
+  url: string;
+  path?: string;
+}
+
+export interface MCPServerConfig {
+  name: string;
+  install_command?: string;
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+  enabled?: boolean;
+}
+
+// Legacy type for backward compatibility
 export interface SourceConfig {
   type?: 'github' | 'local';
   url?: string;
@@ -39,10 +62,15 @@ export interface SecurityConfig {
 
 export interface Config {
   server: ServerConfig;
-  sources: SourceConfig[];
+  github_sources?: GitHubSourceConfig[];
+  local_sources?: LocalSourceConfig[];
+  mcp_servers?: MCPServerConfig[];
   files: FilesConfig;
   fetch: FetchConfig;
   security?: SecurityConfig;
+  
+  // Legacy support - will be deprecated
+  sources?: Array<GitHubSourceConfig | LocalSourceConfig>;
 }
 
 export class SourceConfigManager {
@@ -85,7 +113,31 @@ export class SourceConfigManager {
   }
   
   getSources(): SourceConfig[] {
-    return this.getConfig().sources;
+    const config = this.getConfig();
+    
+    // Return legacy sources if they exist
+    if (config.sources) {
+      return config.sources;
+    }
+    
+    // Otherwise combine github_sources and local_sources into legacy format
+    const sources: SourceConfig[] = [];
+    
+    if (config.github_sources) {
+      sources.push(...config.github_sources.map(src => ({ 
+        ...src, 
+        type: 'github' as const 
+      })));
+    }
+    
+    if (config.local_sources) {
+      sources.push(...config.local_sources.map(src => ({ 
+        ...src, 
+        type: 'local' as const 
+      })));
+    }
+    
+    return sources;
   }
   
   getSourcesAsEnvFormat(): string {
@@ -192,11 +244,26 @@ export class SourceConfigManager {
    * Get default configuration from environment variables
    */
   private getDefaultConfig(): Config {
+    const legacySources = this.getSourcesFromEnv();
+    const githubSources: GitHubSourceConfig[] = [];
+    const localSources: LocalSourceConfig[] = [];
+    
+    // Convert legacy sources to new format
+    legacySources.forEach(source => {
+      if (source.url?.startsWith('github:') || source.url?.includes('github.com')) {
+        githubSources.push(source as GitHubSourceConfig);
+      } else {
+        localSources.push(source as LocalSourceConfig);
+      }
+    });
+
     return {
       server: {
         port: parseInt(process.env.MCP_PORT || process.env.PORT || '3000', 10)
       },
-      sources: this.getSourcesFromEnv(),
+      github_sources: githubSources,
+      local_sources: localSources,
+      mcp_servers: [],
       files: {
         patterns: (process.env.FILE_PATTERNS?.split(',') || ['CLAUDE.md']),
         max_size: parseInt(process.env.MAX_FILE_SIZE || '1048576', 10)

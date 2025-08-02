@@ -6,6 +6,7 @@ import { CacheManager } from '../cache/cache';
 import { ReferenceResolver } from '../utils/reference-resolver';
 import { FetchUtils } from '../utils/fetch-utils';
 import { SourceConfigManager } from '../config/source-config-manager';
+import { MCPServerManager } from '../mcp/mcp-server-manager';
 import type {
   JSONRPCRequest,
   JSONRPCResponse,
@@ -25,6 +26,7 @@ export class MCPSSEServer {
   private port: number;
   private fetchOptions: FetchOptions;
   private configLoader: SourceConfigManager;
+  private mcpServerManager: MCPServerManager;
 
   constructor(port: number = 3000) {
     this.app = express();
@@ -34,6 +36,7 @@ export class MCPSSEServer {
     this.githubAPI = new GitHubAPI();
     this.cacheManager = new CacheManager();
     this.referenceResolver = new ReferenceResolver(this.githubAPI);
+    this.mcpServerManager = new MCPServerManager();
     this.port = port;
     
     // Configure fetch options from config
@@ -46,6 +49,7 @@ export class MCPSSEServer {
     
     this.setupMiddleware();
     this.setupRoutes();
+    this.initializeMCPServers();
   }
 
   private setupMiddleware() {
@@ -543,6 +547,41 @@ export class MCPSSEServer {
       await this.cacheManager.invalidateRepo(owner, repo);
       console.log(`All cache invalidated for ${owner}/${repo} via repository webhook`);
     }
+  }
+
+  private async initializeMCPServers() {
+    const config = this.configLoader.getConfig();
+    
+    if (!config.mcp_servers || config.mcp_servers.length === 0) {
+      console.log('No MCP servers configured');
+      return;
+    }
+
+    console.log(`Initializing ${config.mcp_servers.length} MCP servers...`);
+
+    for (const serverConfig of config.mcp_servers) {
+      try {
+        if (serverConfig.enabled === false) {
+          console.log(`Skipping disabled MCP server: ${serverConfig.name}`);
+          continue;
+        }
+
+        console.log(`Starting MCP server: ${serverConfig.name}`);
+        await this.mcpServerManager.startServer(serverConfig);
+        console.log(`Successfully started MCP server: ${serverConfig.name}`);
+      } catch (error) {
+        console.error(`Failed to start MCP server ${serverConfig.name}:`, error);
+        // Continue with other servers even if one fails
+      }
+    }
+
+    console.log('MCP server initialization complete');
+  }
+
+  async shutdown() {
+    console.log('Shutting down MCP servers...');
+    await this.mcpServerManager.stopAllServers();
+    console.log('All MCP servers stopped');
   }
 
   start() {

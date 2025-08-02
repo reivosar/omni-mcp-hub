@@ -3,6 +3,7 @@ import { BaseClientHandler } from './base-handler';
 import { ClientType, ProtocolType } from '../types/client-types';
 import { OmniSourceManager } from '../sources/source-manager';
 import { ContentValidator } from '../utils/content-validator';
+import { MCPServerManager } from '../mcp/mcp-server-manager';
 
 interface MCPMessage {
   jsonrpc: string;
@@ -23,10 +24,12 @@ interface MCPResponse {
 
 export class MCPHandler extends BaseClientHandler {
   private sourceManager: OmniSourceManager;
+  private mcpServerManager: MCPServerManager;
 
-  constructor(sourceManager: OmniSourceManager) {
+  constructor(sourceManager: OmniSourceManager, mcpServerManager: MCPServerManager) {
     super(ClientType.CLAUDE, ProtocolType.MCP);
     this.sourceManager = sourceManager;
+    this.mcpServerManager = mcpServerManager;
   }
 
   async process(req: Request, res: Response): Promise<void> {
@@ -56,9 +59,11 @@ export class MCPHandler extends BaseClientHandler {
       switch (message.method) {
         case 'initialize':
           response.result = {
-            protocolVersion: '2024-11-05',
+            protocolVersion: '2025-06-18',
             capabilities: {
-              tools: {}
+              tools: {
+                listChanged: true
+              }
             },
             serverInfo: {
               name: 'omni-mcp-hub',
@@ -67,9 +72,17 @@ export class MCPHandler extends BaseClientHandler {
           };
           break;
 
+        case 'initialized':
+          // Notification - no response needed
+          return { jsonrpc: '2.0' } as MCPResponse;
+
+        case 'ping':
+          response.result = {};
+          break;
+
         case 'tools/list':
           response.result = {
-            tools: this.getAvailableTools()
+            tools: await this.getAvailableTools()
           };
           break;
 
@@ -97,12 +110,14 @@ export class MCPHandler extends BaseClientHandler {
   getSupportedMethods(): string[] {
     return [
       'initialize',
+      'initialized',
+      'ping',
       'tools/list',
       'tools/call'
     ];
   }
 
-  private getAvailableTools() {
+  private async getAvailableTools() {
     const tools = [
       {
         name: 'list_sources',
@@ -179,6 +194,14 @@ export class MCPHandler extends BaseClientHandler {
       });
     }
 
+    // Get tools from MCP servers
+    try {
+      const mcpTools = await this.mcpServerManager.getAllTools();
+      tools.push(...mcpTools);
+    } catch (error) {
+      console.error('Failed to get MCP server tools:', error);
+    }
+
     return tools;
   }
 
@@ -229,7 +252,13 @@ export class MCPHandler extends BaseClientHandler {
         break;
 
       default:
-        throw new Error(`Unknown tool: ${name}`);
+        // Check if it's an MCP server tool
+        if (name.includes('__')) {
+          result = await this.mcpServerManager.callTool(name, args);
+        } else {
+          throw new Error(`Unknown tool: ${name}`);
+        }
+        break;
     }
 
     console.log(`Tool result for ${name}:`, JSON.stringify(result, null, 2));

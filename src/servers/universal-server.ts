@@ -3,16 +3,22 @@ import cors from 'cors';
 import { ClientTypeDetector } from '../handlers/client-detector';
 import { HandlerFactory } from '../handlers/handler-factory';
 import { ClientType } from '../types/client-types';
+import { OmniSourceManager } from '../sources/source-manager';
+import { MCPServerManager } from '../mcp/mcp-server-manager';
 
 export class UniversalDocServer {
   private app: express.Application;
   private detector: ClientTypeDetector;
   private port: number;
+  private sourceManager: OmniSourceManager;
+  private mcpServerManager: MCPServerManager;
 
   constructor(port: number = 3000) {
     this.app = express();
     this.detector = new ClientTypeDetector();
     this.port = port;
+    this.sourceManager = new OmniSourceManager();
+    this.mcpServerManager = new MCPServerManager();
     this.setupMiddleware();
     this.setupRoutes();
   }
@@ -41,7 +47,7 @@ export class UniversalDocServer {
         return;
       }
 
-      const handler = HandlerFactory.create(clientType);
+      const handler = HandlerFactory.create(this.sourceManager, this.mcpServerManager, clientType);
       await handler.process(req, res);
     } catch (error) {
       console.error('Request handling error:', error);

@@ -102,7 +102,9 @@ describe('SourceConfigManager', () => {
 
       expect(result).toEqual({
         server: { port: 3000 },
-        sources: [],
+        github_sources: [],
+        local_sources: [],
+        mcp_servers: [],
         files: { patterns: ['CLAUDE.md'], max_size: 1048576 },
         fetch: { timeout: 30000, retries: 3, retry_delay: 1000, max_depth: 3 },
         security: {

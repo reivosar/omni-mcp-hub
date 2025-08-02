@@ -4,18 +4,21 @@ import { MCPHandler } from './mcp-handler';
 import { LSPHandler } from './lsp-handler';
 import { RESTHandler } from './rest-handler';
 import { OmniSourceManager } from '../sources/source-manager';
+import { MCPServerManager } from '../mcp/mcp-server-manager';
 
 export class HandlerFactory {
   private sourceManager: OmniSourceManager;
+  private mcpServerManager: MCPServerManager;
 
-  constructor(sourceManager: OmniSourceManager) {
+  constructor(sourceManager: OmniSourceManager, mcpServerManager: MCPServerManager) {
     this.sourceManager = sourceManager;
+    this.mcpServerManager = mcpServerManager;
   }
 
   create(type: ClientType): BaseClientHandler {
     switch (type) {
       case ClientType.CLAUDE:
-        return new MCPHandler(this.sourceManager);
+        return new MCPHandler(this.sourceManager, this.mcpServerManager);
       case ClientType.CURSOR:
         return new LSPHandler();
       case ClientType.COPILOT:
@@ -29,7 +32,7 @@ export class HandlerFactory {
     }
   }
 
-  getSupportedTypes(): ClientType[] {
+  static getSupportedTypes(): ClientType[] {
     return [
       ClientType.CLAUDE,
       ClientType.CURSOR,
@@ -38,4 +41,10 @@ export class HandlerFactory {
       ClientType.REST
     ];
   }
+
+  static create(sourceManager: OmniSourceManager, mcpServerManager: MCPServerManager, type: ClientType): BaseClientHandler {
+    const factory = new HandlerFactory(sourceManager, mcpServerManager);
+    return factory.create(type);
+  }
+
 }

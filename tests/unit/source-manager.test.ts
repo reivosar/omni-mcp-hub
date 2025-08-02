@@ -92,6 +92,8 @@ describe('OmniSourceManager', () => {
       };
 
       mockConfigLoader.getConfig.mockReturnValue(mockConfig as any);
+      mockConfigLoader.getSources.mockReturnValue(mockConfig.sources as any);
+      mockConfigLoader.getSources.mockReturnValue(mockConfig.sources as any);
       mockSourceManager.initializeSource
         .mockResolvedValueOnce(mockSourceHandler)
         .mockResolvedValueOnce(mockSourceHandler);
@@ -117,6 +119,7 @@ describe('OmniSourceManager', () => {
       };
 
       mockConfigLoader.getConfig.mockReturnValue(mockConfig as any);
+      mockConfigLoader.getSources.mockReturnValue(mockConfig.sources as any);
       mockSourceManager.initializeSource
         .mockResolvedValueOnce(mockSourceHandler)
         .mockResolvedValueOnce(mockSourceHandler);
@@ -142,6 +145,7 @@ describe('OmniSourceManager', () => {
       };
 
       mockConfigLoader.getConfig.mockReturnValue(mockConfig as any);
+      mockConfigLoader.getSources.mockReturnValue(mockConfig.sources as any);
       mockSourceManager.initializeSource
         .mockResolvedValueOnce(mockSourceHandler)
         .mockResolvedValueOnce(mockSourceHandler);
@@ -166,6 +170,7 @@ describe('OmniSourceManager', () => {
       };
 
       mockConfigLoader.getConfig.mockReturnValue(mockConfig as any);
+      mockConfigLoader.getSources.mockReturnValue(mockConfig.sources as any);
       mockSourceManager.initializeSource
         .mockResolvedValueOnce(mockSourceHandler)
         .mockResolvedValueOnce(mockSourceHandler);
@@ -190,6 +195,7 @@ describe('OmniSourceManager', () => {
       };
 
       mockConfigLoader.getConfig.mockReturnValue(mockConfig as any);
+      mockConfigLoader.getSources.mockReturnValue(mockConfig.sources as any);
       mockSourceManager.initializeSource
         .mockRejectedValueOnce(new Error('Initialization failed'))
         .mockResolvedValueOnce(mockSourceHandler);
@@ -208,6 +214,7 @@ describe('OmniSourceManager', () => {
       };
 
       mockConfigLoader.getConfig.mockReturnValue(mockConfig as any);
+      mockConfigLoader.getSources.mockReturnValue([]);
 
       await omniSourceManager.initializeSources();
 
@@ -221,6 +228,7 @@ describe('OmniSourceManager', () => {
       };
 
       mockConfigLoader.getConfig.mockReturnValue(mockConfig as any);
+      mockConfigLoader.getSources.mockReturnValue([]);
 
       await omniSourceManager.initializeSources();
 
@@ -240,6 +248,7 @@ describe('OmniSourceManager', () => {
       };
 
       mockConfigLoader.getConfig.mockReturnValue(mockConfig as any);
+      mockConfigLoader.getSources.mockReturnValue(mockConfig.sources as any);
       mockSourceManager.initializeSource.mockResolvedValue(mockSourceHandler);
       mockSourceHandler.getSourceInfo.mockReturnValue('Source info');
 
@@ -263,6 +272,7 @@ describe('OmniSourceManager', () => {
       };
 
       mockConfigLoader.getConfig.mockReturnValue(mockConfig as any);
+      mockConfigLoader.getSources.mockReturnValue(mockConfig.sources as any);
       mockSourceManager.initializeSource.mockResolvedValue(mockSourceHandler);
       mockSourceHandler.getSourceInfo.mockReturnValue('GitHub: test/repo@main');
 
@@ -304,6 +314,7 @@ describe('OmniSourceManager', () => {
       };
 
       mockConfigLoader.getConfig.mockReturnValue(mockConfig as any);
+      mockConfigLoader.getSources.mockReturnValue(mockConfig.sources as any);
       mockSourceManager.initializeSource.mockResolvedValue(mockSourceHandler);
       mockSourceHandler.getSourceInfo.mockReturnValue('GitHub: test/repo@main');
 
@@ -350,6 +361,7 @@ describe('OmniSourceManager', () => {
       };
 
       mockConfigLoader.getConfig.mockReturnValue(mockConfig as any);
+      mockConfigLoader.getSources.mockReturnValue(mockConfig.sources as any);
       mockSourceManager.initializeSource.mockResolvedValue(mockSourceHandler);
       mockSourceHandler.getSourceInfo.mockReturnValue('GitHub: test/repo@main');
 
@@ -405,6 +417,7 @@ describe('OmniSourceManager', () => {
       };
 
       mockConfigLoader.getConfig.mockReturnValue(mockConfig as any);
+      mockConfigLoader.getSources.mockReturnValue(mockConfig.sources as any);
 
       const result = omniSourceManager.getFilePatterns();
 

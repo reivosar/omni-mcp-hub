@@ -19,14 +19,14 @@ export class OmniSourceManager {
   }
 
   async initializeSources() {
-    const config = this.configLoader.getConfig();
+    const sources = this.configLoader.getSources();
     
-    if (!config.sources || config.sources.length === 0) {
+    if (!sources || sources.length === 0) {
       console.log('No sources configured');
       return;
     }
     
-    for (const source of config.sources) {
+    for (const source of sources) {
       try {
         let sourceUrl: string;
         if (source.type === 'github') {

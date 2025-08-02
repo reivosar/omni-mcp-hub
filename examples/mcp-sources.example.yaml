@@ -1,0 +1,83 @@
+# Omni MCP Hub Configuration Example
+# This file demonstrates how to configure multiple MCP servers
+
+server:
+  port: ${PORT:-3000}
+
+# GitHub repositories to include in documentation
+github_sources:
+  - url: github:anthropics/anthropic-sdk-typescript
+    token: ${GITHUB_TOKEN}
+  - url: github:microsoft/vscode
+    branch: main
+
+# Local directories to include
+local_sources:
+  - url: ./
+  - url: /path/to/local/project
+
+# MCP servers to aggregate
+mcp_servers:
+  # ArXiv research papers
+  - name: arxiv
+    install_command: pip install arxiv-mcp-server
+    command: python
+    args: ["-m", "arxiv_mcp"]
+    enabled: true
+    env:
+      ARXIV_API_KEY: ${ARXIV_API_KEY}
+
+  # File system operations
+  - name: filesystem
+    install_command: npm install -g @modelcontextprotocol/server-filesystem
+    command: npx
+    args: ["@modelcontextprotocol/server-filesystem", "/allowed/path"]
+    enabled: true
+
+  # Web browsing
+  - name: browser
+    install_command: pip install mcp-server-browser
+    command: python
+    args: ["-m", "mcp_server_browser"]
+    enabled: true
+
+  # Database operations
+  - name: sqlite
+    install_command: pip install mcp-server-sqlite
+    command: python
+    args: ["-m", "mcp_server_sqlite"]
+    env:
+      DATABASE_PATH: ${DATABASE_PATH:-./data.db}
+    enabled: true
+
+  # Custom MCP server (no auto-install)
+  - name: custom
+    command: /usr/local/bin/custom-mcp-server
+    args: ["--config", "/etc/custom.conf"]
+    enabled: false
+
+# File patterns to include from sources
+files:
+  patterns:
+    - "CLAUDE.md"
+    - "README.md"
+    - "*.md"
+  max_size: 1048576  # 1MB
+
+# Network configuration
+fetch:
+  timeout: 30000
+  retries: 3
+  retry_delay: 1000
+  max_depth: 3
+
+# Security settings
+security:
+  content_validation:
+    enabled: true
+    reject_patterns:
+      - "password\\s*[=:]\\s*['\"]"
+      - "api[_-]?key\\s*[=:]\\s*['\"]"
+    additional_keywords:
+      - "malicious"
+      - "exploit"

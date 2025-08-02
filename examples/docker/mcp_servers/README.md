@@ -52,10 +52,31 @@ The configuration includes:
 
 ## Usage
 
-1. Set environment variables
-2. Copy configuration: `cp examples/mcp_servers/mcp-sources.yaml ./`
-3. Start server: `npm start`
-4. Add to Claude: `claude mcp add omni-mcp-hub`
+### Docker Deployment
+```bash
+# 1. Start with Docker Compose (auto-installs MCP servers)
+docker-compose -f ../docker-compose.yml up -d
+
+# 2. Configure Claude Desktop (see ../README.md for details)
+```
+
+### Alternative: Direct Docker Run
+```bash
+docker build -t omni-mcp-hub -f ../Dockerfile ../../..
+docker run -d \
+  --name omni-mcp-hub \
+  -p 3000:3000 \
+  -v $(pwd)/mcp-sources.yaml:/app/mcp-sources.yaml:ro \
+  -e ARXIV_API_KEY=${ARXIV_API_KEY} \
+  -e DATABASE_PATH=/app/data/database.db \
+  omni-mcp-hub
+```
+
+### Requirements
+The Docker container automatically installs MCP servers via:
+- pip packages: `arxiv-mcp-server`, `mcp-server-browser`, etc.
+- npm packages: `@modelcontextprotocol/server-filesystem`
+- uvx packages: `mcp-server-time`
 
 ## Available Capabilities
 

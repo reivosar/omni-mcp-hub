@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  omni-mcp-hub:
+    build: 
+      context: ../..
+      dockerfile: examples/docker/Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount your configuration file
+      - ./mcp-sources.yaml:/app/mcp-sources.yaml:ro
+      # Mount local directories you want to access (for local_sources)
+      - ${HOME}/projects:/projects:ro
+      - ${HOME}/documents:/documents:ro
+    environment:
+      - PORT=3000
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - NODE_ENV=production
+    restart: unless-stopped

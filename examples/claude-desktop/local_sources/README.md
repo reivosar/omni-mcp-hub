@@ -41,10 +41,43 @@ Includes these file types:
 
 ## Usage
 
-1. Set environment variables (optional)
-2. Copy configuration: `cp examples/local_sources/mcp-sources.yaml ./`
-3. Start server: `npm start`
-4. Add to Claude: `claude mcp add omni-mcp-hub`
+### Claude Desktop Integration
+```bash
+# 1. Copy configuration to Claude config directory
+mkdir -p ~/.config/omni-mcp-hub
+cp mcp-sources.yaml ~/.config/omni-mcp-hub/
+
+# 2. Add to Claude Desktop config (see ../README.md for config file location)
+# Add the Docker configuration from ../claude_desktop_config.example.json
+
+# 3. Restart Claude Desktop - the server starts automatically
+```
+
+### Configuration Example
+Add this to your `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "omni-mcp-hub-local": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i", "--network", "host",
+        "-v", "${HOME}/.config/omni-mcp-hub/mcp-sources.yaml:/app/mcp-sources.yaml:ro",
+        "-v", "${HOME}/projects:/projects:ro",
+        "-v", "${HOME}/documents:/documents:ro",
+        "reivosar/omni-mcp-hub:latest"
+      ]
+    }
+  }
+}
+```
+
+### Testing with Sample Project
+The `sample-project` directory contains example documentation files.
+Mount this directory by adding to the Docker args:
+```
+"-v", "$(pwd)/sample-project:/sample-project:ro"
+```
 
 ## Available Data
 

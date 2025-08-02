@@ -25,10 +25,38 @@ The configuration fetches documentation from:
 
 ## Usage
 
-1. Set environment variables
-2. Copy configuration: `cp examples/github_sources/mcp-sources.yaml ./`
-3. Start server: `npm start`
-4. Add to Claude: `claude mcp add omni-mcp-hub`
+### Claude Desktop Integration
+```bash
+# 1. Copy configuration to Claude config directory
+mkdir -p ~/.config/omni-mcp-hub
+cp mcp-sources.yaml ~/.config/omni-mcp-hub/
+
+# 2. Add to Claude Desktop config (see ../README.md for config file location)
+# Add the Docker configuration from ../claude_desktop_config.example.json
+
+# 3. Set environment variable
+export GITHUB_TOKEN="your_github_personal_access_token"
+
+# 4. Restart Claude Desktop - the server starts automatically
+```
+
+### Configuration Example
+Add this to your `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "omni-mcp-hub-github": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i", "--network", "host",
+        "-v", "${HOME}/.config/omni-mcp-hub/mcp-sources.yaml:/app/mcp-sources.yaml:ro",
+        "-e", "GITHUB_TOKEN=${GITHUB_TOKEN}",
+        "reivosar/omni-mcp-hub:latest"
+      ]
+    }
+  }
+}
+```
 
 ## Available Data
 

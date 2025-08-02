@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "omni-mcp-hub": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--network", "host",
+        "-v", "${HOME}/.config/omni-mcp-hub/mcp-sources.yaml:/app/mcp-sources.yaml:ro",
+        "-v", "${HOME}/projects:/projects:ro",
+        "-v", "${HOME}/documents:/documents:ro",
+        "-e", "GITHUB_TOKEN=${GITHUB_TOKEN}",
+        "-e", "PORT=3000",
+        "reivosar/omni-mcp-hub:latest"
+      ]
+    }
+  }
+}

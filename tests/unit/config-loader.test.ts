@@ -106,7 +106,14 @@ describe('SourceConfigManager', () => {
         sources: [],
         files: { patterns: ['CLAUDE.md'], max_size: 1048576 },
         fetch: { timeout: 30000, retries: 3, retry_delay: 1000, max_depth: 3 },
-        cache: { ttl: 300000 }
+        cache: { ttl: 300000 },
+        security: {
+          content_validation: {
+            enabled: true,
+            reject_patterns: [],
+            additional_keywords: []
+          }
+        }
       });
     });
 

@@ -2,6 +2,7 @@ import { SourceManager, SourceHandler } from './source-handler';
 import { GitHubHandler } from '../handlers/github-handler';
 import { LocalHandler } from '../handlers/local-handler';
 import { SourceConfigManager } from '../config/source-config-manager';
+import { ContentValidator } from '../utils/content-validator';
 
 export class OmniSourceManager {
   private sourceManager: SourceManager;
@@ -57,7 +58,35 @@ export class OmniSourceManager {
 
     const config = this.configLoader.getConfig();
     const usePatterns = patterns || config.files.patterns;
-    return await handler.getFiles(usePatterns);
+    const files = await handler.getFiles(usePatterns);
+    
+    // Configure custom validation if specified
+    if (config.security?.content_validation?.enabled !== false) {
+      if (config.security?.content_validation?.reject_patterns) {
+        ContentValidator.setCustomPatterns(config.security.content_validation.reject_patterns);
+      }
+      if (config.security?.content_validation?.additional_keywords) {
+        ContentValidator.setCustomKeywords(config.security.content_validation.additional_keywords);
+      }
+      
+      // Validate and filter malicious content
+      const validatedFiles = new Map<string, string>();
+      for (const [fileName, content] of files.entries()) {
+        const validation = await ContentValidator.validate(content);
+        if (validation.isValid) {
+          validatedFiles.set(fileName, content);
+        } else {
+          console.warn(`Rejected ${fileName} from ${sourceName}: ${validation.reason}`);
+          if (validation.flaggedPatterns) {
+            console.warn(`Flagged patterns: ${validation.flaggedPatterns.join(', ')}`);
+          }
+        }
+      }
+      
+      return validatedFiles;
+    }
+    
+    return files;
   }
 
   async getSourceFile(sourceName: string, fileName: string): Promise<string | null> {
@@ -68,8 +97,34 @@ export class OmniSourceManager {
 
     const config = this.configLoader.getConfig();
     const content = await handler.getFile(fileName);
-    if (content && content.length > config.files.max_size) {
+    
+    if (!content) {
+      return null;
+    }
+    
+    // Check file size
+    if (content.length > config.files.max_size) {
       throw new Error(`File too large: ${fileName} (${content.length} bytes, max: ${config.files.max_size})`);
+    }
+    
+    // Validate content if security is enabled
+    if (config.security?.content_validation?.enabled !== false) {
+      // Configure custom validation if specified
+      if (config.security?.content_validation?.reject_patterns) {
+        ContentValidator.setCustomPatterns(config.security.content_validation.reject_patterns);
+      }
+      if (config.security?.content_validation?.additional_keywords) {
+        ContentValidator.setCustomKeywords(config.security.content_validation.additional_keywords);
+      }
+      
+      const validation = await ContentValidator.validate(content);
+      if (!validation.isValid) {
+        console.warn(`Rejected ${fileName} from ${sourceName}: ${validation.reason}`);
+        if (validation.flaggedPatterns) {
+          console.warn(`Flagged patterns: ${validation.flaggedPatterns.join(', ')}`);
+        }
+        return null;
+      }
     }
 
     return content;

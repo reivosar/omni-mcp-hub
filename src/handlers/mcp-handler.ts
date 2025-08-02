@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { BaseClientHandler } from './base-handler';
 import { ClientType, ProtocolType } from '../types/client-types';
 import { OmniSourceManager } from '../sources/source-manager';
+import { ContentValidator } from '../utils/content-validator';
 
 interface MCPMessage {
   jsonrpc: string;
@@ -73,7 +74,8 @@ export class MCPHandler extends BaseClientHandler {
           break;
 
         case 'tools/call':
-          response.result = await this.handleToolCall(message.params);
+          // Add content safety check before processing
+          response.result = await this.handleToolCallSafely(message.params);
           break;
 
         default:
@@ -180,6 +182,25 @@ export class MCPHandler extends BaseClientHandler {
     return tools;
   }
 
+  private async handleToolCallSafely(params: any) {
+    try {
+      return await this.handleToolCall(params);
+    } catch (error) {
+      // Check if error is due to content validation
+      if (error instanceof Error && error.message.includes('Rejected')) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: '⚠️ Content Safety Notice: The requested content has been filtered due to potentially harmful patterns. This is to ensure safe and responsible AI interaction.'
+            }
+          ]
+        };
+      }
+      throw error;
+    }
+  }
+
   private async handleToolCall(params: any) {
     const { name, arguments: args } = params;
     
@@ -254,6 +275,24 @@ export class MCPHandler extends BaseClientHandler {
     }
 
     console.log(`Retrieved ${fileName}: ${content.length} characters`);
+    
+    // Check if content was rejected by validation (content would be null)
+    // If we got here, content passed validation, but we still check risk level
+    const riskLevel = ContentValidator.shouldAddSafetyNotice(content);
+    
+    if (riskLevel) {
+      // Don't return the actual dangerous content - return a safety message instead
+      console.warn(`High-risk content detected in ${fileName}, returning safety notice instead`);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `⚠️ Content Safety Block\n\nThe requested file "${fileName}" from "${source}" contains patterns that may pose security risks and has been blocked from display. This is a protective measure to ensure safe AI interaction.\n\nIf you believe this is an error, please contact the system administrator.`
+          }
+        ]
+      };
+    }
+    
     return {
       content: [
         {
@@ -277,10 +316,25 @@ export class MCPHandler extends BaseClientHandler {
     console.log(`Bundle contains ${files.size} files:`, Array.from(files.keys()));
 
     let bundleContent = `Source Bundle: ${source}\n\n`;
+    let blockedFiles: string[] = [];
     
     for (const [fileName, content] of files.entries()) {
-      console.log(`Adding to bundle: ${fileName} (${content.length} chars)`);
-      bundleContent += `${fileName}:\n${content}\n\n---\n\n`;
+      // Check each file for safety before including in bundle
+      const riskLevel = ContentValidator.shouldAddSafetyNotice(content);
+      
+      if (riskLevel) {
+        console.warn(`Excluding high-risk file from bundle: ${fileName}`);
+        blockedFiles.push(fileName);
+        bundleContent += `${fileName}: [BLOCKED - Content contains potentially harmful patterns]\n\n---\n\n`;
+      } else {
+        console.log(`Adding to bundle: ${fileName} (${content.length} chars)`);
+        bundleContent += `${fileName}:\n${content}\n\n---\n\n`;
+      }
+    }
+
+    // Add summary of blocked files if any
+    if (blockedFiles.length > 0) {
+      bundleContent += `\n⚠️ Security Notice: ${blockedFiles.length} file(s) were blocked due to security concerns: ${blockedFiles.join(', ')}\n`;
     }
 
     return {
@@ -334,18 +388,39 @@ export class MCPHandler extends BaseClientHandler {
       throw new Error(`File ${fileName} not found in any source`);
     }
 
-    // Format response with all variants
+    // Format response with safety checking for each variant
     let responseText = `File variants for ${fileName}:\n\n`;
+    let safeVariants = 0;
+    let blockedVariants: string[] = [];
     
     foundVariants.forEach((variant, index) => {
-      responseText += `## Variant ${index + 1}: ${variant.source}\n`;
-      responseText += `${variant.content}\n\n---\n\n`;
+      const riskLevel = ContentValidator.shouldAddSafetyNotice(variant.content!);
+      
+      if (riskLevel) {
+        console.warn(`Blocking variant ${index + 1} from ${variant.source} due to security concerns`);
+        blockedVariants.push(variant.source);
+        responseText += `## Variant ${index + 1}: ${variant.source}\n`;
+        responseText += `[BLOCKED - Content contains potentially harmful patterns]\n\n---\n\n`;
+      } else {
+        safeVariants++;
+        responseText += `## Variant ${index + 1}: ${variant.source}\n`;
+        responseText += `${variant.content}\n\n---\n\n`;
+      }
     });
 
-    // Also include summary for Claude Code to understand
+    // Add security summary
     responseText += `## Summary\n`;
     responseText += `Found ${foundVariants.length} variants from sources: ${foundVariants.map(v => v.source).join(', ')}\n`;
-    responseText += `Claude Code can choose the most appropriate version based on context.`;
+    
+    if (blockedVariants.length > 0) {
+      responseText += `\n⚠️ Security Notice: ${blockedVariants.length} variant(s) were blocked due to security concerns from: ${blockedVariants.join(', ')}\n`;
+    }
+    
+    if (safeVariants > 0) {
+      responseText += `${safeVariants} safe variant(s) available for use.`;
+    } else {
+      responseText += `⚠️ All variants contain potentially harmful content and have been blocked.`;
+    }
 
     return {
       content: [
@@ -356,4 +431,5 @@ export class MCPHandler extends BaseClientHandler {
       ]
     };
   }
+
 }

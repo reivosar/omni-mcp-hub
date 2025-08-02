@@ -1,0 +1,60 @@
+# Security Rules Configuration
+# This file defines patterns and rules for content validation
+
+# Uniform risk assessment - no language-based discrimination
+language_risk_multipliers:
+  default: 1.0  # All languages treated equally
+
+# Risk patterns with weights
+risk_patterns:
+  # High-risk patterns (weight 3) - conservative, high-confidence patterns only
+  high_risk:
+    - pattern: "ignore.{1,20}previous.{1,20}instruction"
+      factor: "prompt_injection"
+      weight: 3
+    
+    - pattern: "system.{1,10}prompt"
+      factor: "system_manipulation"
+      weight: 3
+      
+    - pattern: "execute.{1,10}command"
+      factor: "command_injection"
+      weight: 3
+
+  # Medium-risk patterns (weight 2)
+  medium_risk:
+    - pattern: "jailbreak"
+      factor: "jailbreak_attempt"
+      weight: 2
+      
+    - pattern: "override.{1,10}safety"
+      factor: "safety_override"
+      weight: 2
+      
+    - pattern: "eval\\s*\\("
+      factor: "code_injection"
+      weight: 2
+
+  # Low-risk indicators (weight 1) - only clear technical patterns
+  low_risk:
+    - pattern: "\\$\\{.+\\}"
+      factor: "template_injection"
+      weight: 1
+      
+    - pattern: "base64\\s*[:=]"
+      factor: "encoded_content"
+      weight: 1
+
+# Simplified suspicious keywords - language-neutral technical terms only
+suspicious_keywords:
+  default: ["jailbreak", "bypass", "exploit", "backdoor", "override", "eval", "exec"]
+
+# Risk thresholds - conservative to minimize false positives
+thresholds:
+  block_content: 4      # Block if risk score >= 4 (conservative)
+  add_warning: 3        # Add safety notice if risk score >= 3
+  suspicious_keywords: 4 # Trigger if 4+ suspicious keywords found (reduced sensitivity)
+
+# Notes: 
+# Simple pattern-based detection focused on technical security only
+# No geographic or linguistic bias applied

@@ -32,12 +32,22 @@ export interface CacheConfig {
   ttl: number;
 }
 
+export interface SecurityConfig {
+  content_validation?: {
+    enabled?: boolean;
+    reject_patterns?: string[];
+    additional_keywords?: string[];
+    max_file_size?: number;
+  };
+}
+
 export interface Config {
   server: ServerConfig;
   sources: SourceConfig[];
   files: FilesConfig;
   fetch: FetchConfig;
   cache: CacheConfig;
+  security?: SecurityConfig;
 }
 
 export class SourceConfigManager {
@@ -204,6 +214,13 @@ export class SourceConfigManager {
       },
       cache: {
         ttl: parseInt(process.env.CACHE_TTL || '300000', 10)
+      },
+      security: {
+        content_validation: {
+          enabled: process.env.CONTENT_VALIDATION_ENABLED !== 'false',
+          reject_patterns: process.env.CONTENT_REJECT_PATTERNS?.split(',') || [],
+          additional_keywords: process.env.CONTENT_REJECT_KEYWORDS?.split(',') || []
+        }
       }
     };
   }

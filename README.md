@@ -344,26 +344,6 @@ curl http://localhost:${PORT:-3000}/healthz
 env | grep -E "(PORT|MCP_|GITHUB_|ALLOWED_|SOURCES|FILE_|FETCH_|CACHE_|CONTENT_)"
 ```
 
-## Environment Variables Reference
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` / `MCP_PORT` | `3000` | Server port |
-| `GITHUB_WEBHOOK_SECRET` | *(required)* | GitHub webhook verification secret |
-| `ALLOWED_ORIGINS` | *(required)* | CORS allowed origins (comma-separated) |
-| `GITHUB_TOKEN_*` | *(optional)* | Per-source GitHub tokens |
-| `SOURCES` | `""` | Sources list for env-only setup |
-| `FILE_PATTERNS` | `"CLAUDE.md"` | File patterns to search (comma-separated) |
-| `MAX_FILE_SIZE` | `1048576` | Maximum file size in bytes (1MB) |
-| `FETCH_TIMEOUT` | `30000` | Request timeout in milliseconds |
-| `FETCH_RETRIES` | `3` | Number of retry attempts |
-| `FETCH_RETRY_DELAY` | `1000` | Retry delay in milliseconds |
-| `FETCH_MAX_DEPTH` | `3` | Max external reference resolution depth |
-| `CACHE_TTL` | `300000` | Cache TTL in milliseconds (5 minutes) |
-| `CONTENT_VALIDATION_ENABLED` | `true` | Enable content security validation |
-| `CONTENT_REJECT_PATTERNS` | `""` | Custom rejection patterns (comma-separated) |
-| `CONTENT_REJECT_KEYWORDS` | `""` | Custom rejection keywords (comma-separated) |
-
 ## Performance
 
 ### Benchmarks

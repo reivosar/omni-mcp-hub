@@ -145,7 +145,91 @@ cache:
   ttl: 300000          # 5 minutes
 ```
 
+## Processing Flow
+
+```mermaid
+graph TD
+    A[Client Request] --> B{Request Type?}
+    
+    B -->|MCP Tool Call| C[MCP Handler]
+    B -->|SSE Request| D[SSE Server]
+    B -->|Webhook| E[Webhook Handler]
+    
+    C --> F[Content Security Check]
+    D --> F
+    
+    F --> G{Content Safe?}
+    G -->|No| H[Block & Return Safety Notice]
+    G -->|Yes| I[Source Manager]
+    
+    I --> J{Cache Hit?}
+    J -->|Yes| K[Return Cached Data]
+    J -->|No| L[Fetch from Sources]
+    
+    L --> M{Source Type?}
+    M -->|GitHub| N[GitHub API Handler]
+    M -->|Local| O[Local File Handler]
+    
+    N --> P[Apply File Patterns]
+    O --> P
+    
+    P --> Q[Content Validation]
+    Q --> R{Validation Pass?}
+    R -->|No| S[Log & Exclude File]
+    R -->|Yes| T[Process External References]
+    
+    T --> U[Reference Resolver]
+    U --> V{Max Depth?}
+    V -->|No| W[Fetch External Content]
+    V -->|Yes| X[Skip Resolution]
+    
+    W --> Y[Validate External Content]
+    Y --> Z{External Safe?}
+    Z -->|No| AA[Mark as Error]
+    Z -->|Yes| BB[Include in Response]
+    
+    X --> BB
+    AA --> BB
+    BB --> CC[Cache Result]
+    CC --> DD[Stream to Client]
+    
+    E --> EE[Verify Webhook Signature]
+    EE --> FF{Signature Valid?}
+    FF -->|No| GG[Reject Request]
+    FF -->|Yes| HH[Invalidate Cache]
+    HH --> II[Log Cache Invalidation]
+    
+    S --> T
+    K --> DD
+    H --> DD
+    
+    style F fill:#ffeb3b
+    style G fill:#f44336
+    style Q fill:#ffeb3b
+    style R fill:#f44336
+    style Y fill:#ffeb3b
+    style Z fill:#f44336
+```
+
 ## Security
+
+### Content Security Validation
+- **Multi-layer protection**: Pattern-based detection for prompt injection, system manipulation, and code injection
+- **Language-neutral approach**: Technical patterns only, no linguistic bias
+- **Conservative thresholds**: Minimizes false positives while maintaining security
+- **Configurable rules**: Custom patterns and keywords via YAML configuration
+- **Real-time filtering**: Content blocked at multiple processing stages
+
+### Security Configuration
+```yaml
+security:
+  content_validation:
+    enabled: true  # Enable/disable content validation
+    reject_patterns:
+      - "custom\\s+dangerous\\s+pattern"
+    additional_keywords:
+      - "forbidden_word"
+```
 
 ### CORS Protection
 - Configurable allowed origins via `ALLOWED_ORIGINS` environment variable

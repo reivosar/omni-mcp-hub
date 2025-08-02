@@ -334,8 +334,7 @@ describe('MCPSSEServer', () => {
       mockConfigLoader.getConfig.mockReturnValue({
         ...mockConfig,
         sources: [],
-        files: { patterns: ['CLAUDE.md'], max_size: 1048576 },
-        cache: { ttl: 300000, cleanup_interval: 60000 }
+        files: { patterns: ['CLAUDE.md'], max_size: 1048576 }
       } as any);
 
       delete mockReq.headers['x-hub-signature-256'];

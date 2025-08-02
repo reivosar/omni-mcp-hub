@@ -36,8 +36,7 @@ describe('SourceConfigManager Auto-Detection', () => {
           { url: 'https://github.com/user/repo/blob/develop' }
         ],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
-        fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        cache: { ttl: 300 }
+        fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 }
       };
 
       const yamlContent = yaml.dump(mockConfig);
@@ -82,8 +81,7 @@ describe('SourceConfigManager Auto-Detection', () => {
           { url: 'user/repo' } // デフォルトブランチ
         ],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
-        fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        cache: { ttl: 300 }
+        fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 }
       };
 
       const yamlContent = yaml.dump(mockConfig);
@@ -130,8 +128,7 @@ describe('SourceConfigManager Auto-Detection', () => {
           { url: 'C:\\Windows\\Path' } // Windows path
         ],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
-        fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        cache: { ttl: 300 }
+        fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 }
       };
 
       const yamlContent = yaml.dump(mockConfig);
@@ -183,8 +180,7 @@ describe('SourceConfigManager Auto-Detection', () => {
           }
         ],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
-        fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        cache: { ttl: 300 }
+        fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 }
       };
 
       const yamlContent = yaml.dump(mockConfig);
@@ -221,8 +217,7 @@ describe('SourceConfigManager Auto-Detection', () => {
           }
         ],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
-        fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        cache: { ttl: 300 }
+        fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 }
       };
 
       const yamlContent = yaml.dump(mockConfig);
@@ -254,8 +249,7 @@ describe('SourceConfigManager Auto-Detection', () => {
           { url: 'invalid://unsupported/url/format' }
         ],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
-        fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        cache: { ttl: 300 }
+        fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 }
       };
 
       const yamlContent = yaml.dump(mockConfig);
@@ -275,8 +269,7 @@ describe('SourceConfigManager Auto-Detection', () => {
           { url: 'microsoft/typescript.git' }
         ],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
-        fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        cache: { ttl: 300 }
+        fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 }
       };
 
       const yamlContent = yaml.dump(mockConfig);

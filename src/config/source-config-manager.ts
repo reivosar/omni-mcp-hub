@@ -28,10 +28,6 @@ export interface FetchConfig {
   max_depth: number;
 }
 
-export interface CacheConfig {
-  ttl: number;
-}
-
 export interface SecurityConfig {
   content_validation?: {
     enabled?: boolean;
@@ -46,7 +42,6 @@ export interface Config {
   sources: SourceConfig[];
   files: FilesConfig;
   fetch: FetchConfig;
-  cache: CacheConfig;
   security?: SecurityConfig;
 }
 
@@ -211,9 +206,6 @@ export class SourceConfigManager {
         retries: parseInt(process.env.FETCH_RETRIES || '3', 10),
         retry_delay: parseInt(process.env.FETCH_RETRY_DELAY || '1000', 10),
         max_depth: parseInt(process.env.FETCH_MAX_DEPTH || '3', 10)
-      },
-      cache: {
-        ttl: parseInt(process.env.CACHE_TTL || '300000', 10)
       },
       security: {
         content_validation: {

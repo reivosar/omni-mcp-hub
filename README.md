@@ -73,8 +73,6 @@ export FETCH_RETRIES=3                # Number of retries
 export FETCH_RETRY_DELAY=1000         # 1 second between retries
 export FETCH_MAX_DEPTH=3              # Max external reference depth
 
-# Optional: Cache settings
-export CACHE_TTL=300000               # 5 minutes cache TTL
 
 # Optional: Content security
 export CONTENT_VALIDATION_ENABLED=true
@@ -166,8 +164,6 @@ fetch:
   retry_delay: 1000    # 1 second initial delay
   max_depth: 3         # Reference resolution depth
 
-cache:
-  ttl: 300000          # 5 minutes
 ```
 
 ## Processing Flow
@@ -341,7 +337,7 @@ gh api /repos/:owner/:repo/hooks
 curl http://localhost:${PORT:-3000}/healthz
 
 # Check environment variables
-env | grep -E "(PORT|MCP_|GITHUB_|ALLOWED_|SOURCES|FILE_|FETCH_|CACHE_|CONTENT_)"
+env | grep -E "(PORT|MCP_|GITHUB_|ALLOWED_|SOURCES|FILE_|FETCH_|CONTENT_)"
 ```
 
 ## Performance

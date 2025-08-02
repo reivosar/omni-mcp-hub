@@ -1,6 +1,5 @@
 # Omni MCP Hub Configuration Example
 # Copy to mcp-sources.yaml and customize
-# Only sources are required - all other settings have defaults
 
 sources:
   # GitHub repository examples
@@ -8,33 +7,27 @@ sources:
     token: ${GITHUB_TOKEN}
     
   - url: github:owner/repo@main
-    token: ${GITHUB_TOKEN}
+    token: ${GITHUB_TOKEN_PRIVATE}
     
   # Local directory examples  
   - url: /path/to/local/project
   - url: ./relative/path
 
-# ============================================
-# ALL SETTINGS BELOW ARE OPTIONAL
-# Default values shown - uncomment to override
-# ============================================
-
+# Optional: Customize file patterns (defaults shown)
 # files:
 #   patterns:
 #     - "CLAUDE.md"
 #     - "*.claude.md"
-#     - "docs/CLAUDE.md"
 #   max_size: 1048576  # 1MB
 
+# Optional: Adjust fetch settings (defaults shown)
 # fetch:
 #   timeout: 30000      # 30 seconds
 #   retries: 3
 #   retry_delay: 1000   # 1 second
-#   max_depth: 3        # Max depth for external references
+#   max_depth: 3        # Max external reference depth
 
-# cache:
-#   ttl: 300000  # 5 minutes
-
+# Optional: Custom security rules
 # security:
 #   content_validation:
 #     enabled: true

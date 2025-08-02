@@ -35,7 +35,6 @@ describe('SourceConfigManager', () => {
       ],
       files: { patterns: ['CLAUDE.md'], max_size: 100000 },
       fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
-      cache: { ttl: 300 }
     };
 
     it('should load config from default path', () => {
@@ -106,7 +105,6 @@ describe('SourceConfigManager', () => {
         sources: [],
         files: { patterns: ['CLAUDE.md'], max_size: 1048576 },
         fetch: { timeout: 30000, retries: 3, retry_delay: 1000, max_depth: 3 },
-        cache: { ttl: 300000 },
         security: {
           content_validation: {
             enabled: true,
@@ -279,8 +277,7 @@ describe('SourceConfigManager', () => {
         sources: [],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
         fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        cache: { ttl: 300 }
-      };
+        };
 
       const yamlContent = yaml.dump(mockConfig);
       
@@ -307,8 +304,7 @@ describe('SourceConfigManager', () => {
         sources: [],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
         fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        cache: { ttl: 300 }
-      };
+        };
 
       const yamlContent = yaml.dump(mockConfig);
       
@@ -330,8 +326,7 @@ describe('SourceConfigManager', () => {
         sources: [],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
         fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        cache: { ttl: 300 }
-      };
+        };
 
       const yamlContent = yaml.dump(mockConfig);
       
@@ -368,8 +363,7 @@ describe('SourceConfigManager', () => {
         ],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
         fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        cache: { ttl: 300 }
-      };
+        };
 
       const yamlContent = yaml.dump(mockConfig);
       
@@ -394,8 +388,7 @@ describe('SourceConfigManager', () => {
         ],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
         fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        cache: { ttl: 300 }
-      };
+        };
 
       const yamlContent = yaml.dump(mockConfig);
       
@@ -418,8 +411,7 @@ describe('SourceConfigManager', () => {
         ],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
         fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        cache: { ttl: 300 }
-      };
+        };
 
       const yamlContent = yaml.dump(mockConfig);
       
@@ -438,8 +430,7 @@ describe('SourceConfigManager', () => {
         sources: [],
         files: { patterns: ['CLAUDE.md'], max_size: 100000 },
         fetch: { timeout: 10000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        cache: { ttl: 300 }
-      };
+        };
 
       const yamlContent = yaml.dump(mockConfig);
       

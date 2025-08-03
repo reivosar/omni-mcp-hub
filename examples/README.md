@@ -1,60 +1,93 @@
 # Omni MCP Hub Examples
 
-This directory contains configuration examples for different use cases.
+This directory contains configuration examples for different deployment scenarios.
 
-## Quick Start
+## 🚀 Quick Start (New!)
 
-### Option 1: Local Development
-1. Choose an example configuration from below
-2. Copy to root: `cp examples/[chosen]/mcp-sources.yaml ./`
-3. Set environment variables as needed
-4. Start server: `npm start`
-5. Add to Claude: `claude mcp add omni-mcp-hub`
+### Option 1: Claude Desktop Integration (Recommended)
+One command to set up and start:
 
 ```bash
-# Example: Set up GitHub sources
+cd examples/claude-desktop
+./start.sh github_sources    # or local_sources or mcp_servers
+```
+
+This script automatically:
+- Sets up Claude Desktop configuration
+- Builds the project  
+- Provides environment setup instructions
+- Starts the server for Claude Desktop integration
+
+### Option 2: Docker Deployment
+One command for containerized deployment:
+
+```bash
+cd examples/docker
+./start.sh mcp_servers       # or github_sources or local_sources
+```
+
+This script automatically:
+- Creates Docker configuration
+- Builds Docker image
+- Sets up docker-compose
+- Starts containers with health checks
+
+### Option 3: Manual Local Development
+For custom setups:
+
+```bash
+# 1. Copy configuration
 cp examples/github_sources/mcp-sources.yaml ./
+
+# 2. Set environment variables
 export GITHUB_TOKEN="your_token_here"
 export PORT=3000
+
+# 3. Start server
 npm start
 ```
 
-### Option 2: Docker + Claude Desktop
-1. Copy configuration: `cp examples/[chosen]/mcp-sources.yaml ~/.config/omni-mcp-hub/`
-2. Add configuration to Claude Desktop (see `claude-desktop/README.md`)
-3. Restart Claude Desktop
-4. The server starts automatically when Claude launches
+## 📁 Available Source Types
 
-```bash
-# Example: Docker setup
-cp examples/docker/mcp_servers/mcp-sources.yaml ~/.config/omni-mcp-hub/
-docker-compose up -d
-```
-
-## Available Examples
-
-### GitHub Sources (`github_sources/`)
+### `github_sources` - GitHub Repository Aggregation
 Aggregate documentation from multiple GitHub repositories.
-- Features: Repository docs, branch tracking, token authentication
-- Use case: Access API documentation and development guides
+- **Features**: Repository docs, branch tracking, token authentication
+- **Environment**: Requires `GITHUB_TOKEN`
+- **Use case**: Access API documentation and development guides
+- **Example**: `./start.sh github_sources`
 
-### Local Sources (`local_sources/`)
+### `local_sources` - Local Filesystem Aggregation
 Aggregate documentation from local filesystem directories.
-- Features: Local file access, multiple directories, pattern matching
-- Use case: Personal projects and local documentation
+- **Features**: Local file access, multiple directories, pattern matching
+- **Environment**: Optional paths (`PROJECTS_PATH`, `DOCS_PATH`, `WORKSPACE_PATH`)
+- **Use case**: Personal projects and local documentation
+- **Example**: `./start.sh local_sources`
 
-### MCP Servers (`mcp_servers/`)
+### `mcp_servers` - Pure MCP Server Aggregation
 Pure MCP server aggregation with auto-installation.
-- Features: Research, file ops, web browsing, database, git, time tools
-- Use case: Unified access to multiple MCP server capabilities
+- **Features**: Research (arxiv), file ops, web browsing, database, git, time tools
+- **Environment**: Optional keys (`ARXIV_API_KEY`, `DATABASE_PATH`)
+- **Use case**: Unified access to multiple MCP server capabilities
+- **Example**: `./start.sh mcp_servers`
 
-### Docker Deployment (`docker/`)
-Run Omni MCP Hub in Docker containers.
-- Features: Dockerfile, docker-compose, production setup
-- Use case: Containerized deployment and Claude Desktop integration
+## 🔧 Deployment Methods
 
-### Claude Desktop Integration (`claude-desktop/`)
-Configure Omni MCP Hub with Claude Desktop application.
-- Features: Configuration examples, multiple integration methods
-- Use case: Direct integration with Claude Desktop app
+### `claude-desktop/` - Native Claude Desktop Integration
+- **Script**: `examples/claude-desktop/start.sh [source_type]`
+- **Features**: Direct Claude Desktop integration, automatic config setup
+- **Best for**: Desktop users, development, testing
+
+### `docker/` - Containerized Deployment
+- **Script**: `examples/docker/start.sh [source_type]`
+- **Features**: Docker containers, health checks, production-ready
+- **Best for**: Production deployment, isolated environments
+
+## 🛡️ Security Features
+
+All configurations include:
+- Command execution sandboxing
+- Content validation and filtering
+- Audit logging for security events
+- Resource limits and monitoring
+- Path restrictions and access controls
 

@@ -11,11 +11,25 @@ This directory contains configuration examples for different use cases.
 4. Start server: `npm start`
 5. Add to Claude: `claude mcp add omni-mcp-hub`
 
+```bash
+# Example: Set up GitHub sources
+cp examples/github_sources/mcp-sources.yaml ./
+export GITHUB_TOKEN="your_token_here"
+export PORT=3000
+npm start
+```
+
 ### Option 2: Docker + Claude Desktop
 1. Copy configuration: `cp examples/[chosen]/mcp-sources.yaml ~/.config/omni-mcp-hub/`
 2. Add configuration to Claude Desktop (see `claude-desktop/README.md`)
 3. Restart Claude Desktop
 4. The server starts automatically when Claude launches
+
+```bash
+# Example: Docker setup
+cp examples/docker/mcp_servers/mcp-sources.yaml ~/.config/omni-mcp-hub/
+docker-compose up -d
+```
 
 ## Available Examples
 

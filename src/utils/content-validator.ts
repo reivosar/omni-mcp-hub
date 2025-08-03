@@ -27,10 +27,20 @@ export class ContentValidator {
     /execute\s+command/i,
     /run\s+script/i,
     /eval\s*\(/i,
-    /\$\{.*\}/,
     /base64\s*[:=]/i,
     /\\x[0-9a-f]{2}/i,
-    /\\u[0-9a-f]{4}/i
+    /\\u[0-9a-f]{4}/i,
+    // Security patterns from mcp_servers config
+    /password\s*[=:]\s*['""][^'""]{3,}['"]/i,
+    /api[_-]?key\s*[=:]\s*['""][^'""]{10,}['"]/i,
+    /secret\s*[=:]\s*['""][^'""]{8,}['"]/i,
+    /token\s*[=:]\s*['""][^'""]{20,}['"]/i,
+    /\$\([^)]*\)/,
+    /`[^`]*`/,
+    /;\s*(rm|del|format|sudo)/i,
+    /<script[^>]*>/i,
+    /javascript:/i,
+    /eval\s*\(/i
   ];
 
   private static readonly LEGACY_SUSPICIOUS_KEYWORDS = [
@@ -64,6 +74,15 @@ export class ContentValidator {
   static async validate(content: string): Promise<ValidationResult> {
     if (!content || content.trim().length === 0) {
       return { isValid: true };
+    }
+
+    // Check file size limit (10MB)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    if (content.length > MAX_FILE_SIZE) {
+      return {
+        isValid: false,
+        reason: `Content exceeds maximum file size limit (${content.length} bytes > ${MAX_FILE_SIZE} bytes)`
+      };
     }
 
     // Use hybrid approach: legacy patterns + new security rules

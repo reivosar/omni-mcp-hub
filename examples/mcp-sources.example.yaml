@@ -1,0 +1,48 @@
+server:
+  port: ${PORT:-3000}
+
+# Example configuration combining all source types
+# Copy this file to mcp-sources.yaml and customize as needed
+
+# GitHub repository documentation sources
+github_sources:
+  - url: github:anthropics/anthropic-sdk-typescript
+    branch: main
+    token: "${GITHUB_TOKEN}"
+
+# Local filesystem documentation sources  
+local_sources:
+  - url: ${PROJECTS_PATH:-/home/user/projects}
+  - url: ${DOCS_PATH:-/usr/local/docs}
+
+# MCP server aggregation
+mcp_servers:
+  - name: arxiv
+    install_command: pip install arxiv-mcp-server
+    command: python
+    args: ["-m", "arxiv_mcp"]
+    enabled: true
+    env:
+      ARXIV_API_KEY: ${ARXIV_API_KEY}
+
+# File processing configuration
+files:
+  patterns:
+    - "README.md"
+    - "CLAUDE.md"
+    - "docs/**/*.md"
+    - "*.md"
+  max_size: 2097152  # 2MB
+
+# Network settings
+fetch:
+  timeout: 60000
+  retries: 3
+  retry_delay: 1000
+  max_depth: 3
+
+# Security configuration
+security:
+  content_validation:
+    enabled: true
+    max_file_size: 5242880  # 5MB

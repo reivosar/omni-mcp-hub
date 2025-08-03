@@ -1,0 +1,41 @@
+server:
+  port: ${PORT:-3000}
+
+# Local filesystem documentation sources
+local_sources:
+  # Projects directory
+  - url: ${PROJECTS_PATH:-/home/user/projects}
+  
+  # Documentation directory
+  - url: ${DOCS_PATH:-/usr/local/docs}
+  
+  # Workspace directory
+  - url: ${WORKSPACE_PATH:-/workspace}
+  
+  # Examples directory
+  - url: ./examples
+
+# File processing configuration
+files:
+  patterns:
+    - "CLAUDE.md"
+    - "README.md"
+    - "*.md"
+    - "docs/**/*.md"
+    - "**/*.txt"
+    - "CHANGELOG.md"
+    - "CONTRIBUTING.md"
+  max_size: 1048576  # 1MB
+
+# Network settings (minimal for local files)
+fetch:
+  timeout: 30000
+  retries: 2
+  retry_delay: 500
+  max_depth: 3
+
+# Security configuration
+security:
+  content_validation:
+    enabled: true
+    max_file_size: 2097152  # 2MB

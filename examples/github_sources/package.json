@@ -1,0 +1,10 @@
+{
+  "name": "omni-mcp-hub-github-example",
+  "version": "1.0.0",
+  "description": "GitHub sources example for Omni MCP Hub",
+  "scripts": {
+    "start": "cd ../.. && npm start",
+    "setup": "cp .env.example .env && echo 'Please edit .env with your GitHub token'"
+  },
+  "dependencies": {}
+}

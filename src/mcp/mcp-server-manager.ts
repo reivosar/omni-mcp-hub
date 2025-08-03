@@ -2,6 +2,9 @@ import { spawn, ChildProcess } from 'child_process';
 import { promisify } from 'util';
 import { exec } from 'child_process';
 import { MCPServerConfig } from '../config/source-config-manager';
+import { SandboxedExecutor } from '../security/sandboxed-executor';
+import { CommandValidator } from '../security/command-validator';
+import { AuditLogger } from '../security/audit-logger';
 
 const execAsync = promisify(exec);
 
@@ -125,27 +128,61 @@ export class MCPServerClient {
 
 export class MCPServerManager {
   private servers = new Map<string, MCPServerInstance>();
+  private sandboxedExecutor: SandboxedExecutor;
+  private commandValidator: CommandValidator;
+  private auditLogger: AuditLogger;
+
+  constructor() {
+    this.sandboxedExecutor = new SandboxedExecutor();
+    this.commandValidator = new CommandValidator();
+    this.auditLogger = AuditLogger.getInstance();
+  }
 
   async startServer(config: MCPServerConfig): Promise<MCPServerInstance> {
     if (config.enabled === false) {
       throw new Error(`Server ${config.name} is disabled`);
     }
 
-    // Auto-install if needed
+    // Validate configuration security
+    const configValidation = this.commandValidator.validateMCPServerConfig(config);
+    if (!configValidation.allowed) {
+      this.auditLogger.logConfigurationValidation(config, false, configValidation.reason);
+      throw new Error(`Security validation failed for ${config.name}: ${configValidation.reason}`);
+    }
+
+    this.auditLogger.logConfigurationValidation(config, true);
+
+    // Auto-install if needed (with security checks)
     if (config.install_command) {
-      await this.ensureInstalled(config);
+      await this.ensureInstalledSecurely(config);
     }
 
     console.log(`Starting MCP server: ${config.name}`);
     
-    const args = config.args || [];
-    const env = { ...process.env, ...config.env };
-    
-    const childProcess = spawn(config.command, args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env
+    // Prepare secure execution context
+    const execution = {
+      command: config.command,
+      args: config.args || [],
+      env: config.env,
+      cwd: process.cwd(),
+      requestId: `mcp-start-${config.name}-${Date.now()}`,
+      source: 'mcp-server-manager'
+    };
+
+    // Execute with security sandbox
+    const executionResult = await this.sandboxedExecutor.executeCommand(execution, {
+      timeout: 60000, // 60 second timeout for startup
+      maxMemory: 512, // 512MB memory limit
+      allowNetworking: true, // MCP servers may need network access
+      allowFileWrite: false, // Generally read-only for MCP servers
+      restrictToPath: process.cwd()
     });
 
+    if (!executionResult.success || !executionResult.process) {
+      throw new Error(`Failed to start MCP server ${config.name}: ${executionResult.error}`);
+    }
+
+    const childProcess = executionResult.process;
     const client = new MCPServerClient(childProcess);
     
     const instance: MCPServerInstance = {
@@ -158,6 +195,12 @@ export class MCPServerManager {
 
     this.servers.set(config.name, instance);
 
+    // Monitor the process for security compliance
+    this.sandboxedExecutor.monitorProcess(childProcess, {
+      maxMemory: 512,
+      allowNetworking: true
+    });
+
     // Handle process events
     childProcess.on('spawn', () => {
       console.log(`MCP server ${config.name} spawned successfully`);
@@ -167,6 +210,7 @@ export class MCPServerManager {
     childProcess.on('error', (error) => {
       console.error(`MCP server ${config.name} error:`, error);
       instance.status = 'error';
+      this.auditLogger.logCommandFailure(execution, error.message);
     });
 
     childProcess.on('exit', (code) => {
@@ -260,37 +304,79 @@ export class MCPServerManager {
     return instance.client.callTool(originalToolName, arguments_);
   }
 
-  private async ensureInstalled(config: MCPServerConfig): Promise<void> {
+  private async ensureInstalledSecurely(config: MCPServerConfig): Promise<void> {
     if (!config.install_command) {
       return;
     }
 
     console.log(`Checking if MCP server ${config.name} is installed...`);
     
+    // Parse and validate install command
+    const installParts = config.install_command.split(' ');
+    const installCommand = installParts[0];
+    const installArgs = installParts.slice(1);
+
+    // Validate install command security
+    const installExecution = {
+      command: installCommand,
+      args: installArgs,
+      cwd: process.cwd(),
+      requestId: `mcp-install-${config.name}-${Date.now()}`,
+      source: 'mcp-server-manager'
+    };
+
+    const installValidation = this.commandValidator.validateCommand(installExecution);
+    if (!installValidation.allowed) {
+      throw new Error(`Install command validation failed for ${config.name}: ${installValidation.reason}`);
+    }
+
     try {
-      // Try to check if the command is available
+      // Try to check if the command is available (securely)
       const checkCommand = this.getCheckCommand(config);
-      await execAsync(checkCommand);
-      console.log(`MCP server ${config.name} is already installed`);
-      return;
+      const checkParts = checkCommand.split(' ');
+      const checkExecution = {
+        command: checkParts[0],
+        args: checkParts.slice(1),
+        cwd: process.cwd(),
+        requestId: `mcp-check-${config.name}-${Date.now()}`,
+        source: 'mcp-server-manager'
+      };
+
+      // Execute check command securely
+      const checkResult = await this.sandboxedExecutor.executeCommand(checkExecution, {
+        timeout: 10000, // 10 second timeout for check
+        maxMemory: 128, // 128MB memory limit
+        allowNetworking: false,
+        allowFileWrite: false
+      });
+
+      if (checkResult.success) {
+        console.log(`MCP server ${config.name} is already installed`);
+        return;
+      }
     } catch (error) {
       console.log(`MCP server ${config.name} not found, installing...`);
     }
 
     try {
       console.log(`Running install command: ${config.install_command}`);
-      const { stdout, stderr } = await execAsync(config.install_command);
       
-      if (stdout) {
-        console.log(`Install stdout:`, stdout);
+      // Execute install command securely
+      const installResult = await this.sandboxedExecutor.executeCommand(installExecution, {
+        timeout: 300000, // 5 minute timeout for installation
+        maxMemory: 1024, // 1GB memory limit for installation
+        allowNetworking: true, // Installations typically need network access
+        allowFileWrite: true // Installations need to write files
+      });
+
+      if (!installResult.success) {
+        throw new Error(installResult.error || 'Installation failed');
       }
-      if (stderr) {
-        console.log(`Install stderr:`, stderr);
-      }
-      
+
       console.log(`Successfully installed MCP server: ${config.name}`);
     } catch (error) {
       console.error(`Failed to install MCP server ${config.name}:`, error);
+      this.auditLogger.logCommandFailure(installExecution, error.toString());
       throw new Error(`Installation failed for ${config.name}: ${error}`);
     }
   }

@@ -376,7 +376,7 @@ export class MCPServerManager {
       console.log(`Successfully installed MCP server: ${config.name}`);
     } catch (error) {
       console.error(`Failed to install MCP server ${config.name}:`, error);
-      this.auditLogger.logCommandFailure(installExecution, error.toString());
+      this.auditLogger.logCommandFailure(installExecution, error instanceof Error ? error.toString() : String(error));
       throw new Error(`Installation failed for ${config.name}: ${error}`);
     }
   }

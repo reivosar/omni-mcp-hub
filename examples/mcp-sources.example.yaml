@@ -1,0 +1,68 @@
+# Omni MCP Hub - Complete Configuration Example
+# This file demonstrates all available configuration options
+
+# Server Configuration
+server:
+  port: ${PORT:-3000}
+  host: ${HOST:-localhost}
+
+# File Processing Configuration
+files:
+  patterns:
+    - "README.md"
+    - "*.md"
+    - "docs/**/*.md"
+    - "**/*.rst"
+    - "CLAUDE.md"
+  max_size: 10485760  # 10MB limit
+  exclude_patterns:
+    - "node_modules/**"
+    - ".git/**"
+    - "*.log"
+
+# Security Configuration
+security:
+  content_validation:
+    enabled: true
+    reject_patterns:
+      - "password\\s*[:=]\\s*[\"']?[^\\s\"']+[\"']?"
+      - "api_key\\s*[:=]\\s*[\"']?[^\\s\"']+[\"']?"
+      - "secret\\s*[:=]\\s*[\"']?[^\\s\"']+[\"']?"
+      - "token\\s*[:=]\\s*[\"']?[a-zA-Z0-9_-]{16,}[\"']?"
+      - "\\$\\([^)]*rm[^)]*\\)"
+      - "`[^`]*rm[^`]*`"
+      - ";\\s*rm\\s+"
+      - "<script[^>]*>"
+      - "javascript:\\s*"
+      - "eval\\s*\\("
+
+# GitHub Sources (Example - choose one configuration type)
+github_sources:
+  - name: "anthropic-sdk"
+    url: "github:anthropics/anthropic-sdk-typescript"
+    branch: "main"
+    token: "${GITHUB_TOKEN}"
+
+# Local Sources (Example - choose one configuration type)
+local_sources:
+  - name: "projects"
+    url: "${PROJECTS_PATH:-/home/user/projects}"
+  - name: "documentation"
+    url: "${DOCS_PATH:-/usr/local/docs}"
+  - name: "workspace"
+    url: "${WORKSPACE_PATH:-/workspace}"
+
+# MCP Servers (Example - choose one configuration type)
+mcp_servers:
+  - name: "arxiv"
+    command: "python"
+    args: ["-m", "arxiv_mcp_server"]
+    install_command: "pip install arxiv-mcp-server"
+    env:
+      ARXIV_API_KEY: "${ARXIV_API_KEY:-}"
+  - name: "filesystem"
+    command: "npx"
+    args: ["@modelcontextprotocol/server-filesystem", "/tmp"]
+    install_command: "npm install -g @modelcontextprotocol/server-filesystem"
+    env:
+      ALLOWED_PATHS: "${ALLOWED_PATHS:-/tmp,/var/tmp}"

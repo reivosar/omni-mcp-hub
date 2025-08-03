@@ -286,7 +286,9 @@ describe('MCP Error Scenarios and Edge Cases', () => {
       const child_process = require('child_process');
       const mockExec = jest.spyOn(child_process, 'exec');
       
-      mockExec.mockImplementation((command: string, callback: any) => {
+      mockExec.mockImplementation((...args: unknown[]) => {
+        const command = args[0] as string;
+        const callback = args[1] as any;
         if (command.includes('pip install')) {
           const error = new Error('Network error');
           (error as any).code = 'ENETUNREACH';
@@ -315,7 +317,9 @@ describe('MCP Error Scenarios and Edge Cases', () => {
       const child_process = require('child_process');
       const mockExec = jest.spyOn(child_process, 'exec');
       
-      mockExec.mockImplementation((command: string, callback: any) => {
+      mockExec.mockImplementation((...args: unknown[]) => {
+        const command = args[0] as string;
+        const callback = args[1] as any;
         if (command.includes('pip install')) {
           const error = new Error('Permission denied');
           (error as any).code = 'EACCES';
@@ -343,7 +347,9 @@ describe('MCP Error Scenarios and Edge Cases', () => {
       const mockExec = jest.spyOn(child_process, 'exec');
       
       // Installation succeeds but package is corrupted
-      mockExec.mockImplementation((command: string, callback: any) => {
+      mockExec.mockImplementation((...args: unknown[]) => {
+        const command = args[0] as string;
+        const callback = args[1] as any;
         if (command.includes('import test_package')) {
           callback(new Error('ModuleNotFoundError: No module named test_package'));
         } else if (command.includes('pip install')) {
@@ -817,7 +823,7 @@ describe('MCP Error Scenarios and Edge Cases', () => {
       const config: MCPServerConfig = {
         name: 'long-args-server',
         command: 'python',
-        args: ['-c', 'x' * 10000], // Very long argument
+        args: ['-c', 'x'.repeat(10000)], // Very long argument
         enabled: true
       };
 

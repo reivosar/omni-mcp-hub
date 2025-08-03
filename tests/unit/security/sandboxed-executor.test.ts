@@ -300,7 +300,7 @@ describe('SandboxedExecutor', () => {
       const spawnOptions = spawnCall[2];
       
       expect(spawnOptions.env).not.toHaveProperty('LD_PRELOAD');
-      expect(spawnOptions.env).not.toHaveProperty('PATH'); // Should be replaced with safe PATH
+      expect(spawnOptions.env.PATH).toBeDefined(); // Should have safe PATH
       expect(spawnOptions.env.NODE_ENV).toBeDefined();
       expect(spawnOptions.env.USER).toBe('sandbox');
     });
@@ -418,17 +418,9 @@ describe('SandboxedExecutor', () => {
         throw new Error('Validator initialization failed');
       });
 
-      const execution: CommandExecution = {
-        command: 'python',
-        args: ['-V'],
-        source: 'test'
-      };
-
-      const newExecutor = new SandboxedExecutor();
-      const result = await newExecutor.executeCommand(execution);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Execution error');
+      expect(() => {
+        new SandboxedExecutor();
+      }).toThrow('Validator initialization failed');
     });
 
     test('should handle policy manager errors', async () => {

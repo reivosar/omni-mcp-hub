@@ -44,6 +44,7 @@ export class SandboxedExecutor {
       // 1. Validate the command
       const validation = this.validator.validateCommand(execution);
       if (!validation.allowed) {
+        this.auditLogger.logCommandFailure(execution, `Security validation failed: ${validation.reason}`);
         return {
           success: false,
           error: `Security validation failed: ${validation.reason}`

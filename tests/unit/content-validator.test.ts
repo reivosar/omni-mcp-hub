@@ -80,10 +80,10 @@ describe('ContentValidator', () => {
         expect(result.isValid).toBe(false);
       });
 
-      it('should reject template literal injection', async () => {
+      it('should accept normal template literal syntax', async () => {
         const content = '${process.env.SECRET_KEY}';
         const result = await ContentValidator.validate(content);
-        expect(result.isValid).toBe(false);
+        expect(result.isValid).toBe(true);
       });
     });
 

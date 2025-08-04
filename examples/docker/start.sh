@@ -15,16 +15,84 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Function to show available source types and let user select
+select_source_type() {
+    local available_types=()
+    
+    # Find all directories in the docker examples folder
+    for dir in "$SCRIPT_DIR"/*/ ; do
+        if [ -d "$dir" ]; then
+            local dirname=$(basename "$dir")
+            # Skip common directories that aren't source types
+            if [[ "$dirname" != "dist" && "$dirname" != "node_modules" && "$dirname" != ".git" ]]; then
+                # Check if directory contains mcp-sources.yaml
+                if [ -f "$dir/mcp-sources.yaml" ]; then
+                    available_types+=("$dirname")
+                fi
+            fi
+        fi
+    done
+    
+    if [ ${#available_types[@]} -eq 0 ]; then
+        echo -e "${RED}Error: No configuration directories found with mcp-sources.yaml${NC}" >&2
+        exit 1
+    fi
+    
+    echo -e "${BLUE}Available source configurations:${NC}" >&2
+    echo "" >&2
+    
+    for i in "${!available_types[@]}"; do
+        local type="${available_types[$i]}"
+        local desc=""
+        case "$type" in
+            *github*) desc="GitHub repositories and documentation" ;;
+            *local*) desc="Local filesystem directories" ;;
+            *mcp*) desc="MCP server integrations" ;;
+            *) desc="Custom configuration" ;;
+        esac
+        echo -e "  ${GREEN}$((i+1)))${NC} ${YELLOW}$type${NC} - $desc" >&2
+    done
+    
+    echo "" >&2
+    echo -n -e "${BLUE}Select configuration (1-${#available_types[@]}): ${NC}" >&2
+    read -r selection
+    
+    if ! [[ "$selection" =~ ^[0-9]+$ ]] || [ "$selection" -lt 1 ] || [ "$selection" -gt "${#available_types[@]}" ]; then
+        echo -e "${RED}Invalid selection. Please choose a number between 1 and ${#available_types[@]}${NC}" >&2
+        exit 1
+    fi
+    
+    local selected_type="${available_types[$((selection-1))]}"
+    echo -e "${GREEN}Selected: $selected_type${NC}" >&2
+    echo "" >&2
+    
+    # Return the selected type (this will be captured by the calling code)
+    printf "%s" "$selected_type"
+}
+
 usage() {
     echo -e "${BLUE}Usage: $0 [source_type]${NC}"
     echo ""
+    echo "If no source_type is provided, you will be prompted to select from available configurations."
+    echo ""
     echo "Available source types:"
-    echo -e "  ${GREEN}github_sources${NC}  - Aggregate GitHub repository documentation"
-    echo -e "  ${GREEN}local_sources${NC}   - Aggregate local filesystem documentation"  
-    echo -e "  ${GREEN}mcp_servers${NC}     - Pure MCP server aggregation"
+    for dir in "$SCRIPT_DIR"/*/ ; do
+        if [ -d "$dir" ] && [ -f "$dir/mcp-sources.yaml" ]; then
+            local dirname=$(basename "$dir")
+            local desc=""
+            case "$dirname" in
+                *github*) desc="GitHub repositories and documentation" ;;
+                *local*) desc="Local filesystem directories" ;;
+                *mcp*) desc="MCP server integrations" ;;
+                *) desc="Custom configuration" ;;
+            esac
+            echo -e "  ${GREEN}$dirname${NC} - $desc"
+        fi
+    done
     echo ""
     echo "Example:"
-    echo -e "  ${YELLOW}$0 github_sources${NC}"
+    echo -e "  ${YELLOW}$0 github_sources${NC}  # Direct selection"
+    echo -e "  ${YELLOW}$0${NC}                 # Interactive selection"
     exit 1
 }
 
@@ -269,23 +337,43 @@ EOF
 
 
 main() {
-    local source_type="$1"
+    echo -e "${GREEN}🐳 Omni MCP Hub - Docker Deployment${NC}"
+    echo ""
     
-    if [ -z "$source_type" ]; then
-        usage
+    local source_type=""
+    
+    if [ "$#" -eq 0 ]; then
+        # Interactive mode - let user select
+        source_type=$(select_source_type)
+    else
+        # Command line argument provided
+        source_type="$1"
+        
+        # Handle help flags
+        if [[ "$source_type" == "--help" || "$source_type" == "-h" || "$source_type" == "help" ]]; then
+            usage
+        fi
+        
+        # Validate source type
+        if [ ! -d "$SCRIPT_DIR/$source_type" ]; then
+            echo -e "${RED}Error: Source type '$source_type' not found${NC}"
+            echo ""
+            echo -e "${YELLOW}Available configurations:${NC}"
+            for dir in "$SCRIPT_DIR"/*/ ; do
+                if [ -d "$dir" ] && [ -f "$dir/mcp-sources.yaml" ]; then
+                    local dirname=$(basename "$dir")
+                    echo -e "  - $dirname"
+                fi
+            done
+            exit 1
+        fi
+        
+        if [ ! -f "$SCRIPT_DIR/$source_type/mcp-sources.yaml" ]; then
+            echo -e "${RED}Error: Configuration file not found: $SCRIPT_DIR/$source_type/mcp-sources.yaml${NC}"
+            exit 1
+        fi
     fi
     
-    # Validate source type
-    case "$source_type" in
-        "github_sources"|"local_sources"|"mcp_servers")
-            ;;
-        *)
-            echo -e "${RED}Error: Invalid source type '$source_type'${NC}"
-            usage
-            ;;
-    esac
-    
-    echo -e "${GREEN}🐳 Omni MCP Hub - Docker Deployment${NC}"
     echo -e "${BLUE}Source Type: $source_type${NC}"
     echo ""
     

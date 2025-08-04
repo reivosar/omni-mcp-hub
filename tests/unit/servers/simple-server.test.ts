@@ -12,7 +12,7 @@ jest.mock('path');
 // Use fake timers to avoid real delays
 jest.useFakeTimers();
 
-const MockWebSocket = WebSocket as jest.MockedClass<typeof WebSocket>;
+const MockWebSocket = WebSocket as any;
 const mockSimpleGit = simpleGit as jest.MockedFunction<typeof simpleGit>;
 const mockFs = fs as jest.Mocked<typeof fs>;
 
@@ -33,7 +33,7 @@ describe('SimpleMCPServer', () => {
       clone: jest.fn().mockResolvedValue(undefined)
     };
 
-    (MockWebSocket.Server as any) = jest.fn().mockImplementation(() => mockWSServer);
+    MockWebSocket.Server = jest.fn().mockImplementation(() => mockWSServer) as any;
     mockSimpleGit.mockReturnValue(mockGit);
     
     // Mock process.env
@@ -204,7 +204,7 @@ describe('SimpleMCPServer', () => {
       mockFs.existsSync.mockReturnValue(true);
       
       let callCount = 0;
-      mockFs.readdirSync.mockImplementation((path: any) => {
+      mockFs.readdirSync.mockImplementation((_path: any) => {
         if (callCount === 0) {
           callCount++;
           return ['.git', 'node_modules', 'valid'] as any;
@@ -215,7 +215,7 @@ describe('SimpleMCPServer', () => {
       
       mockFs.statSync.mockReturnValue({ isDirectory: () => true } as any);
       
-      const result = (server as any).loadFilesFromDirectory('/test');
+      (server as any).loadFilesFromDirectory('/test');
       
       expect(mockFs.readdirSync).toHaveBeenCalledTimes(2); // root + valid dir
     });
@@ -266,7 +266,7 @@ describe('SimpleMCPServer', () => {
         jsonrpc: '2.0',
         id: 1,
         result: {
-          protocolVersion: '2024-11-05',
+          protocolVersion: '2025-06-18',
           capabilities: { tools: {} },
           serverInfo: { name: 'simple-mcp-hub', version: '1.0.0' }
         }

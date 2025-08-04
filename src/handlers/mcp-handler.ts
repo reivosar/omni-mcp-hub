@@ -73,7 +73,9 @@ export class MCPHandler extends BaseClientHandler {
           break;
 
         case 'initialized':
+        case 'notifications/initialized':
           // Notification - no response needed
+          console.error('Client initialized successfully');
           return { jsonrpc: '2.0' } as MCPResponse;
 
         case 'ping':
@@ -111,6 +113,7 @@ export class MCPHandler extends BaseClientHandler {
     return [
       'initialize',
       'initialized',
+      'notifications/initialized',
       'ping',
       'tools/list',
       'tools/call'

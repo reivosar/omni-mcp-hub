@@ -68,53 +68,19 @@ setup_docker_config() {
         exit 1
     fi
     
-    # Create Docker configuration directory
-    local docker_config_dir="$PROJECT_ROOT/.docker-config"
-    mkdir -p "$docker_config_dir"
+    # Use examples/docker as the configuration directory
+    local docker_config_dir="$SCRIPT_DIR"
     
-    # Copy configuration for Docker
+    # Copy the selected configuration file to dist directory
     echo -e "${BLUE}Setting up Docker configuration...${NC}"
-    cp "$config_path" "$docker_config_dir/mcp-sources.yaml"
+    local dist_config="$dist_docker_dir/current-config.yaml"
+    cp "$config_path" "$dist_config"
     
-    # Create docker-compose.yml if it doesn't exist
+    # Use existing docker-compose.yml in the docker directory
     local compose_file="$docker_config_dir/docker-compose.yml"
     if [ ! -f "$compose_file" ]; then
-        cat > "$compose_file" << EOF
-version: '3.8'
-
-services:
-  omni-mcp-hub:
-    image: docker-config-omni-mcp-hub:latest
-    container_name: omni-mcp-hub
-    ports:
-      - "\${PORT:-3000}:\${PORT:-3000}"
-    volumes:
-      - "$docker_config_dir/mcp-sources.yaml:/app/mcp-sources.yaml:ro"
-      - "\${PROJECTS_PATH:-./data}:/workspace:ro"
-    environment:
-      - NODE_ENV=production
-      - CONFIG_FILE=/app/mcp-sources.yaml
-      - PORT=\${PORT:-3000}
-      - GITHUB_TOKEN=\${GITHUB_TOKEN:-}
-      - PROJECTS_PATH=\${PROJECTS_PATH:-/workspace}
-      - DOCS_PATH=\${DOCS_PATH:-/workspace/docs}
-      - WORKSPACE_PATH=\${WORKSPACE_PATH:-/workspace}
-      - ARXIV_API_KEY=\${ARXIV_API_KEY:-}
-      - ALLOWED_PATHS=\${ALLOWED_PATHS:-/tmp,/var/tmp}
-      - DATABASE_PATH=\${DATABASE_PATH:-./data.db}
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:\${PORT:-3000}/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-networks:
-  default:
-    name: omni-mcp-hub-network
-EOF
-        echo -e "${GREEN}Created docker-compose.yml${NC}"
+        echo -e "${RED}Error: docker-compose.yml not found in $docker_config_dir${NC}"
+        exit 1
     fi
     
     # Create .env file with source-specific defaults
@@ -142,33 +108,33 @@ EOF
         "local_sources")
             cat >> "$env_file" << EOF
 # Local Sources Configuration
-PROJECTS_PATH=./data/projects
-DOCS_PATH=./data/docs
-WORKSPACE_PATH=./data/workspace
+PROJECTS_PATH=./dist/data/projects
+DOCS_PATH=./dist/data/docs
+WORKSPACE_PATH=./dist/data/workspace
 
 # Create these directories if they don't exist
 EOF
-            # Create local data directories
-            mkdir -p "$docker_config_dir/data/projects"
-            mkdir -p "$docker_config_dir/data/docs"  
-            mkdir -p "$docker_config_dir/data/workspace"
+            # Create local data directories in dist
+            mkdir -p "$dist_docker_dir/data/projects"
+            mkdir -p "$dist_docker_dir/data/docs"  
+            mkdir -p "$dist_docker_dir/data/workspace"
             ;;
         "mcp_servers")
             cat >> "$env_file" << EOF
 # MCP Servers Configuration
 ARXIV_API_KEY=optional_arxiv_key
 ALLOWED_PATHS=/tmp,/var/tmp
-DATABASE_PATH=./data/data.db
+DATABASE_PATH=./dist/data/data.db
 GIT_USER_NAME=Claude
 GIT_USER_EMAIL=claude@anthropic.com
 
 # Create data directory for SQLite
 EOF
-            mkdir -p "$docker_config_dir/data"
+            mkdir -p "$dist_docker_dir/data"
             ;;
     esac
     
-    echo -e "${GREEN}Configuration copied to: $docker_config_dir/${NC}"
+    echo -e "${GREEN}Configuration ready in: $docker_config_dir/${NC}"
     echo -e "${YELLOW}Edit $env_file to customize settings${NC}"
 }
 
@@ -180,7 +146,7 @@ setup_environment() {
     case "$source_type" in
         "github_sources")
             echo -e "${YELLOW}Required environment variables:${NC}"
-            echo -e "  Edit .docker-config/.env and set:"
+            echo -e "  Edit examples/docker/.env and set:"
             echo -e "  GITHUB_TOKEN=\"your_github_token_here\""
             echo ""
             echo -e "${YELLOW}To get a GitHub token:${NC}"
@@ -191,14 +157,14 @@ setup_environment() {
         "local_sources")
             echo -e "${YELLOW}Local filesystem access:${NC}"
             echo -e "  - Host directories are mounted to /workspace in container"
-            echo -e "  - Edit .docker-config/.env to change PROJECTS_PATH, DOCS_PATH"
-            echo -e "  - Default: ./data/* directories"
+            echo -e "  - Edit examples/docker/.env to change PROJECTS_PATH, DOCS_PATH"
+            echo -e "  - Default: ./dist/data/* directories"
             ;;
         "mcp_servers")
             echo -e "${YELLOW}MCP servers configuration:${NC}"
             echo -e "  - All MCP servers run inside the container"
             echo -e "  - Optional: Set ARXIV_API_KEY for research papers"
-            echo -e "  - Database stored in ./data/data.db"
+            echo -e "  - Database stored in ./dist/data/data.db"
             ;;
     esac
     echo ""
@@ -216,7 +182,7 @@ build_project() {
 
 start_containers() {
     local source_type="$1"
-    local docker_config_dir="$PROJECT_ROOT/.docker-config"
+    local docker_config_dir="$SCRIPT_DIR"
     
     echo -e "${BLUE}Starting Docker containers with $source_type configuration...${NC}"
     
@@ -251,7 +217,7 @@ start_containers() {
     echo ""
     echo -e "${BLUE}Configuration:${NC}"
     echo -e "  ${YELLOW}Source type: $source_type${NC}"
-    echo -e "  ${YELLOW}Config file: $docker_config_dir/mcp-sources.yaml${NC}"
+    echo -e "  ${YELLOW}Config file: $docker_config_dir/$source_type/mcp-sources.yaml${NC}"
     echo -e "  ${YELLOW}Environment: $docker_config_dir/.env${NC}"
     echo ""
     echo -e "${BLUE}Access the server:${NC}"
@@ -260,23 +226,45 @@ start_containers() {
     echo ""
     echo -e "${BLUE}Setting up Claude Code MCP configuration...${NC}"
     
-    # Create MCP configuration file for Claude Code
-    cat > "$docker_config_dir/mcp_config.json" << EOF
-{
-  "mcpServers": {
-    "omni-mcp-hub": {
-      "url": "http://localhost:${port}/sse"
-    }
-  }
+    # Create stdio server wrapper in dist directory
+    local dist_docker_dir="$SCRIPT_DIR/dist"
+    mkdir -p "$dist_docker_dir"
+    local stdio_server="$dist_docker_dir/claude-stdio-server.js"
+    if [ ! -f "$stdio_server" ]; then
+        cat > "$stdio_server" << 'EOF'
+#!/usr/bin/env node
+
+// Claude Code Stdio Server Wrapper
+const path = require('path');
+
+// Configuration for the stdio server
+const configPath = process.env.CONFIG_FILE || path.join(__dirname, 'current-config.yaml');
+
+// Set environment variables
+process.env.CONFIG_FILE = configPath;
+process.env.NODE_ENV = 'production';
+
+// Start the stdio server
+const serverPath = path.join(__dirname, '../../../dist/servers/claude-code-stdio-server.js');
+try {
+  require(serverPath);
+} catch (error) {
+  console.error('Failed to start stdio server:', error);
+  process.exit(1);
 }
 EOF
+        chmod +x "$stdio_server"
+    fi
     
-    echo -e "${GREEN}MCP configuration created at: $docker_config_dir/mcp_config.json${NC}"
     echo ""
-    echo -e "${BLUE}To use with Claude Code:${NC}"
-    echo -e "  1. Use the configuration file: $docker_config_dir/mcp_config.json"
-    echo -e "  2. Start Claude Code in this directory"
-    echo -e "  3. The remote MCP server will connect automatically${NC}"
+    echo -e "${BLUE}To register with Claude Code (stdio mode):${NC}"
+    echo -e "  ${YELLOW}claude mcp add omni-mcp-hub node $stdio_server${NC}"
+    echo ""
+    echo -e "${BLUE}To verify registration:${NC}"
+    echo -e "  ${YELLOW}claude mcp list${NC}"
+    echo ""
+    echo -e "${BLUE}To remove (if needed):${NC}"
+    echo -e "  ${YELLOW}claude mcp remove omni-mcp-hub${NC}"
 }
 
 
@@ -309,6 +297,6 @@ main() {
 }
 
 # Handle script interruption
-trap 'echo -e "\n${YELLOW}Shutting down containers...${NC}"; cd "$PROJECT_ROOT/.docker-config" && docker-compose down; exit 0' INT TERM
+trap 'echo -e "\n${YELLOW}Shutting down containers...${NC}"; cd "$SCRIPT_DIR" && docker-compose down; exit 0' INT TERM
 
 main "$@"

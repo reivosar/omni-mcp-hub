@@ -162,7 +162,7 @@ export class SimpleMCPServer {
       switch (message.method) {
         case 'initialize':
           response.result = {
-            protocolVersion: '2024-11-05',
+            protocolVersion: '2025-06-18',
             capabilities: { tools: {} },
             serverInfo: { name: 'simple-mcp-hub', version: '1.0.0' }
           };

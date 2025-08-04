@@ -138,6 +138,22 @@ export class MCPServerManager {
     this.auditLogger = AuditLogger.getInstance();
   }
 
+  async initializeServers(configs: MCPServerConfig[] = []): Promise<void> {
+    console.log(`Initializing ${configs.length} MCP servers...`);
+    
+    for (const config of configs) {
+      try {
+        if (config.enabled !== false) {
+          await this.startServer(config);
+        }
+      } catch (error) {
+        console.error(`Failed to initialize MCP server ${config.name}:`, error);
+      }
+    }
+    
+    console.log(`Initialized ${this.servers.size} MCP servers`);
+  }
+
   async startServer(config: MCPServerConfig): Promise<MCPServerInstance> {
     if (config.enabled === false) {
       throw new Error(`Server ${config.name} is disabled`);

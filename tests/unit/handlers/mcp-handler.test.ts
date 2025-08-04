@@ -700,6 +700,7 @@ describe('MCPHandler', () => {
       expect(methods).toEqual([
         'initialize',
         'initialized',
+        'notifications/initialized',
         'ping',
         'tools/list',
         'tools/call'

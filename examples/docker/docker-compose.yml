@@ -2,14 +2,12 @@ version: '3.8'
 
 services:
   omni-mcp-hub:
-    build: 
-      context: ../..
-      dockerfile: examples/docker/Dockerfile
+    image: docker-config-omni-mcp-hub:latest
     ports:
       - "3000:3000"
     volumes:
-      # Mount your configuration file
-      - ./mcp-sources.yaml:/app/mcp-sources.yaml:ro
+      # Mount your configuration file (dynamically set by start.sh)
+      - ./current-config.yaml:/app/mcp-sources.yaml:ro
       # Mount local directories you want to access (for local_sources)
       - ${HOME}/projects:/projects:ro
       - ${HOME}/documents:/documents:ro

@@ -92,6 +92,15 @@ export class SourceConfigManager {
       rawConfig.sources = rawConfig.sources.map((source: unknown) => this.autoDetectSourceType(source));
     }
     
+    // Apply auto-detection for local_sources and github_sources
+    if (rawConfig.local_sources && Array.isArray(rawConfig.local_sources)) {
+      rawConfig.local_sources = rawConfig.local_sources.map((source: unknown) => this.autoDetectSourceType(source));
+    }
+    
+    if (rawConfig.github_sources && Array.isArray(rawConfig.github_sources)) {
+      rawConfig.github_sources = rawConfig.github_sources.map((source: unknown) => this.autoDetectSourceType(source));
+    }
+    
     const configStr = JSON.stringify(rawConfig);
     const replacedStr = configStr.replace(/\${(\w+)}/g, (_, envVar) => {
       return process.env[envVar] || '';

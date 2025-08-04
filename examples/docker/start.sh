@@ -84,9 +84,7 @@ version: '3.8'
 
 services:
   omni-mcp-hub:
-    build:
-      context: $PROJECT_ROOT
-      dockerfile: Dockerfile
+    image: docker-config-omni-mcp-hub:latest
     container_name: omni-mcp-hub
     ports:
       - "\${PORT:-3000}:\${PORT:-3000}"
@@ -210,46 +208,10 @@ build_project() {
     echo -e "${BLUE}Building Docker image...${NC}"
     cd "$PROJECT_ROOT"
     
-    # Create Dockerfile if it doesn't exist
-    if [ ! -f "Dockerfile" ]; then
-        cat > "Dockerfile" << EOF
-FROM node:18-alpine
-
-WORKDIR /app
-
-# Install system dependencies
-RUN apk add --no-cache git python3 py3-pip curl
-
-# Install Python packages for MCP servers
-RUN pip3 install arxiv-mcp-server mcp-server-browser mcp-server-sqlite mcp-server-git
-
-# Copy package files
-COPY package*.json ./
-
-# Install Node.js dependencies
-RUN npm ci --only=production
-
-# Copy source code
-COPY . .
-
-# Build the application
-RUN npm run build
-
-# Expose port
-EXPOSE 3000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:3000/health || exit 1
-
-# Start the application
-CMD ["npm", "start"]
-EOF
-        echo -e "${GREEN}Created Dockerfile${NC}"
-    fi
+    # Use existing Dockerfile
     
     # Build the image
-    docker build -t omni-mcp-hub:latest .
+    docker build -t docker-config-omni-mcp-hub:latest .
 }
 
 start_containers() {
@@ -289,10 +251,51 @@ start_containers() {
     echo -e "  ${YELLOW}HTTP: http://localhost:3000${NC}"
     echo -e "  ${YELLOW}Health: http://localhost:3000/health${NC}"
     echo ""
+    echo -e "${BLUE}Setting up Claude Desktop integration...${NC}"
+    setup_claude_desktop_integration
+    
     echo -e "${BLUE}To use with Claude Desktop:${NC}"
-    echo -e "  1. Add server configuration to ~/.config/claude-desktop/claude_desktop_config.json"
-    echo -e "  2. Restart Claude Desktop application"
-    echo -e "  3. The server is now accessible at http://localhost:3000"
+    echo -e "  1. Restart Claude Desktop application"
+    echo -e "  2. The MCP server will connect automatically"
+    echo -e "  3. Access aggregated content through Claude's interface"
+}
+
+setup_claude_desktop_integration() {
+    echo -e "${BLUE}Setting up Claude Desktop integration...${NC}"
+    
+    # Claude Desktop MCP configuration directory
+    local claude_config_dir="$HOME/.config/claude-desktop"
+    local claude_mcp_config="$claude_config_dir/claude_desktop_config.json"
+    
+    # Create Claude Desktop config directory if it doesn't exist
+    mkdir -p "$claude_config_dir"
+    
+    # Create or update Claude Desktop MCP configuration
+    if [ ! -f "$claude_mcp_config" ]; then
+        cat > "$claude_mcp_config" << EOF
+{
+  "mcpServers": {
+    "omni-mcp-hub": {
+      "command": "node",
+      "args": ["$PROJECT_ROOT/dist/servers/server.js"],
+      "env": {
+        "NODE_ENV": "production",
+        "CONFIG_FILE": "$PROJECT_ROOT/.docker-config/mcp-sources.yaml",
+        "PORT": "3000"
+      }
+    }
+  }
+}
+EOF
+        echo -e "${GREEN}Created Claude Desktop MCP configuration${NC}"
+    else
+        echo -e "${YELLOW}Claude Desktop MCP configuration already exists${NC}"
+        echo -e "${YELLOW}Please manually add omni-mcp-hub server configuration${NC}"
+    fi
+    
+    # Copy configuration to Claude Desktop
+    cp "$PROJECT_ROOT/.docker-config/mcp-sources.yaml" "$claude_config_dir/mcp-sources.yaml"
+    echo -e "${GREEN}Configuration copied to Claude Desktop directory${NC}"
 }
 
 main() {

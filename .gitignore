@@ -72,3 +72,14 @@ config.local.yaml
 config.local.yml
 *.local.yaml
 *.local.yml
+
+# Example directories that should not be restored
+examples/github_sources/
+examples/local_sources/
+examples/mcp_servers/
+examples/claude-desktop/github_sources/
+examples/claude-desktop/local_sources/
+examples/claude-desktop/mcp_servers/
+examples/docker/github_sources/
+examples/docker/local_sources/
+examples/docker/mcp_servers/

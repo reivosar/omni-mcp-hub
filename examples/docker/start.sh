@@ -522,12 +522,33 @@ main() {
             claude_config=$(configure_claude_options)
         fi
     else
-        # Command line argument provided
-        source_type="$1"
+        # Command line argument provided - parse all arguments
+        while [[ $# -gt 0 ]]; do
+            case $1 in
+                --help|-h|help)
+                    usage
+                    ;;
+                --dangerously-skip-permissions)
+                    # Ignore Docker Compose flags
+                    shift
+                    ;;
+                --*)
+                    # Ignore other flags
+                    shift
+                    ;;
+                *)
+                    # This should be the source type
+                    if [ -z "$source_type" ]; then
+                        source_type="$1"
+                    fi
+                    shift
+                    ;;
+            esac
+        done
         
-        # Handle help flags
-        if [[ "$source_type" == "--help" || "$source_type" == "-h" || "$source_type" == "help" ]]; then
-            usage
+        # If no source type found, show interactive menu
+        if [ -z "$source_type" ]; then
+            source_type=$(select_source_type)
         fi
         
         # Validate source type

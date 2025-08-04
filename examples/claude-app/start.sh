@@ -364,6 +364,8 @@ start_server() {
 
 setup_claude_registration() {
     local source_type="$1"
+    shift
+    local claude_flags=("$@")
     
     echo ""
     echo -e "${BLUE}Setting up Claude Code MCP configuration...${NC}"
@@ -439,6 +441,15 @@ EOF
     echo -e "${BLUE}Additional commands:${NC}"
     echo -e "  ${YELLOW}claude mcp list${NC}           - List all registered MCP servers"
     echo -e "  ${YELLOW}claude mcp remove omni-mcp-hub${NC} - Remove this registration"
+    
+    echo ""
+    echo -e "${BLUE}Launching Claude Code...${NC}"
+    if [ ${#claude_flags[@]} -gt 0 ]; then
+        echo -e "${YELLOW}Using flags: ${claude_flags[*]}${NC}"
+        claude "${claude_flags[@]}"
+    else
+        claude
+    fi
 }
 
 main() {
@@ -447,6 +458,7 @@ main() {
     
     local source_type=""
     local claude_config=""
+    local claude_flags=()
     
     if [ "$#" -eq 0 ]; then
         # Interactive mode - let user select source type
@@ -467,7 +479,8 @@ main() {
                     usage
                     ;;
                 --dangerously-skip-permissions|--*)
-                    # Ignore flags
+                    # Save flags for claude command
+                    claude_flags+=("$1")
                     shift
                     ;;
                 *)
@@ -529,7 +542,7 @@ main() {
         local stdio_server="$SCRIPT_DIR/dist/claude-stdio-server.js"
         echo -e "  ${YELLOW}claude mcp add omni-mcp-hub node $stdio_server${NC}"
     else
-        setup_claude_registration "$source_type"
+        setup_claude_registration "$source_type" "${claude_flags[@]}"
     fi
 }
 

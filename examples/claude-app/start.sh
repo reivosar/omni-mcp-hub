@@ -385,7 +385,7 @@ const path = require('path');
 const configPath = process.env.CONFIG_FILE || path.join(process.env.HOME, '.config/claude-app/mcp-sources.yaml');
 
 // Set environment variables
-process.env.CONFIG_FILE = configPath;
+process.env.CONFIG_PATH = configPath;
 process.env.NODE_ENV = 'production';
 
 // Start the stdio server

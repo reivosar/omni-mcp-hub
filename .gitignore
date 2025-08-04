@@ -71,4 +71,6 @@ coverage/
 config.local.yaml
 config.local.yml
 *.local.yaml
-*.local.yml
+*.local.ymlexamples/docker/current-config.yaml
+examples/docker/dist/
+examples/claude-app/dist/

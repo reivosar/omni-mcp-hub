@@ -70,24 +70,20 @@ setup_claude_desktop_config() {
     echo -e "${BLUE}Setting up Claude Desktop integration...${NC}"
     cp "$config_path" "$claude_config_dir/mcp-sources.yaml"
     
-    # Create or update Claude Desktop MCP configuration
+    # Create or update Claude Code MCP configuration  
     if [ ! -f "$claude_mcp_config" ]; then
         cat > "$claude_mcp_config" << EOF
 {
   "mcpServers": {
     "omni-mcp-hub": {
-      "command": "node",
-      "args": ["$PROJECT_ROOT/dist/servers/server.js"],
-      "env": {
-        "NODE_ENV": "production"
-      }
+      "url": "http://localhost:\${PORT:-3000}/sse"
     }
   }
 }
 EOF
-        echo -e "${GREEN}Created Claude Desktop MCP configuration${NC}"
+        echo -e "${GREEN}Created Claude Code MCP configuration${NC}"
     else
-        echo -e "${YELLOW}Claude Desktop MCP configuration already exists${NC}"
+        echo -e "${YELLOW}Claude Code MCP configuration already exists${NC}"
         echo -e "${YELLOW}Please manually add omni-mcp-hub server configuration${NC}"
     fi
     

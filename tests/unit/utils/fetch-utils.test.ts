@@ -1,5 +1,8 @@
 import nock from 'nock';
-import { FetchUtils } from '../../src/utils/fetch-utils';
+import { FetchUtils } from '../../../src/utils/fetch-utils';
+
+// Use fake timers to avoid real delays in timeout tests
+jest.useFakeTimers();
 
 describe('FetchUtils', () => {
   afterEach(() => {

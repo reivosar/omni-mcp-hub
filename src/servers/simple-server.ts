@@ -22,7 +22,7 @@ interface MCPResponse {
   error?: { code: number; message: string };
 }
 
-class SimpleMCPServer {
+export class SimpleMCPServer {
   private wss: WebSocket.Server;
   private sources: SourceData[] = [];
   private port: number;

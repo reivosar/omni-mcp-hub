@@ -1,4 +1,4 @@
-import { GitHubAPI } from '../../src/github/github-api';
+import { GitHubAPI } from '../../../src/github/github-api';
 
 // Mock global fetch
 const mockFetch = jest.fn();

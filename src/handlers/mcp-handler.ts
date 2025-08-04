@@ -252,8 +252,8 @@ export class MCPHandler extends BaseClientHandler {
         break;
 
       default:
-        // Check if it's an MCP server tool
-        if (name.includes('__')) {
+        // Check if it's an MCP server tool (supports both formats: server__tool and server/tool)
+        if (name.includes('__') || name.includes('/')) {
           result = await this.mcpServerManager.callTool(name, args);
         } else {
           throw new Error(`Unknown tool: ${name}`);

@@ -1,6 +1,6 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { LocalHandler } from '../../src/handlers/local-handler';
+import { LocalHandler } from '../../../src/handlers/local-handler';
 
 // Mock fs-extra
 jest.mock('fs-extra');

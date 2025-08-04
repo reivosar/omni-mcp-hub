@@ -1,4 +1,4 @@
-import { SourceManager, SourceHandler } from '../../src/sources/source-handler';
+import { SourceManager, SourceHandler } from '../../../src/sources/source-handler';
 
 // Mock SourceHandler implementation for testing
 class MockSourceHandler implements SourceHandler {

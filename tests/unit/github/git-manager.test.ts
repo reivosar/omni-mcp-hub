@@ -1,7 +1,7 @@
 import simpleGit, { SimpleGit } from 'simple-git';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { GitManager } from '../../src/github/git-manager';
+import { GitManager } from '../../../src/github/git-manager';
 
 // Mock dependencies
 jest.mock('simple-git');

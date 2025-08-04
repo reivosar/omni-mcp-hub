@@ -1,5 +1,5 @@
-import { ContentValidator } from '../../src/utils/content-validator';
-import { SecurityRulesLoader } from '../../src/utils/security-rules-loader';
+import { ContentValidator } from '../../../src/utils/content-validator';
+import { SecurityRulesLoader } from '../../../src/utils/security-rules-loader';
 
 describe('ContentValidator', () => {
   beforeEach(() => {

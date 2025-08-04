@@ -1,12 +1,12 @@
-import { MCPServerManager, MCPServerClient } from '../../src/mcp/mcp-server-manager';
-import { MCPHandler } from '../../src/handlers/mcp-handler';
-import { SourceConfigManager, MCPServerConfig } from '../../src/config/source-config-manager';
+import { MCPServerManager, MCPServerClient } from '../../../src/mcp/mcp-server-manager';
+import { MCPHandler } from '../../../src/handlers/mcp-handler';
+import { SourceConfigManager, MCPServerConfig } from '../../../src/config/source-config-manager';
 import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 
 // Mock dependencies
 jest.mock('child_process');
-jest.mock('../../src/utils/content-validator');
+jest.mock('../../../src/utils/content-validator');
 
 const mockSpawn = spawn as jest.MockedFunction<typeof spawn>;
 

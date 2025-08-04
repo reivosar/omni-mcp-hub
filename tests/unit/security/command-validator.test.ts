@@ -202,7 +202,7 @@ describe('CommandValidator', () => {
       if (!result.allowed) {
         console.log('Working directory validation failed:', result.reason);
         console.log('Current working directory:', process.cwd());
-        const policyManager = require('../../../src/security/security-policy').SecurityPolicyManager.getInstance();
+        const policyManager = require('../../../../src/security/security-policy').SecurityPolicyManager.getInstance();
         const policy = policyManager.getPolicy();
         console.log('Allowed paths:', policy.allowedPaths);
         console.log('Blocked paths:', policy.blockedPaths);

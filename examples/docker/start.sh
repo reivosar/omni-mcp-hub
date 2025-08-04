@@ -422,6 +422,11 @@ start_containers() {
     echo -e "${BLUE}Access the server:${NC}"
     echo -e "  ${YELLOW}HTTP: http://localhost:${port}${NC}"
     echo -e "  ${YELLOW}Health: http://localhost:${port}/health${NC}"
+}
+
+setup_claude_registration() {
+    local source_type="$1"
+    
     echo ""
     echo -e "${BLUE}Setting up Claude Code MCP configuration...${NC}"
     
@@ -456,16 +461,47 @@ EOF
     fi
     
     echo ""
-    echo -e "${BLUE}To register with Claude Code (stdio mode):${NC}"
-    echo -e "  ${YELLOW}claude mcp add omni-mcp-hub node $stdio_server${NC}"
+    echo -e "${BLUE}Registering with Claude Code...${NC}"
+    
+    # Check if claude command is available
+    if ! command -v claude &> /dev/null; then
+        echo -e "${RED}Error: 'claude' command not found${NC}"
+        echo -e "${YELLOW}Please install Claude Code CLI first:${NC}"
+        echo -e "  npm install -g @anthropic/claude-code"
+        echo ""
+        echo -e "${BLUE}Manual registration command:${NC}"
+        echo -e "  ${YELLOW}claude mcp add omni-mcp-hub node $stdio_server${NC}"
+        return
+    fi
+    
+    # Remove existing registration if it exists
+    echo -e "${BLUE}Checking for existing registration...${NC}"
+    if claude mcp list 2>/dev/null | grep -q "omni-mcp-hub"; then
+        echo -e "${YELLOW}Removing existing omni-mcp-hub registration...${NC}"
+        claude mcp remove omni-mcp-hub 2>/dev/null || true
+    fi
+    
+    # Register the MCP server
+    echo -e "${BLUE}Registering omni-mcp-hub with Claude Code...${NC}"
+    if claude mcp add omni-mcp-hub node "$stdio_server"; then
+        echo -e "${GREEN}✅ Successfully registered omni-mcp-hub with Claude Code!${NC}"
+        echo ""
+        echo -e "${BLUE}Verifying registration:${NC}"
+        claude mcp list | grep -A 2 -B 2 "omni-mcp-hub" || true
+        echo ""
+        echo -e "${GREEN}🎉 Setup complete! You can now use omni-mcp-hub in Claude Code.${NC}"
+    else
+        echo -e "${RED}❌ Failed to register omni-mcp-hub${NC}"
+        echo ""
+        echo -e "${BLUE}Manual registration command:${NC}"
+        echo -e "  ${YELLOW}claude mcp add omni-mcp-hub node $stdio_server${NC}"
+    fi
+    
     echo ""
-    echo -e "${BLUE}To verify registration:${NC}"
-    echo -e "  ${YELLOW}claude mcp list${NC}"
-    echo ""
-    echo -e "${BLUE}To remove (if needed):${NC}"
-    echo -e "  ${YELLOW}claude mcp remove omni-mcp-hub${NC}"
+    echo -e "${BLUE}Additional commands:${NC}"
+    echo -e "  ${YELLOW}claude mcp list${NC}           - List all registered MCP servers"
+    echo -e "  ${YELLOW}claude mcp remove omni-mcp-hub${NC} - Remove this registration"
 }
-
 
 main() {
     echo -e "${GREEN}🐳 Omni MCP Hub - Docker Deployment${NC}"
@@ -525,6 +561,21 @@ main() {
     setup_environment "$source_type" "$claude_config"
     build_project
     start_containers "$source_type" "$claude_config"
+    
+    # Ask if user wants to register with Claude Code
+    echo ""
+    echo -n -e "${BLUE}Register with Claude Code now? (Y/n): ${NC}"
+    read -r register_claude
+    
+    if [[ "$register_claude" =~ ^[Nn]$ ]]; then
+        echo -e "${YELLOW}Skipping Claude Code registration.${NC}"
+        echo ""
+        echo -e "${BLUE}To register manually later:${NC}"
+        local stdio_server="$SCRIPT_DIR/dist/claude-stdio-server.js"
+        echo -e "  ${YELLOW}claude mcp add omni-mcp-hub node $stdio_server${NC}"
+    else
+        setup_claude_registration "$source_type"
+    fi
 }
 
 # Handle script interruption

@@ -7,7 +7,7 @@ services:
       - "3000:3000"
     volumes:
       # Mount your configuration file (dynamically set by start.sh)
-      - ./current-config.yaml:/app/mcp-sources.yaml:ro
+      - ./dist/current-config.yaml:/app/mcp-sources.yaml:ro
       # Mount local directories you want to access (for local_sources)
       - ${HOME}/projects:/projects:ro
       - ${HOME}/documents:/documents:ro

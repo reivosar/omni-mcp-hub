@@ -3,12 +3,22 @@ import { MCPHandler } from '../../../src/handlers/mcp-handler';
 import { SourceConfigManager, MCPServerConfig } from '../../../src/config/source-config-manager';
 import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
+import { SandboxedExecutor } from '../../../src/security/sandboxed-executor';
+import { CommandValidator } from '../../../src/security/command-validator';
+import { AuditLogger } from '../../../src/security/audit-logger';
 
 // Mock dependencies
 jest.mock('child_process');
 jest.mock('../../../src/utils/content-validator');
+jest.mock('../../../src/security/sandboxed-executor');
+jest.mock('../../../src/security/command-validator');
+jest.mock('../../../src/security/audit-logger');
 
 const mockSpawn = spawn as jest.MockedFunction<typeof spawn>;
+
+// Setup security mocks
+const MockSandboxedExecutor = SandboxedExecutor as jest.MockedClass<typeof SandboxedExecutor>;
+const MockCommandValidator = CommandValidator as jest.MockedClass<typeof CommandValidator>;
 
 class MockChildProcess extends EventEmitter {
   stdin = {
@@ -51,11 +61,39 @@ describe('MCP Error Scenarios and Edge Cases', () => {
   let mockProcess: MockChildProcess;
 
   beforeEach(() => {
-    manager = new MCPServerManager();
+    jest.clearAllMocks();
+    
+    // Setup security mocks
+    const mockSandboxedExecutor = {
+      executeCommand: jest.fn(),
+      monitorProcess: jest.fn()
+    } as any;
+    
+    const mockCommandValidator = {
+      validateCommand: jest.fn().mockReturnValue({ allowed: true }),
+      validateMCPServerConfig: jest.fn().mockReturnValue({ allowed: true })
+    } as any;
+    
+    const mockAuditLogger = {
+      logConfigurationValidation: jest.fn(),
+      logCommandFailure: jest.fn(),
+      logSuspiciousActivity: jest.fn()
+    } as any;
+    
+    MockSandboxedExecutor.mockImplementation(() => mockSandboxedExecutor);
+    MockCommandValidator.mockImplementation(() => mockCommandValidator);
+    (AuditLogger as any).getInstance = jest.fn().mockReturnValue(mockAuditLogger);
+    
     mockProcess = new MockChildProcess();
     mockSpawn.mockReturnValue(mockProcess as any);
-
-    jest.clearAllMocks();
+    
+    // Setup default successful execution
+    mockSandboxedExecutor.executeCommand.mockResolvedValue({
+      success: true,
+      process: mockProcess
+    });
+    
+    manager = new MCPServerManager();
   });
 
   afterEach(() => {
@@ -798,9 +836,16 @@ describe('MCP Error Scenarios and Edge Cases', () => {
         enabled: true
       };
 
-      jest.useFakeTimers();
-      const startPromise = manager.startServer(config);
+      // Mock the sandboxed executor to succeed despite invalid env vars
+      const mockSandboxedExecutor = (manager as any).sandboxedExecutor;
+      mockSandboxedExecutor.executeCommand.mockResolvedValue({
+        success: true,
+        process: mockProcess
+      });
 
+      const instance = await manager.startServer(config);
+      
+      // Simulate successful initialization
       setTimeout(() => {
         mockProcess.emit('spawn');
         mockProcess.simulateStdout(JSON.stringify({
@@ -808,15 +853,10 @@ describe('MCP Error Scenarios and Edge Cases', () => {
           id: 1,
           result: {}
         }) + '\n');
-      }, 1100);
-
-      jest.advanceTimersByTime(2000);
+      }, 100);
 
       // Should handle invalid env vars gracefully
-      const instance = await startPromise;
       expect(instance).toBeDefined();
-
-      jest.useRealTimers();
     });
 
     test('should handle extremely long command arguments', async () => {
@@ -827,22 +867,14 @@ describe('MCP Error Scenarios and Edge Cases', () => {
         enabled: true
       };
 
-      jest.useFakeTimers();
-      const startPromise = manager.startServer(config);
+      // Mock the sandboxed executor to fail with E2BIG error
+      const mockSandboxedExecutor = (manager as any).sandboxedExecutor;
+      mockSandboxedExecutor.executeCommand.mockResolvedValue({
+        success: false,
+        error: 'Argument list too long'
+      });
 
-      setTimeout(() => {
-        // Might fail due to argument length limits
-        const error = new Error('Argument list too long');
-        (error as any).code = 'E2BIG';
-        mockProcess.simulateError(error);
-      }, 100);
-
-      jest.advanceTimersByTime(2000);
-
-      const instance = await startPromise;
-      expect(instance.status).toBe('error');
-
-      jest.useRealTimers();
+      await expect(manager.startServer(config)).rejects.toThrow('Failed to start MCP server long-args-server: Argument list too long');
     });
   });
 });

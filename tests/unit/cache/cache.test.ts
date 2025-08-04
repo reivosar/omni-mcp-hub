@@ -1,8 +1,5 @@
 import { MemoryCache, CacheManager, CacheInterface } from '../../../src/cache/cache';
 
-// Mock timers for TTL testing
-jest.useFakeTimers();
-
 describe('MemoryCache', () => {
   let cache: MemoryCache;
 
@@ -12,7 +9,7 @@ describe('MemoryCache', () => {
 
   afterEach(() => {
     cache.destroy();
-    jest.clearAllTimers();
+    jest.useRealTimers();
   });
 
   describe('Constructor', () => {
@@ -180,6 +177,14 @@ describe('MemoryCache', () => {
   });
 
   describe('TTL with fake timers', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+    
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
     test('should respect custom TTL with fake timers', async () => {
       await cache.set('key1', 'value1', 1); // 1 second TTL
       

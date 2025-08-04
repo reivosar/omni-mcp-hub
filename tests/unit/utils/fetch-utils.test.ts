@@ -1,12 +1,14 @@
 import nock from 'nock';
 import { FetchUtils } from '../../../src/utils/fetch-utils';
 
-// Use fake timers to avoid real delays in timeout tests
-jest.useFakeTimers();
-
 describe('FetchUtils', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+  
   afterEach(() => {
     nock.cleanAll();
+    jest.useRealTimers();
   });
 
   describe('fetchWithTimeout', () => {
@@ -23,12 +25,15 @@ describe('FetchUtils', () => {
     test('should timeout after specified duration', async () => {
       nock('https://example.com')
         .get('/slow')
-        .delay(200) // Shorter delay but still longer than timeout
+        .delay(200) // 200ms delay
         .reply(200, 'too slow');
 
       await expect(
-        FetchUtils.fetchWithTimeout('https://example.com/slow', { timeout: 100 })
-      ).rejects.toThrow();
+        FetchUtils.fetchWithTimeout('https://example.com/slow', { 
+          timeout: 100, // 100ms timeout
+          retries: 0 // No retries to make test faster
+        })
+      ).rejects.toThrow('Request timeout after 100ms');
     });
 
     test('should retry on failure', async () => {
@@ -42,7 +47,7 @@ describe('FetchUtils', () => {
 
       const response = await FetchUtils.fetchWithTimeout('https://example.com/flaky', {
         retries: 2,
-        retryDelay: 10
+        retryDelay: 1 // Reduce delay to speed up test
       });
       
       expect(response.status).toBe(200);
@@ -58,7 +63,7 @@ describe('FetchUtils', () => {
       await expect(
         FetchUtils.fetchWithTimeout('https://example.com/always-fails', {
           retries: 3,
-          retryDelay: 10
+          retryDelay: 1 // Reduce delay to speed up test
         })
       ).rejects.toThrow('HTTP 500');
     });

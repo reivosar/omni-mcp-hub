@@ -550,9 +550,6 @@ main() {
             esac
         done
         
-        # Clear all arguments after parsing to prevent flag pollution
-        set --
-        
         # If no source type found, show interactive menu
         if [ -z "$source_type" ]; then
             source_type=$(select_source_type)

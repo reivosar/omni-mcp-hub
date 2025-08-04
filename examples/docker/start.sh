@@ -245,6 +245,10 @@ setup_docker_config() {
     # Use examples/docker as the configuration directory
     local docker_config_dir="$SCRIPT_DIR"
     
+    # Create dist directory for configuration
+    local dist_docker_dir="$SCRIPT_DIR/dist"
+    mkdir -p "$dist_docker_dir"
+    
     # Copy the selected configuration file to dist directory
     echo -e "${BLUE}Setting up Docker configuration...${NC}"
     local dist_config="$dist_docker_dir/current-config.yaml"
@@ -289,9 +293,9 @@ WORKSPACE_PATH=./dist/data/workspace
 # Create these directories if they don't exist
 EOF
             # Create local data directories in dist
-            mkdir -p "$dist_docker_dir/data/projects"
-            mkdir -p "$dist_docker_dir/data/docs"  
-            mkdir -p "$dist_docker_dir/data/workspace"
+            mkdir -p "$SCRIPT_DIR/dist/data/projects"
+            mkdir -p "$SCRIPT_DIR/dist/data/docs"  
+            mkdir -p "$SCRIPT_DIR/dist/data/workspace"
             ;;
         "mcp_servers")
             cat >> "$env_file" << EOF
@@ -304,7 +308,7 @@ GIT_USER_EMAIL=claude@anthropic.com
 
 # Create data directory for SQLite
 EOF
-            mkdir -p "$dist_docker_dir/data"
+            mkdir -p "$SCRIPT_DIR/dist/data"
             ;;
     esac
     

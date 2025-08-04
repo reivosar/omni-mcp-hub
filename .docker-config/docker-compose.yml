@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  omni-mcp-hub:
+    build:
+      context: /Users/mac/workspace/omni-mcp-hub
+      dockerfile: Dockerfile
+    container_name: omni-mcp-hub
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    volumes:
+      - "/Users/mac/workspace/omni-mcp-hub/.docker-config/mcp-sources.yaml:/app/mcp-sources.yaml:ro"
+      - "${PROJECTS_PATH:-./data}:/workspace:ro"
+    environment:
+      - NODE_ENV=production
+      - CONFIG_FILE=/app/mcp-sources.yaml
+      - PORT=${PORT:-3000}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - PROJECTS_PATH=${PROJECTS_PATH:-/workspace}
+      - DOCS_PATH=${DOCS_PATH:-/workspace/docs}
+      - WORKSPACE_PATH=${WORKSPACE_PATH:-/workspace}
+      - ARXIV_API_KEY=${ARXIV_API_KEY:-}
+      - ALLOWED_PATHS=${ALLOWED_PATHS:-/tmp,/var/tmp}
+      - DATABASE_PATH=${DATABASE_PATH:-./data.db}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-3000}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  default:
+    name: omni-mcp-hub-network

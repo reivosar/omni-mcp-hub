@@ -49,4 +49,4 @@ RUN chown -R nodejs:nodejs /app
 # Switch to non-root user
 USER nodejs
 
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/servers/server.js"]

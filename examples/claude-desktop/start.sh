@@ -77,7 +77,7 @@ setup_claude_desktop_config() {
   "mcpServers": {
     "omni-mcp-hub": {
       "command": "node",
-      "args": ["$PROJECT_ROOT/dist/index.js"],
+      "args": ["$PROJECT_ROOT/dist/servers/server.js"],
       "env": {
         "NODE_ENV": "production"
       }

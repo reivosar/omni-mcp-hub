@@ -1,54 +1,5 @@
-server:
-  port: 3000
-
-# MCP server aggregation - no documentation sources needed
-# This example focuses purely on MCP server aggregation
-
-# MCP server aggregation
-mcp_servers: []
-
-# Add a simple local source for testing
-local_sources:
-  - url: /app
-    # This provides access to the application directory itself
-
-# File processing configuration (minimal)
-files:
-  patterns: ["CLAUDE.md"]
-  max_size: 1048576
-
-# Network settings
-fetch:
-  timeout: 30000
-  retries: 3
-  retry_delay: 1000
-  max_depth: 2
-
-# Enhanced security
-security:
-  content_validation:
+mcp_servers:
+  - name: microsoft-docs
+    type: http
+    url: https://learn.microsoft.com/api/mcp
     enabled: true
-    reject_patterns:
-      # Credentials
-      - "password\\s*[=:]\\s*['\"][^'\"]{3,}['\"]"
-      - "api[_-]?key\\s*[=:]\\s*['\"][^'\"]{10,}['\"]"
-      - "secret\\s*[=:]\\s*['\"][^'\"]{8,}['\"]"
-      - "token\\s*[=:]\\s*['\"][^'\"]{20,}['\"]"
-      
-      # Command injection
-      - "\\$\\([^)]*\\)"
-      - "`[^`]*`"
-      - ";\\s*(rm|del|format|sudo)"
-      
-      # Script execution
-      - "<script[^>]*>"
-      - "javascript:"
-      - "eval\\s*\\("
-      
-    additional_keywords:
-      - "malicious"
-      - "exploit"
-      - "backdoor"
-      - "vulnerability"
-    
-    max_file_size: 10485760  # 10MB

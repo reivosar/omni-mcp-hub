@@ -11,8 +11,8 @@ const execAsync = promisify(exec);
 export interface MCPServerInstance {
   name: string;
   config: MCPServerConfig;
-  process: ChildProcess;
-  client: MCPServerClient;
+  process: ChildProcess | null;
+  client?: MCPServerClient;
   status: 'starting' | 'running' | 'stopped' | 'error';
 }
 
@@ -175,6 +175,23 @@ export class MCPServerManager {
 
     console.log(`Starting MCP server: ${config.name}`);
     
+    // Skip execution for HTTP servers
+    if (config.type === 'http') {
+      console.log(`HTTP MCP server ${config.name} registered (no process to start)`);
+      const httpInstance: MCPServerInstance = {
+        name: config.name,
+        config: config,
+        process: null,
+        status: 'running'
+      };
+      this.servers.set(config.name, httpInstance);
+      return httpInstance;
+    }
+
+    if (!config.command) {
+      throw new Error(`Command is required for stdio MCP server ${config.name}`);
+    }
+    
     // Prepare secure execution context
     const execution = {
       command: config.command,
@@ -256,7 +273,9 @@ export class MCPServerManager {
       throw new Error(`Server ${name} not found`);
     }
 
-    instance.process.kill();
+    if (instance.process) {
+      instance.process.kill();
+    }
     this.servers.delete(name);
   }
 
@@ -277,7 +296,7 @@ export class MCPServerManager {
     const allTools: any[] = [];
     
     for (const instance of this.servers.values()) {
-      if (instance.status === 'running') {
+      if (instance.status === 'running' && instance.client) {
         try {
           const result = await instance.client.listTools();
           if (result.tools) {
@@ -315,6 +334,10 @@ export class MCPServerManager {
     
     if (instance.status !== 'running') {
       throw new Error(`Server ${serverName} is not running`);
+    }
+
+    if (!instance.client) {
+      throw new Error(`Server ${serverName} has no client`);
     }
     
     return instance.client.callTool(originalToolName, arguments_);

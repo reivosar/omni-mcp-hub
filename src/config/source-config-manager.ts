@@ -21,8 +21,10 @@ export interface LocalSourceConfig {
 
 export interface MCPServerConfig {
   name: string;
+  type?: 'stdio' | 'http';
+  url?: string;
   install_command?: string;
-  command: string;
+  command?: string;
   args?: string[];
   env?: Record<string, string>;
   enabled?: boolean;

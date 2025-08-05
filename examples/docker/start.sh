@@ -455,15 +455,22 @@ const configPath = process.env.CONFIG_FILE || path.join(__dirname, 'current-conf
 // Set environment variables
 process.env.CONFIG_PATH = configPath;
 process.env.NODE_ENV = 'production';
+process.env.MCP_MODE = 'stdio';
 
-// Start the stdio server
-const serverPath = path.join(__dirname, '../../../dist/servers/claude-code-stdio-server.js');
-try {
-  require(serverPath);
-} catch (error) {
-  console.error('Failed to start stdio server:', error);
-  process.exit(1);
+// Start the stdio server directly
+const { SimpleStdioServer } = require(path.join(__dirname, '../../../dist/servers/simple-stdio-server.js'));
+
+async function startStdioServer() {
+  try {
+    const server = new SimpleStdioServer();
+    await server.start();
+  } catch (error) {
+    console.error('Failed to start stdio server:', error);
+    process.exit(1);
+  }
 }
+
+startStdioServer();
 EOF
         chmod +x "$stdio_server"
     fi

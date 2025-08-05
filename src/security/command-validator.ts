@@ -207,6 +207,28 @@ export class CommandValidator {
    * Validates MCP server configuration for security
    */
   public validateMCPServerConfig(config: any): ValidationResult {
+    // HTTP MCP servers don't need commands
+    if (config.type === 'http') {
+      if (!config.url || typeof config.url !== 'string') {
+        return {
+          allowed: false,
+          reason: 'Missing or invalid URL for HTTP MCP server'
+        };
+      }
+      
+      // Validate URL format
+      try {
+        new URL(config.url);
+      } catch {
+        return {
+          allowed: false,
+          reason: 'Invalid URL format for HTTP MCP server'
+        };
+      }
+      
+      return { allowed: true };
+    }
+    
     if (!config.command) {
       return {
         allowed: false,

@@ -1,19 +1,81 @@
 import { MCPSSEServer } from './mcp-sse-server';
 import { SourceConfigManager } from '../config/source-config-manager';
 
-class OmniMCPServer {
+// 条件付きimport - MCP_MODEがstdioまたはunifiedの場合のみ
+let MCPStdioBridge: any = null;
+if (process.env.MCP_MODE === 'stdio' || process.env.MCP_MODE === 'unified') {
+  try {
+    MCPStdioBridge = require('./mcp-stdio-bridge').MCPStdioBridge;
+  } catch (error) {
+    console.error('MCP SDK not available, stdio mode disabled');
+  }
+}
+
+export class OmniMCPServer {
   private mcpServer: MCPSSEServer;
+  private stdioBridge: any;
   private configLoader: SourceConfigManager;
+  private mode: string;
 
   constructor() {
     this.configLoader = new SourceConfigManager();
     const config = this.configLoader.getConfig();
+    this.mode = process.env.MCP_MODE || 'unified';
+    
+    // 既存のSSEサーバー（後方互換性維持）
     this.mcpServer = new MCPSSEServer(config.server.port);
+    
+    // 新しいstdioブリッジ（Claude Code対応）- 条件付き
+    if (MCPStdioBridge) {
+      this.stdioBridge = new MCPStdioBridge();
+    }
   }
 
   async initialize() {
-    // Start MCP SSE server
-    this.mcpServer.start();
+    console.error(`🚀 Starting Omni MCP Hub in ${this.mode} mode`);
+    
+    switch (this.mode) {
+      case 'stdio':
+        // Claude Code用（標準MCPプロトコル）
+        if (this.stdioBridge) {
+          console.error('📋 Starting stdio MCP bridge for Claude Code compatibility');
+          await this.stdioBridge.start();
+        } else {
+          console.error('❌ MCP SDK not available. Falling back to SSE mode.');
+          this.mcpServer.start();
+        }
+        break;
+        
+      case 'sse':
+        // 既存のSSEサーバー（git-mcp互換）
+        console.error('🌐 Starting SSE server for git-mcp compatibility');
+        this.mcpServer.start();
+        break;
+        
+      case 'unified':
+        // 両方のプロトコルを同時にサポート
+        console.error('🔄 Starting unified mode - both stdio and SSE');
+        if (this.stdioBridge) {
+          await Promise.all([
+            this.stdioBridge.start(),
+            new Promise(resolve => {
+              this.mcpServer.start();
+              resolve(undefined);
+            })
+          ]);
+        } else {
+          console.error('❌ MCP SDK not available. Running SSE mode only.');
+          this.mcpServer.start();
+        }
+        break;
+        
+      default:
+        console.error('❌ Invalid MCP_MODE. Use: stdio, sse, or unified');
+        process.exit(1);
+    }
+    
+    console.error('✅ Omni MCP Hub initialized successfully');
+    console.error('💡 All existing functionality preserved and enhanced');
   }
 }
 

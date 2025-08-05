@@ -16,4 +16,5 @@ services:
       - PORT=3000
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - NODE_ENV=production
+      - MCP_MODE=${MCP_MODE:-unified}
     restart: unless-stopped

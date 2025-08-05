@@ -11,6 +11,9 @@ COPY package*.json ./
 # Install all dependencies (needed for build)
 RUN npm ci
 
+# Install MCP SDK for unified mode support
+RUN npm install @modelcontextprotocol/sdk
+
 # Copy application code
 COPY . .
 
@@ -31,6 +34,9 @@ COPY package*.json ./
 # Install only production dependencies
 RUN npm ci --omit=dev
 
+# Install MCP SDK for production unified mode support
+RUN npm install @modelcontextprotocol/sdk
+
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
 
@@ -48,5 +54,8 @@ RUN chown -R nodejs:nodejs /app
 
 # Switch to non-root user
 USER nodejs
+
+# Default to unified mode for maximum compatibility
+ENV MCP_MODE=unified
 
 CMD ["node", "dist/servers/server.js"]

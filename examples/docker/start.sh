@@ -271,6 +271,7 @@ setup_docker_config() {
 PORT=3000
 NODE_ENV=production
 SOURCE_TYPE=$source_type
+MCP_MODE=unified
 
 EOF
 

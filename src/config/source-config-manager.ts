@@ -102,8 +102,8 @@ export class SourceConfigManager {
     }
     
     const configStr = JSON.stringify(rawConfig);
-    const replacedStr = configStr.replace(/\${(\w+)}/g, (_, envVar) => {
-      return process.env[envVar] || '';
+    const replacedStr = configStr.replace(/\${(\w+)(?::([^}]+))?}/g, (_, envVar, defaultValue) => {
+      return process.env[envVar] || defaultValue || '';
     });
     
     this.config = JSON.parse(replacedStr) as Config;

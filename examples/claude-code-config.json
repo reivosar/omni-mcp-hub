@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "omni-mcp-hub": {
+      "command": "node",
+      "args": ["dist/servers/mcp-stdio-prototype.js"],
+      "env": {
+        "NODE_ENV": "production",
+        "CONFIG_PATH": "./mcp-sources.yaml"
+      }
+    }
+  }
+}

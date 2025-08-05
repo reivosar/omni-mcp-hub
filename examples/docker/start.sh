@@ -270,6 +270,7 @@ setup_docker_config() {
 # Server Configuration
 PORT=3000
 NODE_ENV=production
+SOURCE_TYPE=$source_type
 
 EOF
 

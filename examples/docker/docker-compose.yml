@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   omni-mcp-hub:
+    container_name: omni-mcp-hub-${SOURCE_TYPE:-default}
     image: docker-config-omni-mcp-hub:latest
     ports:
       - "3000:3000"

@@ -5,13 +5,16 @@
 
 import { SourceConfigManager } from '../config/source-config-manager';
 import { MCPSSEServer } from './mcp-sse-server';
+import { MCPServerManager } from '../mcp/mcp-server-manager';
 
 export class SimpleStdioServer {
   private configManager: SourceConfigManager;
   private httpMcpTools: Map<string, any> = new Map();
+  private mcpServerManager: MCPServerManager;
 
   constructor() {
     this.configManager = new SourceConfigManager();
+    this.mcpServerManager = new MCPServerManager();
   }
 
   private async fetchHttpMcpTools() {
@@ -58,6 +61,16 @@ export class SimpleStdioServer {
   }
 
   async start() {
+    // Initialize MCP servers
+    const config = this.configManager.getConfig();
+    if (config.mcp_servers) {
+      try {
+        await this.mcpServerManager.initializeServers(config.mcp_servers);
+      } catch (error) {
+        // Continue even if MCP server initialization fails
+      }
+    }
+
     let buffer = '';
     
     // Handle line-delimited JSON messages
@@ -212,11 +225,14 @@ export class SimpleStdioServer {
             }
           } else if (request.method === 'tools/list') {
             const httpTools = await this.fetchHttpMcpTools();
+            const mcpTools = await this.mcpServerManager.getAllTools();
+            const allTools = [...httpTools, ...mcpTools];
+            
             const response = {
               jsonrpc: '2.0',
               id: request.id,
               result: {
-                tools: httpTools
+                tools: allTools
               }
             };
             process.stdout.write(JSON.stringify(response) + '\n');
@@ -237,64 +253,75 @@ export class SimpleStdioServer {
               return;
             }
             
-            const toolInfo = this.httpMcpTools.get(toolName);
-            if (!toolInfo) {
-              const errorResponse = {
-                jsonrpc: '2.0',
-                id: request.id,
-                error: {
-                  code: -32601,
-                  message: `Tool ${toolName} not found`
+            // Try HTTP MCP tools first
+            const httpToolInfo = this.httpMcpTools.get(toolName);
+            if (httpToolInfo) {
+              try {
+                const response = await fetch(`${httpToolInfo.url}/tools/call`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: 1,
+                    method: 'tools/call',
+                    params: {
+                      name: toolName,
+                      arguments: toolArgs
+                    }
+                  })
+                });
+                
+                if (response.ok) {
+                  const data = await response.json() as any;
+                  const toolResponse = {
+                    jsonrpc: '2.0',
+                    id: request.id,
+                    result: data.result
+                  };
+                  process.stdout.write(JSON.stringify(toolResponse) + '\n');
+                } else {
+                  const errorResponse = {
+                    jsonrpc: '2.0',
+                    id: request.id,
+                    error: {
+                      code: -32603,
+                      message: `HTTP error ${response.status}`
+                    }
+                  };
+                  process.stdout.write(JSON.stringify(errorResponse) + '\n');
                 }
-              };
-              process.stdout.write(JSON.stringify(errorResponse) + '\n');
-              return;
-            }
-            
-            try {
-              const response = await fetch(`${toolInfo.url}/tools/call`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  jsonrpc: '2.0',
-                  id: 1,
-                  method: 'tools/call',
-                  params: {
-                    name: toolName,
-                    arguments: toolArgs
-                  }
-                })
-              });
-              
-              if (response.ok) {
-                const data = await response.json() as any;
-                const toolResponse = {
-                  jsonrpc: '2.0',
-                  id: request.id,
-                  result: data.result
-                };
-                process.stdout.write(JSON.stringify(toolResponse) + '\n');
-              } else {
+              } catch (error) {
                 const errorResponse = {
                   jsonrpc: '2.0',
                   id: request.id,
                   error: {
                     code: -32603,
-                    message: `HTTP error ${response.status}`
+                    message: `HTTP tool call failed: ${error instanceof Error ? error.message : 'Unknown error'}`
                   }
                 };
                 process.stdout.write(JSON.stringify(errorResponse) + '\n');
               }
-            } catch (error) {
-              const errorResponse = {
-                jsonrpc: '2.0',
-                id: request.id,
-                error: {
-                  code: -32603,
-                  message: `Tool call failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-                }
-              };
-              process.stdout.write(JSON.stringify(errorResponse) + '\n');
+            } else {
+              // Try MCP Server Manager tools
+              try {
+                const result = await this.mcpServerManager.callTool(toolName, toolArgs);
+                const toolResponse = {
+                  jsonrpc: '2.0',
+                  id: request.id,
+                  result: result
+                };
+                process.stdout.write(JSON.stringify(toolResponse) + '\n');
+              } catch (error) {
+                const errorResponse = {
+                  jsonrpc: '2.0',
+                  id: request.id,
+                  error: {
+                    code: -32601,
+                    message: `Tool ${toolName} not found or failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+                  }
+                };
+                process.stdout.write(JSON.stringify(errorResponse) + '\n');
+              }
             }
           } else if (request.method === 'prompts/list') {
             const response = {

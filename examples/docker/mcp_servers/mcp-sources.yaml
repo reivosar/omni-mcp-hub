@@ -1,5 +1,6 @@
 mcp_servers:
-  - name: microsoft-docs
-    type: http
-    url: https://learn.microsoft.com/api/mcp
+  - name: filesystem
+    type: stdio
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/Users/mac/workspace"]
     enabled: true

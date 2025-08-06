@@ -16,7 +16,8 @@ export class OmniMCPServer {
     this.mode = process.env.MCP_MODE || 'unified';
     
     // Existing SSE server (backward compatibility)
-    this.mcpServer = new MCPSSEServer(config.server.port);
+    const port = config.server?.port || parseInt(process.env.MCP_PORT || process.env.PORT || '3000', 10);
+    this.mcpServer = new MCPSSEServer(port);
     
     // New stdio bridge (Claude Code support)
     this.stdioBridge = new SimpleStdioServer();

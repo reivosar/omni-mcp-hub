@@ -15,10 +15,10 @@ export class OmniMCPServer {
     const config = this.configLoader.getConfig();
     this.mode = process.env.MCP_MODE || 'unified';
     
-    // 既存のSSEサーバー（後方互換性維持）
+    // Existing SSE server (backward compatibility)
     this.mcpServer = new MCPSSEServer(config.server.port);
     
-    // 新しいstdioブリッジ（Claude Code対応）
+    // New stdio bridge (Claude Code support)
     this.stdioBridge = new SimpleStdioServer();
   }
 

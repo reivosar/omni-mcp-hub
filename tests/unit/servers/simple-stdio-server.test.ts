@@ -4,9 +4,19 @@
 
 import { SimpleStdioServer } from '../../../src/servers/simple-stdio-server';
 import { SourceConfigManager } from '../../../src/config/source-config-manager';
+import { MCPServerManager } from '../../../src/mcp/mcp-server-manager';
 
 // Mock SourceConfigManager
 jest.mock('../../../src/config/source-config-manager');
+
+// Mock MCPServerManager
+jest.mock('../../../src/mcp/mcp-server-manager');
+
+// Mock fetch
+global.fetch = jest.fn().mockResolvedValue({
+  ok: true,
+  json: jest.fn().mockResolvedValue({ result: { tools: [] } })
+});
 
 describe('SimpleStdioServer', () => {
   let server: SimpleStdioServer;
@@ -41,6 +51,12 @@ describe('SimpleStdioServer', () => {
       })
     } as any;
     (SourceConfigManager as any).mockImplementation(() => mockConfigManager);
+
+    // Mock MCPServerManager
+    (MCPServerManager as any).mockImplementation(() => ({
+      initializeServers: jest.fn().mockResolvedValue(undefined),
+      getAllTools: jest.fn().mockResolvedValue([])
+    }));
 
     server = new SimpleStdioServer();
   });
@@ -87,7 +103,7 @@ describe('SimpleStdioServer', () => {
         server: { port: 3000 },
         github_sources: [],
         local_sources: [],
-        mcp_servers: [{ name: 'test-server', command: 'test' }],
+        mcp_servers: [{ name: 'test-server', command: 'node' }],
         files: { patterns: [], max_size: 1000000 },
         fetch: { timeout: 30000, retries: 3, retry_delay: 1000, max_depth: 2 },
         security: { content_validation: { enabled: true, reject_patterns: [], additional_keywords: [], max_file_size: 10000000 } }
@@ -275,6 +291,9 @@ describe('SimpleStdioServer', () => {
       };
 
       dataHandler(Buffer.from(JSON.stringify(request) + '\n'));
+      
+      // Wait for async operations
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       expect(mockStdout).toHaveBeenCalledWith(
         expect.stringContaining('"tools":[]')
@@ -375,6 +394,9 @@ describe('SimpleStdioServer', () => {
 
       const buffer = messages.map(m => JSON.stringify(m)).join('\n') + '\n';
       dataHandler(Buffer.from(buffer));
+      
+      // Wait for async operations
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       expect(mockStdout).toHaveBeenCalledTimes(2);
     });
@@ -413,6 +435,9 @@ describe('SimpleStdioServer', () => {
       }) + '\n';
       
       dataHandler(Buffer.from(buffer));
+      
+      // Wait for async operations
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       // Should only respond to the actual request, not the empty lines
       expect(mockStdout).toHaveBeenCalledTimes(1);

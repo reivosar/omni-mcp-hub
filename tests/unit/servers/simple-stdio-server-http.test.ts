@@ -4,9 +4,13 @@
 
 import { SimpleStdioServer } from '../../../src/servers/simple-stdio-server';
 import { SourceConfigManager } from '../../../src/config/source-config-manager';
+import { MCPServerManager } from '../../../src/mcp/mcp-server-manager';
 
 // Mock SourceConfigManager
 jest.mock('../../../src/config/source-config-manager');
+
+// Mock MCPServerManager
+jest.mock('../../../src/mcp/mcp-server-manager');
 
 // Mock fetch
 global.fetch = jest.fn();
@@ -55,6 +59,13 @@ describe('SimpleStdioServer HTTP MCP', () => {
       })
     } as any;
     (SourceConfigManager as any).mockImplementation(() => mockConfigManager);
+
+    // Mock MCPServerManager
+    (MCPServerManager as any).mockImplementation(() => ({
+      initializeServers: jest.fn().mockResolvedValue(undefined),
+      getAllTools: jest.fn().mockResolvedValue([]),
+      callTool: jest.fn().mockRejectedValue(new Error('Tool not found'))
+    }));
 
     server = new SimpleStdioServer();
   });
@@ -139,8 +150,6 @@ describe('SimpleStdioServer HTTP MCP', () => {
     it('should handle HTTP MCP server fetch errors', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
       await server.start();
 
       const dataHandler = mockStdin.on.mock.calls.find((call: any) => call[0] === 'data')[1];
@@ -156,16 +165,10 @@ describe('SimpleStdioServer HTTP MCP', () => {
       // Wait for async operation
       await new Promise(resolve => setTimeout(resolve, 10));
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Failed to fetch tools from microsoft-docs:',
-        expect.any(Error)
-      );
-
+      // Errors are silently ignored in stdio mode, so should return empty tools
       expect(mockStdout).toHaveBeenCalledWith(
         expect.stringContaining('"tools":[]')
       );
-
-      consoleSpy.mockRestore();
     });
   });
 
@@ -301,9 +304,12 @@ describe('SimpleStdioServer HTTP MCP', () => {
       };
 
       dataHandler(Buffer.from(JSON.stringify(request) + '\n'));
+      
+      // Wait for async operations
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       expect(mockStdout).toHaveBeenCalledWith(
-        expect.stringContaining('"error":{"code":-32601,"message":"Tool nonexistent_tool not found"}')
+        expect.stringContaining('"error":{"code":-32601,"message":"Tool nonexistent_tool not found or failed:')
       );
     });
 

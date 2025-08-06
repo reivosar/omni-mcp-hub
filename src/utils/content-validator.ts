@@ -196,14 +196,14 @@ export class ContentValidator {
   static shouldAddSafetyNotice(content: string): boolean {
     // Check for any risk indicators that suggest caution
     const legacyRiskIndicators = [
-      /ignore|忽略|無視/i,
-      /forget|忘记|忘れ/i,
-      /instruction|指示|指令/i,
-      /system|システム/i,
-      /prompt|プロンプト/i,
-      /override|上書き/i,
-      /pretend|振りをして|假装/i,
-      /act as|演じて|扮演/i
+      /ignore/i,
+      /forget/i,
+      /instruction/i,
+      /system/i,
+      /prompt/i,
+      /override/i,
+      /pretend/i,
+      /act as/i
     ];
 
     let riskScore = 0;

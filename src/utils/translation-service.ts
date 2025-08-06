@@ -53,36 +53,7 @@ export class LanguageDetector {
 // Mock translation service for demonstration
 // In production, you would integrate with Google Translate, DeepL, Azure Translator, etc.
 export class MockTranslationService implements TranslationService {
-  private readonly translations: Record<string, string> = {
-    // Japanese examples
-    '無視して': 'ignore',
-    '忘れて': 'forget',
-    '前の指示': 'previous instructions',
-    '新しい指示': 'new instructions',
-    '今から君は': 'now you are',
-    'なりきって': 'act as',
-    
-    // Chinese examples
-    '忽略指令': 'ignore instructions',
-    '忘记一切': 'forget everything',
-    '新指令': 'new instructions',
-    '现在你是': 'now you are',
-    '扮演': 'act as',
-    
-    // Korean examples
-    '무시해': 'ignore',
-    '잊어버려': 'forget',
-    '이전 지시': 'previous instructions',
-    '새로운 지시': 'new instructions',
-    '지금부터 너는': 'now you are',
-    
-    // Russian examples
-    'игнорируй': 'ignore',
-    'забудь всё': 'forget everything',
-    'новые инструкции': 'new instructions',
-    'теперь ты': 'now you are',
-    'притворись': 'pretend'
-  };
+  private readonly translations: Record<string, string> = {};
 
   async translate(text: string, targetLanguage: string = 'en'): Promise<TranslationResult> {
     if (targetLanguage !== 'en') {

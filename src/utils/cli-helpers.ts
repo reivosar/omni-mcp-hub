@@ -12,7 +12,7 @@ export class CLIHelpers {
   
   static showAutoDetectionHelp(): void {
     console.log(`
-🚀 Auto-detection feature for path specification
+Auto-detection feature for path specification
 
 # Traditional method (detailed specification)
 sources:
@@ -72,7 +72,7 @@ Local:
       // Any cast to access private method
       const result = (configLoader as any).parseSourceUrl(url);
       
-      console.log(`✅ URL parsing successful: ${url}`);
+      console.log(`URL parsing successful: ${url}`);
       console.log(`   Type: ${result.type}`);
       
       if (result.type === 'github') {
@@ -83,7 +83,7 @@ Local:
         console.log(`   Path: ${result.path}`);
       }
     } catch (error) {
-      console.error(`❌ URL parsing error: ${url}`);
+      console.error(`URL parsing error: ${url}`);
       console.error(`   ${error instanceof Error ? error.message : error}`);
     }
   }

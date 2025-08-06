@@ -30,29 +30,29 @@ export class OmniMCPServer {
   }
 
   async initialize() {
-    this.log(`🚀 Starting Omni MCP Hub in ${this.mode} mode`);
+    this.log(`Starting Omni MCP Hub in ${this.mode} mode`);
     
     switch (this.mode) {
       case 'stdio':
-        // Claude Code用（標準MCPプロトコル）
+        // For Claude Code (standard MCP protocol)
         if (this.stdioBridge) {
-          this.log('📋 Starting stdio MCP bridge for Claude Code compatibility');
+          this.log('Starting stdio MCP bridge for Claude Code compatibility');
           await this.stdioBridge.start();
         } else {
-          this.log('❌ MCP SDK not available. Falling back to SSE mode.');
+          this.log('MCP SDK not available. Falling back to SSE mode.');
           this.mcpServer.start();
         }
         break;
         
       case 'sse':
-        // 既存のSSEサーバー（git-mcp互換）
-        this.log('🌐 Starting SSE server for git-mcp compatibility');
+        // Existing SSE server (git-mcp compatibility)
+        this.log('Starting SSE server for git-mcp compatibility');
         this.mcpServer.start();
         break;
         
       case 'unified':
-        // 両方のプロトコルを同時にサポート
-        this.log('🔄 Starting unified mode - both stdio and SSE');
+        // Support both protocols simultaneously
+        this.log('Starting unified mode - both stdio and SSE');
         if (this.stdioBridge) {
           await Promise.all([
             this.stdioBridge.start(),
@@ -62,18 +62,18 @@ export class OmniMCPServer {
             })
           ]);
         } else {
-          this.log('❌ MCP SDK not available. Running SSE mode only.');
+          this.log('MCP SDK not available. Running SSE mode only.');
           this.mcpServer.start();
         }
         break;
         
       default:
-        this.log('❌ Invalid MCP_MODE. Use: stdio, sse, or unified');
+        this.log('Invalid MCP_MODE. Use: stdio, sse, or unified');
         process.exit(1);
     }
     
-    this.log('✅ Omni MCP Hub initialized successfully');
-    this.log('💡 All existing functionality preserved and enhanced');
+    this.log('Omni MCP Hub initialized successfully');
+    this.log('All existing functionality preserved and enhanced');
   }
 }
 

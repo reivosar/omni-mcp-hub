@@ -218,7 +218,7 @@ export class MCPHandler extends BaseClientHandler {
           content: [
             {
               type: 'text',
-              text: '⚠️ Content Safety Notice: The requested content has been filtered due to potentially harmful patterns. This is to ensure safe and responsible AI interaction.'
+              text: 'Content Safety Notice: The requested content has been filtered due to potentially harmful patterns. This is to ensure safe and responsible AI interaction.'
             }
           ]
         };
@@ -319,7 +319,7 @@ export class MCPHandler extends BaseClientHandler {
         content: [
           {
             type: 'text',
-            text: `⚠️ Content Safety Block\n\nThe requested file "${fileName}" from "${source}" contains patterns that may pose security risks and has been blocked from display. This is a protective measure to ensure safe AI interaction.\n\nIf you believe this is an error, please contact the system administrator.`
+            text: `Content Safety Block\n\nThe requested file "${fileName}" from "${source}" contains patterns that may pose security risks and has been blocked from display. This is a protective measure to ensure safe AI interaction.\n\nIf you believe this is an error, please contact the system administrator.`
           }
         ]
       };
@@ -366,7 +366,7 @@ export class MCPHandler extends BaseClientHandler {
 
     // Add summary of blocked files if any
     if (blockedFiles.length > 0) {
-      bundleContent += `\n⚠️ Security Notice: ${blockedFiles.length} file(s) were blocked due to security concerns: ${blockedFiles.join(', ')}\n`;
+      bundleContent += `\nSecurity Notice: ${blockedFiles.length} file(s) were blocked due to security concerns: ${blockedFiles.join(', ')}\n`;
     }
 
     return {
@@ -445,13 +445,13 @@ export class MCPHandler extends BaseClientHandler {
     responseText += `Found ${foundVariants.length} variants from sources: ${foundVariants.map(v => v.source).join(', ')}\n`;
     
     if (blockedVariants.length > 0) {
-      responseText += `\n⚠️ Security Notice: ${blockedVariants.length} variant(s) were blocked due to security concerns from: ${blockedVariants.join(', ')}\n`;
+      responseText += `\nSecurity Notice: ${blockedVariants.length} variant(s) were blocked due to security concerns from: ${blockedVariants.join(', ')}\n`;
     }
     
     if (safeVariants > 0) {
       responseText += `${safeVariants} safe variant(s) available for use.`;
     } else {
-      responseText += `⚠️ All variants contain potentially harmful content and have been blocked.`;
+      responseText += `All variants contain potentially harmful content and have been blocked.`;
     }
 
     return {

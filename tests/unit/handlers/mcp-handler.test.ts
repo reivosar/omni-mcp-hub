@@ -348,7 +348,7 @@ describe('MCPHandler', () => {
 
         const response = await mcpHandler.handleMessage(message);
 
-        expect(response.result.content[0].text).toContain('⚠️ Content Safety Block');
+        expect(response.result.content[0].text).toContain('Content Safety Block');
         expect(console.warn).toHaveBeenCalledWith(
           expect.stringContaining('High-risk content detected')
         );
@@ -792,7 +792,7 @@ describe('MCPHandler', () => {
 
         const response = await mcpHandler.handleMessage(message);
 
-        expect(response.result.content[0].text).toContain('⚠️ Content Safety Block');
+        expect(response.result.content[0].text).toContain('Content Safety Block');
       });
 
     });

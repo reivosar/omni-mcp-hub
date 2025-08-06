@@ -91,6 +91,7 @@ export const DEFAULT_SECURITY_POLICY: SecurityPolicy = {
   // Allow safe argument patterns
   allowedArgumentPatterns: [
     /^[a-zA-Z0-9._\-\/]+$/, // Alphanumeric, dots, dashes, slashes
+    /^@[a-zA-Z0-9._\-\/]+\/[a-zA-Z0-9._\-\/]+$/, // Scoped npm packages (@scope/package)
     /^--?[a-zA-Z0-9\-]+(=[a-zA-Z0-9._\-\/]+)?$/ // CLI flags
   ],
   

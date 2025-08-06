@@ -161,7 +161,6 @@ export class CommandValidator {
     const dangerousEnvVars = [
       'LD_PRELOAD',
       'LD_LIBRARY_PATH',
-      'PATH', // Don't allow PATH modification
       'SHELL',
       'HOME' // Don't allow HOME modification
     ];

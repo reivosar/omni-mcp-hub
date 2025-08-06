@@ -245,7 +245,7 @@ describe('CommandValidator', () => {
     });
 
     test('should block dangerous environment variables', () => {
-      const dangerousEnvVars = ['LD_PRELOAD', 'PATH', 'SHELL', 'HOME'];
+      const dangerousEnvVars = ['LD_PRELOAD', 'SHELL', 'HOME'];
 
       for (const envVar of dangerousEnvVars) {
         const execution: CommandExecution = {
@@ -260,6 +260,19 @@ describe('CommandValidator', () => {
         expect(result.allowed).toBe(false);
         expect(result.reason).toContain('Dangerous environment variable');
       }
+    });
+
+    test('should allow PATH environment variable', () => {
+      const execution: CommandExecution = {
+        command: 'python',
+        args: ['-V'],
+        env: { PATH: '/usr/local/bin:/usr/bin:/bin' },
+        source: 'test'
+      };
+
+      const result = validator.validateCommand(execution);
+
+      expect(result.allowed).toBe(true);
     });
 
     test('should block environment variables with shell metacharacters', () => {

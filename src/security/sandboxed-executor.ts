@@ -152,10 +152,15 @@ export class SandboxedExecutor {
       '/System/Library/Frameworks'
     ];
     
-    // Filter and validate paths
+    // Filter and validate paths, removing duplicates
+    const seenPaths = new Set<string>();
     const safePaths = pathDirs.filter(pathDir => {
       // Skip empty paths
       if (!pathDir) return false;
+      
+      // Skip duplicates
+      if (seenPaths.has(pathDir)) return false;
+      seenPaths.add(pathDir);
       
       // Skip dangerous paths
       if (dangerousPaths.some(dangerous => pathDir.startsWith(dangerous))) {
@@ -164,7 +169,6 @@ export class SandboxedExecutor {
       
       return true;
     });
-    
     return safePaths.join(path.delimiter);
   }
   

@@ -68,9 +68,11 @@ Always use cheerful and energetic tone.
       const result = await behaviorManager.detectBehaviorInstructions();
 
       expect(result).toBeDefined();
-      expect(result!.instructions).toContain('Single-Tier Configuration だっちゃ');
-      expect(result!.instructions).toContain('シンプルな平坦設定アプローチでOmni MCP Hub');
-      expect(result!.source).toBe('/app/docs/single/CLAUDE.md');
+      expect(result!.behaviors).toHaveLength(1);
+      expect(result!.behaviors[0].instructions).toContain('Single-Tier Configuration だっちゃ');
+      expect(result!.behaviors[0].instructions).toContain('シンプルな平坦設定アプローチでOmni MCP Hub');
+      expect(result!.behaviors[0].source).toBe('/app/docs/single/CLAUDE.md');
+      expect(result!.behaviors[0].priority).toBe(0);
     });
 
     it('should return null when no CLAUDE.md found', async () => {
@@ -104,36 +106,42 @@ Some technical content here.
       const result = await behaviorManager.detectBehaviorInstructions();
 
       expect(result).toBeDefined();
-      expect(result!.instructions).toContain('Technical Documentation');
+      expect(result!.behaviors).toHaveLength(1);
+      expect(result!.behaviors[0].instructions).toContain('Technical Documentation');
     });
 
-    it('should extract behavior from multiple instruction patterns', async () => {
+    it('should collect multiple CLAUDE.md files', async () => {
       mockConfigManager.getSources.mockReturnValue([
-        { type: 'local', path: '/app/docs' }
+        { type: 'local', path: '/app/docs/high', behavior_priority: 10 },
+        { type: 'local', path: '/app/docs/low', behavior_priority: 5 },
+        { type: 'local', path: '/app/docs/default' }
       ]);
 
-      const claudeContent = `# Documentation
+      const highPriorityContent = `# High Priority Behavior
+Use formal language.`;
+      
+      const lowPriorityContent = `# Low Priority Behavior  
+Be casual.`;
+      
+      const defaultContent = `# Default Behavior
+Be helpful.`;
 
-## System Behavior
-Respond as Lum-chan with "だっちゃ" endings.
-
-## Claude Instructions
-- Use cheerful tone
-- Be energetic
-- Add "だっちゃ" to sentences
-
-## Assistant Prompt
-Act like the character Lum from Urusei Yatsura.
-`;
-
-      mockSourceManager.getSourceFile.mockResolvedValue(claudeContent);
+      mockSourceManager.getSourceFile
+        .mockResolvedValueOnce(highPriorityContent)
+        .mockResolvedValueOnce(lowPriorityContent)
+        .mockResolvedValueOnce(defaultContent);
 
       const result = await behaviorManager.detectBehaviorInstructions();
 
       expect(result).toBeDefined();
-      expect(result!.instructions).toContain('Documentation');
-      expect(result!.instructions).toContain('System Behavior');
-      expect(result!.instructions).toContain('Claude Instructions');
+      expect(result!.behaviors).toHaveLength(3);
+      // Should be sorted by priority (highest first)
+      expect(result!.behaviors[0].priority).toBe(10);
+      expect(result!.behaviors[0].instructions).toContain('High Priority');
+      expect(result!.behaviors[1].priority).toBe(5);
+      expect(result!.behaviors[1].instructions).toContain('Low Priority');
+      expect(result!.behaviors[2].priority).toBe(0);
+      expect(result!.behaviors[2].instructions).toContain('Default');
     });
 
     it('should handle file read errors gracefully', async () => {
@@ -148,21 +156,24 @@ Act like the character Lum from Urusei Yatsura.
       expect(result).toBeNull();
     });
 
-    it('should prioritize first found CLAUDE.md', async () => {
+    it('should collect all found CLAUDE.md files', async () => {
       mockConfigManager.getSources.mockReturnValue([
         { type: 'local', path: '/app/docs/single' },
         { type: 'local', path: '/app/docs/multi' }
       ]);
 
       mockSourceManager.getSourceFile
-        .mockResolvedValueOnce('# First CLAUDE.md\n## System Behavior\nFirst instructions')
-        .mockResolvedValueOnce('# Second CLAUDE.md\n## System Behavior\nSecond instructions');
+        .mockResolvedValueOnce('# First CLAUDE.md\nFirst instructions')
+        .mockResolvedValueOnce('# Second CLAUDE.md\nSecond instructions');
 
       const result = await behaviorManager.detectBehaviorInstructions();
 
-      expect(result!.instructions).toContain('First instructions');
-      expect(result!.instructions).not.toContain('Second instructions');
-      expect(result!.source).toBe('/app/docs/single/CLAUDE.md');
+      expect(result).toBeDefined();
+      expect(result!.behaviors).toHaveLength(2);
+      expect(result!.behaviors[0].instructions).toContain('First instructions');
+      expect(result!.behaviors[1].instructions).toContain('Second instructions');
+      expect(result!.behaviors[0].source).toBe('/app/docs/single/CLAUDE.md');
+      expect(result!.behaviors[1].source).toBe('/app/docs/multi/CLAUDE.md');
     });
   });
 

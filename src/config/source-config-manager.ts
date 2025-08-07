@@ -17,6 +17,7 @@ export interface GitHubSourceConfig {
 export interface LocalSourceConfig {
   url: string;
   path?: string;
+  behavior_priority?: number;
 }
 
 export interface MCPServerConfig {
@@ -39,6 +40,7 @@ export interface SourceConfig {
   branch?: string;
   path?: string;
   token?: string;
+  behavior_priority?: number;
 }
 
 export interface FilesConfig {

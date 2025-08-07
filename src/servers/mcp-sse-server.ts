@@ -217,24 +217,26 @@ export class MCPSSEServer {
         }
       });
 
-      // Detect and send behavior instructions
-      const behaviorInstructions = await this.behaviorManager.detectBehaviorInstructions();
-      if (behaviorInstructions) {
-        const systemPrompt = this.behaviorManager.formatBehaviorPrompt(
-          behaviorInstructions.instructions,
-          behaviorInstructions.source
-        );
-        
-        // Send behavior instructions as the first content
-        this.sendSSEMessage(res, {
-          jsonrpc: '2.0',
-          method: 'fetch_owner_repo_documentation',
-          params: {
-            path: 'SYSTEM_BEHAVIOR',
-            content: systemPrompt,
-            type: 'system_prompt'
-          }
-        });
+      // Detect and send all behavior instructions
+      const allBehaviors = await this.behaviorManager.detectBehaviorInstructions();
+      if (allBehaviors) {
+        // Send each CLAUDE.md as system prompt
+        for (const behavior of allBehaviors.behaviors) {
+          const systemPrompt = this.behaviorManager.formatBehaviorPrompt(
+            behavior.instructions,
+            behavior.source
+          );
+          
+          this.sendSSEMessage(res, {
+            jsonrpc: '2.0',
+            method: 'fetch_owner_repo_documentation',
+            params: {
+              path: behavior.source,
+              content: systemPrompt,
+              type: 'system_prompt'
+            }
+          });
+        }
       }
 
       // Check cache first

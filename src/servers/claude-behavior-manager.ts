@@ -11,6 +11,11 @@ import { OmniSourceManager } from '../sources/source-manager';
 export interface BehaviorInstructions {
   instructions: string;
   source: string;
+  priority?: number; // Higher number = higher priority
+}
+
+export interface AllBehaviorInstructions {
+  behaviors: BehaviorInstructions[];
 }
 
 export class ClaudeBehaviorManager {
@@ -25,13 +30,14 @@ export class ClaudeBehaviorManager {
   /**
    * Detects behavior instructions from CLAUDE.md files in local sources
    */
-  async detectBehaviorInstructions(): Promise<BehaviorInstructions | null> {
+  async detectBehaviorInstructions(): Promise<AllBehaviorInstructions | null> {
     if (!this.isEnabled()) {
       return null;
     }
 
     const sources = this.configManager.getSources();
     const localSources = sources.filter(source => source.type === 'local');
+    const behaviors: BehaviorInstructions[] = [];
     
     for (const source of localSources) {
       if (!source.path) continue;
@@ -47,10 +53,11 @@ export class ClaudeBehaviorManager {
           const behaviorInstructions = this.extractBehaviorFromContent(content);
           
           if (behaviorInstructions) {
-            return {
+            behaviors.push({
               instructions: behaviorInstructions,
-              source: claudeFilePath
-            };
+              source: claudeFilePath,
+              priority: source.behavior_priority || 0
+            });
           }
         }
       } catch (error) {
@@ -59,7 +66,10 @@ export class ClaudeBehaviorManager {
       }
     }
 
-    return null;
+    // Sort by priority (highest first)
+    behaviors.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    
+    return behaviors.length > 0 ? { behaviors } : null;
   }
 
   /**

@@ -305,6 +305,57 @@ describe('SandboxedExecutor', () => {
       expect(spawnOptions.env.USER).toBe('sandbox');
     });
 
+    test('should create safe PATH that excludes dangerous directories', async () => {
+      // Mock process.env.PATH with dangerous directories
+      const originalPath = process.env.PATH;
+      process.env.PATH = '/usr/bin:/bin:/sbin:/usr/sbin:/opt/homebrew/bin:/usr/local/bin';
+
+      const execution: CommandExecution = {
+        command: 'npx',
+        args: ['@modelcontextprotocol/server-filesystem', '/tmp'],
+        source: 'test'
+      };
+
+      mockValidator.validateCommand.mockReturnValue({
+        allowed: true,
+        sanitizedArgs: ['@modelcontextprotocol/server-filesystem', '/tmp']
+      });
+
+      const mockProcess = {
+        pid: 12345,
+        on: jest.fn(),
+        kill: jest.fn()
+      } as any;
+
+      const { spawn } = require('child_process');
+      spawn.mockReturnValue(mockProcess);
+
+      const executePromise = executor.executeCommand(execution);
+      
+      setTimeout(() => {
+        const spawnCallback = mockProcess.on.mock.calls.find((call: any) => call[0] === 'spawn')[1];
+        spawnCallback();
+      }, 10);
+
+      await executePromise;
+
+      const spawnCall = spawn.mock.calls[0];
+      const spawnOptions = spawnCall[2];
+      
+      // Should exclude dangerous paths
+      expect(spawnOptions.env.PATH).not.toContain('/sbin');
+      expect(spawnOptions.env.PATH).not.toContain('/usr/sbin');
+      
+      // Should include safe paths
+      expect(spawnOptions.env.PATH).toContain('/usr/bin');
+      expect(spawnOptions.env.PATH).toContain('/bin');
+      expect(spawnOptions.env.PATH).toContain('/opt/homebrew/bin');
+      expect(spawnOptions.env.PATH).toContain('/usr/local/bin');
+
+      // Restore original PATH
+      process.env.PATH = originalPath;
+    });
+
     test('should use safe working directory when none provided', async () => {
       const execution: CommandExecution = {
         command: 'python',

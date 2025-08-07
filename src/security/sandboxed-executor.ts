@@ -140,17 +140,30 @@ export class SandboxedExecutor {
   }
   
   private getSafePath(): string {
-    // Provide minimal PATH with only essential directories
-    const safePaths = [
-      '/usr/bin',
-      '/bin',
-      '/usr/local/bin'
+    // Start with current PATH and filter out dangerous directories
+    const currentPath = process.env.PATH || '';
+    const pathDirs = currentPath.split(path.delimiter);
+    
+    // Dangerous directories to exclude
+    const dangerousPaths = [
+      '/sbin',
+      '/usr/sbin',
+      '/System/Library/PrivateFrameworks',
+      '/System/Library/Frameworks'
     ];
     
-    // Add npm/node paths if needed
-    if (process.env.NODE_PATH) {
-      safePaths.push(path.join(process.env.NODE_PATH, '.bin'));
-    }
+    // Filter and validate paths
+    const safePaths = pathDirs.filter(pathDir => {
+      // Skip empty paths
+      if (!pathDir) return false;
+      
+      // Skip dangerous paths
+      if (dangerousPaths.some(dangerous => pathDir.startsWith(dangerous))) {
+        return false;
+      }
+      
+      return true;
+    });
     
     return safePaths.join(path.delimiter);
   }

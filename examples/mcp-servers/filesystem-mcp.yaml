@@ -1,0 +1,34 @@
+# Filesystem MCP Server Configuration
+# Manual installation method following Claude Desktop pattern
+
+mcp_servers:
+  - name: filesystem
+    type: stdio
+    command: npx
+    args: 
+      - "-y"
+      - "@modelcontextprotocol/server-filesystem"
+      - "/Users/mac/Documents"
+      - "/Users/mac/Projects"
+    enabled: true
+    
+  # Alternative: Multiple filesystem servers for different directories
+  - name: filesystem-home
+    type: stdio
+    command: npx
+    args: 
+      - "-y"
+      - "@modelcontextprotocol/server-filesystem"
+      - "/Users/mac"
+    enabled: false
+    
+  # Docker environment example
+  - name: filesystem-docker
+    type: stdio
+    command: npx
+    args: 
+      - "-y"
+      - "@modelcontextprotocol/server-filesystem"
+      - "/app/repos"
+      - "/tmp"
+    enabled: false

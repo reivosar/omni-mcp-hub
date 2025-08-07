@@ -1,6 +1,6 @@
 mcp_servers:
   - name: filesystem
     type: stdio
-    command: /usr/local/bin/node
-    args: ["/app/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js", "/tmp"]
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
     enabled: true

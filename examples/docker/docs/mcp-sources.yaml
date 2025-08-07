@@ -1,0 +1,93 @@
+# Multi-tier configuration with external references
+# This configuration demonstrates hierarchical documentation structure
+
+github_sources:
+  - url: github:reivosar/claude-code-engineering-guide
+
+local_sources:
+  - url: /app/docs
+  - url: /documents  
+  - url: /projects
+
+# External reference examples
+external_references:
+  # Base configuration references
+  - url: "/app/docs/multi/base/common.md"
+    description: "Common base configuration settings"
+  
+  - url: "/app/docs/multi/base/security.md"
+    description: "Security policies and restrictions"
+    
+  # Environment-specific references
+  - url: "/app/docs/multi/environments/development.md"
+    description: "Development environment configuration"
+    condition: "${ENVIRONMENT} == 'development'"
+    
+  - url: "/app/docs/multi/environments/production.md"
+    description: "Production environment configuration"
+    condition: "${ENVIRONMENT} == 'production'"
+    
+  # Team-specific references
+  - url: "/app/docs/multi/teams/backend.md"
+    description: "Backend team configuration"
+    condition: "${TEAM} == 'backend'"
+    
+  - url: "/app/docs/multi/teams/frontend.md"
+    description: "Frontend team configuration"
+    condition: "${TEAM} == 'frontend'"
+    
+  # Template references
+  - url: "/app/docs/multi/templates/mcp-server.md"
+    description: "MCP server templates"
+    
+  - url: "/app/docs/multi/templates/github-org.md" 
+    description: "GitHub organization templates"
+
+mcp_servers:
+  - name: filesystem
+    type: stdio
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-filesystem"
+      - "/app/docs"
+      - "/documents"
+      - "/projects"
+    enabled: true
+    
+    # Reference to MCP server template
+    template_ref: "/app/docs/multi/templates/mcp-server.md"
+    
+  - name: docs-sqlite
+    type: stdio
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-sqlite"
+      - "/app/data/docs.db"
+    enabled: true
+    
+    # Reference to database template
+    template_ref: "/app/docs/multi/templates/mcp-server.md#database-server-template"
+
+# Configuration metadata
+metadata:
+  version: "2.0"
+  description: "Multi-tier configuration with external reference resolution"
+  documentation_root: "/app/docs"
+  
+  external_reference_config:
+    resolution_enabled: true
+    cache_external_refs: true
+    cache_ttl: 3600
+    max_depth: 5
+    
+    allowed_protocols:
+      - "file"
+      - "http"
+      - "https"
+      - "github"
+    
+    security:
+      validate_references: true
+      sandbox_resolution: true

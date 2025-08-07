@@ -223,9 +223,10 @@ describe('MCPServerManager', () => {
       const spawnHandler = mockProcess.on.mock.calls.find((call: any) => call[0] === 'spawn')[1];
       spawnHandler();
 
-      expect(instance.name).toBe('test-server');
-      expect(instance.config).toBe(mockConfig);
-      expect(instance.status).toBe('running');
+      expect(instance).toBeDefined();
+      expect(instance!.name).toBe('test-server');
+      expect(instance!.config).toBe(mockConfig);
+      expect(instance!.status).toBe('running');
       expect(mockAuditLogger.logConfigurationValidation).toHaveBeenCalledWith(mockConfig, true);
     });
 
@@ -261,7 +262,8 @@ describe('MCPServerManager', () => {
 
       const instance = await manager.startServer(configWithInstall);
 
-      expect(instance.name).toBe('test-server');
+      expect(instance).toBeDefined();
+      expect(instance!.name).toBe('test-server');
       expect(mockSandboxedExecutor.executeCommand).toHaveBeenCalledTimes(3);
     });
   });

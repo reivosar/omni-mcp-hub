@@ -4,13 +4,16 @@ A Model Context Protocol (MCP) server that aggregates documentation from multipl
 
 ## Features
 
-- **Multi-source aggregation**: Combine documentation from multiple GitHub repos and local directories
-- **Per-source authentication**: Each source can have its own GitHub token
-- **Smart caching**: Automatic cache invalidation via GitHub webhooks
-- **External reference resolution**: Automatically fetches linked documentation
-- **Security-first design**: CORS protection, webhook signature verification, secure token handling
+- **Multi-source aggregation**: Combine documentation from multiple GitHub repos, local directories, and MCP servers
+- **MCP server integration**: Native support for filesystem, SQLite, and custom MCP servers
+- **Docker deployment**: Production-ready Docker configurations with multiple deployment patterns
+- **Multi-tier configuration**: Support for hierarchical configuration with external reference resolution
+- **Smart caching**: Automatic cache invalidation via GitHub webhooks with Docker environment optimization
+- **External reference resolution**: Automatically fetches linked documentation with depth control
+- **Security-first design**: Sandboxed execution, CORS protection, webhook signature verification
 - **SSE streaming**: Real-time document streaming for better performance
-- **MCP compatible**: Works with Claude and other MCP-compatible AI assistants
+- **MCP compatible**: Works with Claude Code and other MCP-compatible AI assistants
+- **Production hardening**: Security policies, monitoring, and enterprise-scale deployment support
 
 ## Quick Start
 
@@ -21,6 +24,27 @@ git clone https://github.com/your-org/omni-mcp-hub.git
 cd omni-mcp-hub
 npm install
 ```
+
+### Docker Deployment (Recommended)
+
+For production deployments and Claude Code integration:
+
+```bash
+cd examples/docker
+./start.sh
+```
+
+Available configurations:
+- `github_sources` - GitHub repository access
+- `local_sources` - Local filesystem access  
+- `mcp_servers` - MCP server integration
+- `mixed_resources` - Combined resource types
+
+The start script provides:
+- Interactive configuration selection
+- Claude Code automatic registration
+- Docker container orchestration
+- Environment-specific optimizations
 
 ### 2. Configuration
 
@@ -132,18 +156,42 @@ GitHub webhook endpoint for cache invalidation
 
 ## Configuration Options
 
-### Sources
+### Multi-Source Configuration
 ```yaml
-sources:
-  # GitHub URL formats
-  - url: https://github.com/owner/repo
+# GitHub repositories
+github_sources:
+  - url: github:owner/repo
   - url: github:owner/repo@branch
-  - url: owner/repo@branch
-  
-  # Local paths
+
+# Local directories  
+local_sources:
   - url: /absolute/path
   - url: ./relative/path
-  - url: file:///path
+
+# MCP servers
+mcp_servers:
+  - name: filesystem
+    type: stdio
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/data"]
+    enabled: true
+    
+  - name: sqlite
+    type: stdio
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-sqlite", "/app/data.db"]
+    enabled: true
+```
+
+### External References (Multi-tier)
+```yaml
+external_references:
+  - url: "./base/common.md"
+    description: "Common configuration"
+  - url: "github:org/config/production.yaml" 
+    condition: "${ENVIRONMENT} == 'production'"
+  - url: "https://config.company.com/mcp.json"
+    cache_ttl: 3600
 ```
 
 ### File Patterns
@@ -269,12 +317,23 @@ security:
 
 ## MCP Tools
 
-When integrated with Claude or other MCP clients, the following tools are available:
+When integrated with Claude Code or other MCP clients, the following tools are available:
 
+### Native Tools
 1. **list_sources**: List all configured sources
 2. **get_file**: Fetch a specific file from a source
 3. **get_file_variants**: Find all versions of a file across sources
 4. **fetch_documentation**: Batch fetch all documentation
+
+### MCP Server Tools (via integration)
+- **filesystem__read_file**: Read files from filesystem MCP server
+- **filesystem__write_file**: Write files via filesystem MCP server
+- **filesystem__list_directory**: List directory contents
+- **filesystem__search_files**: Search for files
+- **sqlite__execute_query**: Execute SQL queries on SQLite MCP server
+- **sqlite__list_tables**: List database tables
+
+All MCP server tools are automatically prefixed with server name for namespace isolation.
 
 ## Development
 
@@ -289,8 +348,22 @@ omni-mcp-hub/
 │   ├── handlers/             # Request handlers
 │   ├── sources/              # Source management
 │   ├── utils/                # Utility functions
+│   ├── security/             # Security and sandboxing
+│   ├── mcp/                  # MCP server management
 │   └── servers/              # Server implementations
 ├── tests/                    # Test suites
+│   ├── unit/                 # Unit tests
+│   ├── e2e/                  # End-to-end tests
+│   └── strict/               # Strict security tests
+├── examples/                 # Example configurations
+│   └── docker/               # Docker deployment examples
+│       ├── github_sources/   # GitHub-only configuration
+│       ├── local_sources/    # Local filesystem configuration
+│       ├── mcp_servers/      # MCP server configuration
+│       ├── mixed_resources/  # Combined configuration
+│       └── docs/             # Multi-tier documentation
+│           ├── single/       # Single-tier examples
+│           └── multi/        # Multi-tier with external refs
 ├── mcp-sources.yaml          # Your configuration
 └── package.json
 ```
@@ -366,8 +439,43 @@ MIT License - see LICENSE file for details
 3. Run tests: `npm test`
 4. Submit a pull request
 
+## Docker Deployment
+
+### Production Deployment
+```bash
+cd examples/docker
+./start.sh mixed_resources
+
+# Available configurations:
+# - github_sources: GitHub-only access
+# - local_sources: Local filesystem only
+# - mcp_servers: MCP server tools
+# - mixed_resources: All resource types combined
+```
+
+### Configuration Tiers
+
+#### Single-Tier (Simple)
+All configuration in one file, ideal for development and simple deployments.
+
+#### Multi-Tier (Enterprise)
+Hierarchical configuration with external references, supporting:
+- Environment-specific overrides (development, staging, production)
+- Team-specific configurations (backend, frontend, devops)
+- Reusable templates for common patterns
+- External reference resolution from GitHub, HTTP, or local files
+
+### Docker Features
+- **Automatic MCP server timeout adjustment** for Docker environments
+- **Security sandboxing** with non-root user execution
+- **Volume mounting** for local development and data persistence
+- **Environment variable templating** for configuration flexibility
+- **Health checks** and monitoring endpoints
+- **Claude Code integration** with automatic registration
+
 ## Support
 
 - Issues: GitHub Issues
-- Documentation: See `docs/` directory
-- Examples: See `examples/` directory
+- Documentation: See `examples/docker/docs/` directory
+- Docker Examples: See `examples/docker/` directory
+- Configuration Examples: See `examples/` directory

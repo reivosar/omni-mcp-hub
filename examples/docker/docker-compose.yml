@@ -9,12 +9,18 @@ services:
     volumes:
       # Mount your configuration file (dynamically set by start.sh)
       - ./dist/current-config.yaml:/app/mcp-sources.yaml:ro
+      # Mount documentation with external references
+      - ./docs:/app/docs:ro
       # Mount local directories you want to access (for local_sources)
-      - ${HOME}/projects:/projects:ro
-      - ${HOME}/documents:/documents:ro
+      - ./dist/data/projects:/projects:ro
+      - ./dist/data/documents:/documents:ro
+      # Fallback to user home directories if they exist
+      - ${HOME}/projects:/host-projects:ro
+      - ${HOME}/documents:/host-documents:ro
     environment:
       - PORT=3000
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - NODE_ENV=production
       - MCP_MODE=sse
+      - DOCS_ROOT=/app/docs
     restart: unless-stopped

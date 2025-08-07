@@ -55,4 +55,7 @@ RUN chown -R nodejs:nodejs /app
 # Switch to non-root user
 USER nodejs
 
+# Set environment variable to indicate Docker container
+ENV DOCKER_CONTAINER=true
+
 CMD ["node", "dist/servers/server.js"]

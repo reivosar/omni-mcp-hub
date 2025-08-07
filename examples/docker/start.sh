@@ -122,7 +122,7 @@ select_source_type() {
         if [ -d "$dir" ]; then
             local dirname=$(basename "$dir")
             # Skip common directories that aren't source types
-            if [[ "$dirname" != "dist" && "$dirname" != "node_modules" && "$dirname" != ".git" ]]; then
+            if [[ "$dirname" != "dist" && "$dirname" != "node_modules" && "$dirname" != ".git" && "$dirname" != "logs" && "$dirname" != "docs" ]]; then
                 # Check if directory contains mcp-sources.yaml
                 if [ -f "$dir/mcp-sources.yaml" ]; then
                     available_types+=("$dirname")
@@ -146,6 +146,8 @@ select_source_type() {
             *github*) desc="GitHub repositories and documentation" ;;
             *local*) desc="Local filesystem directories" ;;
             *mcp*) desc="MCP server integrations" ;;
+            *docs*) desc="Multi-tier documentation with external references" ;;
+            *mixed*) desc="Combined resource types" ;;
             *) desc="Custom configuration" ;;
         esac
         echo -e "  ${GREEN}$((i+1)))${NC} ${YELLOW}$type${NC} - $desc" >&2
@@ -178,14 +180,18 @@ usage() {
     for dir in "$SCRIPT_DIR"/*/ ; do
         if [ -d "$dir" ] && [ -f "$dir/mcp-sources.yaml" ]; then
             local dirname=$(basename "$dir")
-            local desc=""
-            case "$dirname" in
-                *github*) desc="GitHub repositories and documentation" ;;
-                *local*) desc="Local filesystem directories" ;;
-                *mcp*) desc="MCP server integrations" ;;
-                *) desc="Custom configuration" ;;
-            esac
-            echo -e "  ${GREEN}$dirname${NC} - $desc"
+            # Skip docs directory in usage as well
+            if [[ "$dirname" != "docs" ]]; then
+                local desc=""
+                case "$dirname" in
+                    *github*) desc="GitHub repositories and documentation" ;;
+                    *local*) desc="Local filesystem directories" ;;
+                    *mcp*) desc="MCP server integrations" ;;
+                    *mixed*) desc="Combined resource types" ;;
+                    *) desc="Custom configuration" ;;
+                esac
+                echo -e "  ${GREEN}$dirname${NC} - $desc"
+            fi
         fi
     done
     echo ""

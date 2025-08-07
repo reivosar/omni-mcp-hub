@@ -107,13 +107,14 @@ export class MCPServerClient {
 
       this.process.stdin?.write(JSON.stringify(message) + '\n');
       
-      // Timeout after 30 seconds
+      // Timeout after 60 seconds for Docker environments, 30 seconds otherwise
+      const timeout = process.env.DOCKER_CONTAINER ? 60000 : 30000;
       setTimeout(() => {
         if (this.pendingRequests.has(id)) {
           this.pendingRequests.delete(id);
-          reject(new Error(`Request timeout for method: ${method}`));
+          reject(new Error(`Request timeout for method: ${method} (timeout: ${timeout}ms)`));
         }
-      }, 30000);
+      }, timeout);
     });
   }
 
@@ -144,7 +145,10 @@ export class MCPServerManager {
     for (const config of configs) {
       try {
         if (config.enabled !== false) {
-          await this.startServer(config);
+          const server = await this.startServer(config);
+          if (!server) {
+            console.log(`Skipped MCP server ${config.name}`);
+          }
         }
       } catch (error) {
         console.error(`Failed to initialize MCP server ${config.name}:`, error);
@@ -154,7 +158,7 @@ export class MCPServerManager {
     console.log(`Initialized ${this.servers.size} MCP servers`);
   }
 
-  async startServer(config: MCPServerConfig): Promise<MCPServerInstance> {
+  async startServer(config: MCPServerConfig): Promise<MCPServerInstance | undefined> {
     if (config.enabled === false) {
       throw new Error(`Server ${config.name} is disabled`);
     }
@@ -174,6 +178,32 @@ export class MCPServerManager {
     }
 
     console.log(`Starting MCP server: ${config.name}`);
+    
+    // Check package existence for npx commands
+    if (config.command === 'npx' && config.args && config.args.length > 0) {
+      const packageName = config.args.find(arg => arg.startsWith('@') || !arg.startsWith('-'));
+      if (packageName && packageName.startsWith('@')) {
+        try {
+          console.log(`Verifying npm package ${packageName} for MCP server ${config.name}...`);
+          const { exec } = require('child_process');
+          const checkResult = await new Promise<boolean>((resolve) => {
+            exec(`npm view ${packageName} version`, { timeout: 10000 }, (error: any, stdout: any) => {
+              if (!error && stdout) {
+                console.log(`Package ${packageName} exists, version: ${stdout.trim()}`);
+              }
+              resolve(!error);
+            });
+          });
+          
+          if (!checkResult) {
+            console.warn(`Skipping MCP server ${config.name}: Package ${packageName} does not exist`);
+            return undefined;
+          }
+        } catch (error) {
+          console.warn(`Could not verify package ${packageName} for server ${config.name}, continuing anyway:`, error);
+        }
+      }
+    }
     
     // Skip execution for HTTP servers
     if (config.type === 'http') {
@@ -252,11 +282,17 @@ export class MCPServerManager {
       this.servers.delete(config.name);
     });
 
+    // Add stderr logging for debugging
+    childProcess.stderr?.on('data', (data) => {
+      console.error(`MCP server ${config.name} stderr:`, data.toString());
+    });
+
     // Wait a bit for the server to start
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Initialize MCP connection
     try {
+      console.log(`Initializing MCP connection for server ${config.name}...`);
       await client.initialize();
       console.log(`MCP server ${config.name} initialized successfully`);
     } catch (error) {
@@ -440,7 +476,7 @@ export class MCPServerManager {
   private extractPackageName(installCommand: string, prefix: string): string {
     const parts = installCommand.split(' ');
     const prefixParts = prefix.split(' ');
-    const startIndex = parts.findIndex((part, index) => 
+    const startIndex = parts.findIndex((_, index) => 
       prefixParts.every((prefixPart, prefixIndex) => 
         parts[index + prefixIndex] === prefixPart
       )

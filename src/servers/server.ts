@@ -31,11 +31,13 @@ export class OmniMCPServer {
   }
 }
 
-// Start server
-const server = new OmniMCPServer();
-server.initialize().catch(console.error);
+// Start server only when directly executed (not imported in unit tests)
+if (require.main === module) {
+  const server = new OmniMCPServer();
+  server.initialize().catch(console.error);
 
-process.on('SIGTERM', () => {
-  console.log('Shutting down gracefully');
-  process.exit(0);
-});
+  process.on('SIGTERM', () => {
+    console.log('Shutting down gracefully');
+    process.exit(0);
+  });
+}

@@ -70,6 +70,9 @@ export interface Config {
   files: FilesConfig;
   fetch: FetchConfig;
   security?: SecurityConfig;
+  behavior_detection?: {
+    enabled?: boolean;
+  };
   
   // Legacy support - will be deprecated
   sources?: Array<GitHubSourceConfig | LocalSourceConfig>;

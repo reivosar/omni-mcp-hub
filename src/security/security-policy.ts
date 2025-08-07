@@ -92,6 +92,7 @@ export const DEFAULT_SECURITY_POLICY: SecurityPolicy = {
   allowedArgumentPatterns: [
     /^[a-zA-Z0-9._\-\/]+$/, // Alphanumeric, dots, dashes, slashes
     /^@[a-zA-Z0-9._\-\/]+\/[a-zA-Z0-9._\-\/]+$/, // Scoped npm packages (@scope/package)
+    /^\/.*\/node_modules\/@[a-zA-Z0-9._\-]+\/[a-zA-Z0-9._\-\/]+\.js$/, // Node modules scoped package paths
     /^--?[a-zA-Z0-9\-]+(=[a-zA-Z0-9._\-\/]+)?$/ // CLI flags
   ],
   

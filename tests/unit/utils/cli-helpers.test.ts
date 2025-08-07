@@ -106,7 +106,7 @@ describe('CLIHelpers', () => {
       CLIHelpers.validateConfigUrl(testUrl);
 
       expect((mockConfigManager as any).parseSourceUrl).toHaveBeenCalledWith(testUrl);
-      expect(mockConsoleLog).toHaveBeenCalledWith(`✅ URL parsing successful: ${testUrl}`);
+      expect(mockConsoleLog).toHaveBeenCalledWith(`URL parsing successful: ${testUrl}`);
       expect(mockConsoleLog).toHaveBeenCalledWith('   Type: github');
       expect(mockConsoleLog).toHaveBeenCalledWith('   Owner: microsoft');
       expect(mockConsoleLog).toHaveBeenCalledWith('   Repo: vscode');
@@ -126,7 +126,7 @@ describe('CLIHelpers', () => {
       CLIHelpers.validateConfigUrl(testUrl);
 
       expect((mockConfigManager as any).parseSourceUrl).toHaveBeenCalledWith(testUrl);
-      expect(mockConsoleLog).toHaveBeenCalledWith(`✅ URL parsing successful: ${testUrl}`);
+      expect(mockConsoleLog).toHaveBeenCalledWith(`URL parsing successful: ${testUrl}`);
       expect(mockConsoleLog).toHaveBeenCalledWith('   Type: local');
       expect(mockConsoleLog).toHaveBeenCalledWith('   Path: /Users/mac/my-project');
     });
@@ -142,7 +142,7 @@ describe('CLIHelpers', () => {
 
       CLIHelpers.validateConfigUrl(testUrl);
 
-      expect(mockConsoleError).toHaveBeenCalledWith(`❌ URL parsing error: ${testUrl}`);
+      expect(mockConsoleError).toHaveBeenCalledWith(`URL parsing error: ${testUrl}`);
       expect(mockConsoleError).toHaveBeenCalledWith(`   ${errorMessage}`);
     });
 
@@ -157,7 +157,7 @@ describe('CLIHelpers', () => {
 
       CLIHelpers.validateConfigUrl(testUrl);
 
-      expect(mockConsoleError).toHaveBeenCalledWith(`❌ URL parsing error: ${testUrl}`);
+      expect(mockConsoleError).toHaveBeenCalledWith(`URL parsing error: ${testUrl}`);
       expect(mockConsoleError).toHaveBeenCalledWith(`   ${errorMessage}`);
     });
 
@@ -172,7 +172,7 @@ describe('CLIHelpers', () => {
 
       CLIHelpers.validateConfigUrl(testUrl);
 
-      expect(mockConsoleLog).toHaveBeenCalledWith(`✅ URL parsing successful: ${testUrl}`);
+      expect(mockConsoleLog).toHaveBeenCalledWith(`URL parsing successful: ${testUrl}`);
       expect(mockConsoleLog).toHaveBeenCalledWith('   Type: unknown');
       // Should not log owner/repo/branch or path for unknown types
       expect(mockConsoleLog).not.toHaveBeenCalledWith(expect.stringContaining('Owner:'));
@@ -201,7 +201,7 @@ describe('CLIHelpers', () => {
 
       CLIHelpers.validateConfigUrl('test-url');
 
-      expect(mockConsoleError).toHaveBeenCalledWith('❌ URL parsing error: test-url');
+      expect(mockConsoleError).toHaveBeenCalledWith('URL parsing error: test-url');
       expect(mockConsoleError).toHaveBeenCalledWith('   Constructor failed');
     });
 

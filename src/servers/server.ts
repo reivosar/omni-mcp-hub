@@ -5,76 +5,29 @@ import { SourceConfigManager } from '../config/source-config-manager';
 import { SimpleStdioServer } from './simple-stdio-server';
 
 export class OmniMCPServer {
-  private mcpServer: MCPSSEServer;
-  private stdioBridge: any;
-  private configLoader: SourceConfigManager;
+  private mcpServer?: MCPSSEServer;
+  private stdioBridge?: any;
   private mode: string;
 
   constructor() {
-    this.configLoader = new SourceConfigManager();
-    const config = this.configLoader.getConfig();
-    this.mode = process.env.MCP_MODE || 'unified';
+    this.mode = process.env.MCP_MODE || 'sse';
     
-    // Existing SSE server (backward compatibility)
-    const port = config.server?.port || parseInt(process.env.MCP_PORT || process.env.PORT || '3000', 10);
-    this.mcpServer = new MCPSSEServer(port);
-    
-    // New stdio bridge (Claude Code support)
-    this.stdioBridge = new SimpleStdioServer();
-  }
-
-  private log(message: string) {
-    // In stdio mode, suppress console output to avoid interfering with JSON-RPC protocol
-    if (this.mode !== 'stdio') {
-      console.error(message);
+    if (this.mode === 'stdio') {
+      this.stdioBridge = new SimpleStdioServer();
+    } else {
+      const configLoader = new SourceConfigManager();
+      const config = configLoader.getConfig();
+      const port = config.server?.port || parseInt(process.env.PORT || '3000', 10);
+      this.mcpServer = new MCPSSEServer(port);
     }
   }
 
   async initialize() {
-    this.log(`Starting Omni MCP Hub in ${this.mode} mode`);
-    
-    switch (this.mode) {
-      case 'stdio':
-        // For Claude Code (standard MCP protocol)
-        if (this.stdioBridge) {
-          this.log('Starting stdio MCP bridge for Claude Code compatibility');
-          await this.stdioBridge.start();
-        } else {
-          this.log('MCP SDK not available. Falling back to SSE mode.');
-          this.mcpServer.start();
-        }
-        break;
-        
-      case 'sse':
-        // Existing SSE server (git-mcp compatibility)
-        this.log('Starting SSE server for git-mcp compatibility');
-        this.mcpServer.start();
-        break;
-        
-      case 'unified':
-        // Support both protocols simultaneously
-        this.log('Starting unified mode - both stdio and SSE');
-        if (this.stdioBridge) {
-          await Promise.all([
-            this.stdioBridge.start(),
-            new Promise(resolve => {
-              this.mcpServer.start();
-              resolve(undefined);
-            })
-          ]);
-        } else {
-          this.log('MCP SDK not available. Running SSE mode only.');
-          this.mcpServer.start();
-        }
-        break;
-        
-      default:
-        this.log('Invalid MCP_MODE. Use: stdio, sse, or unified');
-        process.exit(1);
+    if (this.mode === 'stdio') {
+      await this.stdioBridge?.start();
+    } else {
+      this.mcpServer?.start();
     }
-    
-    this.log('Omni MCP Hub initialized successfully');
-    this.log('All existing functionality preserved and enhanced');
   }
 }
 

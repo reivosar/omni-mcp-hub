@@ -1,6 +1,6 @@
 mcp_servers:
   - name: filesystem
     type: stdio
-    command: npx
-    args: ["-y", "@modelcontextprotocol/server-filesystem", "/Users/mac/workspace"]
+    command: /usr/local/bin/node
+    args: ["/app/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js", "/tmp"]
     enabled: true

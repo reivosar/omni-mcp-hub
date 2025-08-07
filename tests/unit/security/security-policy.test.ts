@@ -200,6 +200,19 @@ describe('SecurityPolicyManager', () => {
       }
     });
 
+    test('should allow node_modules scoped package paths', () => {
+      const validNodeModulePaths = [
+        '/app/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js',
+        '/usr/local/lib/node_modules/@scope/package/dist/main.js'
+      ];
+
+      for (const path of validNodeModulePaths) {
+        const result = policyManager.validateArguments([path]);
+
+        expect(result.valid).toBe(true);
+      }
+    });
+
     test('should reject arguments not matching allowed patterns', () => {
       const invalidArgs = [
         'arg with spaces but no quotes',

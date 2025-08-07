@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Docker Deployment Startup Script
-# Usage: ./start.sh [github_sources|local_sources|mcp_servers]
+# Docker Deployment Startup Script  
+# Usage: ./start.sh [github_sources|local_sources|mcp_servers] [sse|stdio]
 
 set -e
 

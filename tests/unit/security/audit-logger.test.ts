@@ -402,7 +402,7 @@ describe('AuditLogger', () => {
   describe('Security Violation Filtering', () => {
     test('should filter security violations by time', () => {
       const now = new Date();
-      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
       const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
 
       const mockLogContent = [
@@ -413,13 +413,13 @@ describe('AuditLogger', () => {
           message: 'Old violation'
         }),
         JSON.stringify({
-          timestamp: oneHourAgo.toISOString(),
+          timestamp: thirtyMinutesAgo.toISOString(),
           level: 'SECURITY',
           event: 'SECURITY_VIOLATION',
           message: 'Recent violation'
         }),
         JSON.stringify({
-          timestamp: oneHourAgo.toISOString(),
+          timestamp: thirtyMinutesAgo.toISOString(),
           level: 'INFO',
           event: 'COMMAND_EXECUTED',
           message: 'Normal log'

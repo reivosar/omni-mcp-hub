@@ -39,12 +39,12 @@ export class MCPSSEServer {
     this.mcpServerManager = new MCPServerManager();
     this.port = port;
     
-    // Configure fetch options from config
+    // Configure fetch options from config with defaults
     this.fetchOptions = {
-      timeout: config.fetch.timeout,
-      retries: config.fetch.retries,
-      retryDelay: config.fetch.retry_delay,
-      maxDepth: config.fetch.max_depth
+      timeout: config.fetch?.timeout || 30000,
+      retries: config.fetch?.retries || 3,
+      retryDelay: config.fetch?.retry_delay || 1000,
+      maxDepth: config.fetch?.max_depth || 3
     };
     
     this.setupMiddleware();
@@ -56,15 +56,16 @@ export class MCPSSEServer {
     // Security: Configure CORS with specific allowed origins instead of wildcard
     const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
       'http://localhost:3000',
+      'http://localhost:3010',
       'http://localhost:8080',
       'http://localhost:5173'
     ];
     
     this.app.use(cors({
-      origin: allowedOrigins,
+      origin: process.env.NODE_ENV === 'test' ? '*' : allowedOrigins,
       methods: ['GET', 'POST', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'MCP-Protocol-Version'],
-      credentials: true
+      credentials: process.env.NODE_ENV === 'test' ? false : true
     }));
     
     // For webhook signature verification, we need raw body

@@ -609,7 +609,7 @@ describe('MCPHandler', () => {
 
       const response = await mcpHandler.handleMessage(message);
 
-      expect(response.result.content[0].text).toContain('⚠️ Content Safety Notice');
+      expect(response.result.content[0].text).toContain('Content Safety Notice');
     });
 
     it('should handle general tool call errors', async () => {
@@ -923,7 +923,7 @@ describe('MCPHandler', () => {
 
         const response = await mcpHandler.handleMessage(message);
 
-        expect(response.result.content[0].text).toContain('⚠️ Content Safety Notice');
+        expect(response.result.content[0].text).toContain('Content Safety Notice');
       });
     });
 

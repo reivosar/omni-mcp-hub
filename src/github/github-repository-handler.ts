@@ -2,11 +2,14 @@ import simpleGit, { SimpleGit } from 'simple-git';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { SourceHandler } from '../sources/source-handler';
+import { ReferenceResolver } from '../utils/reference-resolver';
+import { GitHubAPI } from './github-api';
 
-export class GitHubHandler implements SourceHandler {
+export class GitHubRepositoryHandler implements SourceHandler {
   private repoPath: string = '';
   private localDir: string = '';
   private git: SimpleGit;
+  private referenceResolver!: ReferenceResolver;
 
   constructor(private baseDir: string) {
     this.git = simpleGit();
@@ -29,6 +32,10 @@ export class GitHubHandler implements SourceHandler {
     }
 
     await this.git.clone(gitUrl, this.localDir, ['--depth', '1', '--single-branch']);
+    
+    // Initialize reference resolver with GitHub API
+    const githubAPI = new GitHubAPI();
+    this.referenceResolver = new ReferenceResolver(githubAPI);
   }
 
   async getFiles(patterns: string[]): Promise<Map<string, string>> {
@@ -52,7 +59,38 @@ export class GitHubHandler implements SourceHandler {
       return null;
     }
 
-    return fs.readFileSync(filePath, 'utf-8');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    
+    // Resolve external references if content is markdown
+    if (fileName.endsWith('.md')) {
+      try {
+        const externalRefs = await this.referenceResolver.resolveReferences(
+          content, 
+          'main',
+          { maxDepth: 2, timeout: 10000, retries: 3, retryDelay: 1000 }
+        );
+        
+        if (externalRefs.length > 0) {
+          console.log(`Resolved ${externalRefs.length} external references for ${fileName}`);
+          
+          // Append external references to the original content
+          let enhancedContent = content + '\n\n<!-- External References -->\n';
+          for (const ref of externalRefs) {
+            enhancedContent += `\n## External Reference: ${ref.url}\n`;
+            if (ref.error) {
+              enhancedContent += `Error: ${ref.error}\n`;
+            } else {
+              enhancedContent += ref.content + '\n';
+            }
+          }
+          return enhancedContent;
+        }
+      } catch (error) {
+        console.warn(`Failed to resolve external references for ${fileName}:`, error);
+      }
+    }
+
+    return content;
   }
 
   async listFiles(): Promise<string[]> {

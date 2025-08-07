@@ -1,0 +1,33 @@
+github_sources:
+  - url: github:reivosar/claude-code-engineering-guide
+
+local_sources:
+  - url: /app/repos/documents
+  - url: /app/repos/projects
+  - url: /app/workspace
+
+mcp_servers:
+  - name: filesystem
+    type: stdio
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-filesystem"
+      - "/app/repos"
+      - "/app/workspace"
+    enabled: true
+  - name: sqlite
+    type: stdio
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-sqlite"
+      - "/app/data/database.db"
+    enabled: true
+  - name: puppeteer
+    type: stdio
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-puppeteer"
+    enabled: true

@@ -1,6 +1,6 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { LocalHandler } from '../../../src/handlers/local-handler';
+import { LocalDirectoryHandler } from '../../../src/local/local-directory-handler';
 
 // Mock fs-extra
 jest.mock('fs-extra');
@@ -14,13 +14,13 @@ jest.mock('path', () => ({
 }));
 const mockPath = path as jest.Mocked<typeof path>;
 
-describe('LocalHandler', () => {
-  let localHandler: LocalHandler;
+describe('LocalDirectoryHandler', () => {
+  let localDirectoryHandler: LocalDirectoryHandler;
   const mockSourcePath = '/test/path';
   const resolvedPath = '/resolved/test/path';
 
   beforeEach(() => {
-    localHandler = new LocalHandler();
+    localDirectoryHandler = new LocalDirectoryHandler();
     
     // Mock path.resolve to return a predictable path
     mockPath.resolve.mockReturnValue(resolvedPath);
@@ -34,7 +34,7 @@ describe('LocalHandler', () => {
       mockFs.existsSync.mockReturnValue(true);
       mockFs.statSync.mockReturnValue({ isDirectory: () => true } as any);
 
-      await localHandler.initialize(mockSourcePath);
+      await localDirectoryHandler.initialize(mockSourcePath);
 
       expect(mockPath.resolve).toHaveBeenCalledWith(mockSourcePath);
       expect(mockFs.existsSync).toHaveBeenCalledWith(resolvedPath);
@@ -44,7 +44,7 @@ describe('LocalHandler', () => {
     it('should throw error if path does not exist', async () => {
       mockFs.existsSync.mockReturnValue(false);
 
-      await expect(localHandler.initialize(mockSourcePath))
+      await expect(localDirectoryHandler.initialize(mockSourcePath))
         .rejects.toThrow(`Local path does not exist: ${resolvedPath}`);
     });
 
@@ -52,7 +52,7 @@ describe('LocalHandler', () => {
       mockFs.existsSync.mockReturnValue(true);
       mockFs.statSync.mockReturnValue({ isDirectory: () => false } as any);
 
-      await expect(localHandler.initialize(mockSourcePath))
+      await expect(localDirectoryHandler.initialize(mockSourcePath))
         .rejects.toThrow(`Path is not a directory: ${resolvedPath}`);
     });
 
@@ -61,7 +61,7 @@ describe('LocalHandler', () => {
       mockFs.existsSync.mockReturnValue(true);
       mockFs.statSync.mockReturnValue({ isDirectory: () => true } as any);
 
-      await localHandler.initialize(relativePath);
+      await localDirectoryHandler.initialize(relativePath);
 
       expect(mockPath.resolve).toHaveBeenCalledWith(relativePath);
     });
@@ -73,7 +73,7 @@ describe('LocalHandler', () => {
       mockFs.existsSync.mockReturnValue(true);
       mockFs.statSync.mockReturnValue({ isDirectory: () => true } as any);
       
-      await localHandler.initialize(mockSourcePath);
+      await localDirectoryHandler.initialize(mockSourcePath);
       
       // Clear mocks after initialization to start fresh for each test
       jest.clearAllMocks();
@@ -101,7 +101,7 @@ describe('LocalHandler', () => {
         .mockReturnValueOnce(content1)
         .mockReturnValueOnce(content2);
 
-      const result = await localHandler.getFiles(patterns);
+      const result = await localDirectoryHandler.getFiles(patterns);
 
       expect(result).toEqual(new Map([
         ['CLAUDE.md', content1],
@@ -123,14 +123,14 @@ describe('LocalHandler', () => {
       mockFs.existsSync.mockReturnValue(true);
       mockFs.statSync.mockReturnValue({ isFile: () => false } as any);
 
-      const result = await localHandler.getFiles(patterns);
+      const result = await localDirectoryHandler.getFiles(patterns);
 
       expect(result).toEqual(new Map());
       expect(mockFs.readFileSync).not.toHaveBeenCalled();
     });
 
     it('should handle empty patterns array', async () => {
-      const result = await localHandler.getFiles([]);
+      const result = await localDirectoryHandler.getFiles([]);
       expect(result).toEqual(new Map());
     });
 
@@ -143,7 +143,7 @@ describe('LocalHandler', () => {
         throw new Error('File read error');
       });
 
-      await expect(localHandler.getFiles(patterns)).rejects.toThrow('File read error');
+      await expect(localDirectoryHandler.getFiles(patterns)).rejects.toThrow('File read error');
     });
   });
 
@@ -153,7 +153,7 @@ describe('LocalHandler', () => {
       mockFs.existsSync.mockReturnValue(true);
       mockFs.statSync.mockReturnValue({ isDirectory: () => true } as any);
       
-      await localHandler.initialize(mockSourcePath);
+      await localDirectoryHandler.initialize(mockSourcePath);
       
       // Clear mocks after initialization
       jest.clearAllMocks();
@@ -168,7 +168,7 @@ describe('LocalHandler', () => {
       mockFs.statSync.mockReturnValue({ isFile: () => true } as any);
       mockFs.readFileSync.mockReturnValue(content);
 
-      const result = await localHandler.getFile(fileName);
+      const result = await localDirectoryHandler.getFile(fileName);
 
       expect(result).toBe(content);
       expect(mockFs.readFileSync).toHaveBeenCalledWith(expectedPath, 'utf-8');
@@ -179,7 +179,7 @@ describe('LocalHandler', () => {
       
       mockFs.existsSync.mockReturnValue(false);
 
-      const result = await localHandler.getFile(fileName);
+      const result = await localDirectoryHandler.getFile(fileName);
 
       expect(result).toBeNull();
       expect(mockFs.readFileSync).not.toHaveBeenCalled();
@@ -191,7 +191,7 @@ describe('LocalHandler', () => {
       mockFs.existsSync.mockReturnValue(true);
       mockFs.statSync.mockReturnValue({ isFile: () => false } as any);
 
-      const result = await localHandler.getFile(fileName);
+      const result = await localDirectoryHandler.getFile(fileName);
 
       expect(result).toBeNull();
       expect(mockFs.readFileSync).not.toHaveBeenCalled();
@@ -209,7 +209,7 @@ describe('LocalHandler', () => {
       mockFs.existsSync.mockReturnValue(true);
       mockFs.statSync.mockReturnValue({ isDirectory: () => true } as any);
       
-      await localHandler.initialize(mockSourcePath);
+      await localDirectoryHandler.initialize(mockSourcePath);
     });
 
     it('should list all markdown and text files recursively', async () => {
@@ -242,7 +242,7 @@ describe('LocalHandler', () => {
         .mockReturnValueOnce({ isDirectory: () => false } as any) // script.js
         .mockReturnValueOnce({ isDirectory: () => false } as any); // binary.exe
 
-      const result = await localHandler.listFiles();
+      const result = await localDirectoryHandler.listFiles();
 
       expect(result).toEqual([
         'CLAUDE.md',
@@ -256,7 +256,7 @@ describe('LocalHandler', () => {
       mockFs.readdirSync.mockReturnValue([] as any);
       mockFs.existsSync.mockReturnValue(true);
 
-      const result = await localHandler.listFiles();
+      const result = await localDirectoryHandler.listFiles();
 
       expect(result).toEqual([]);
     });
@@ -295,7 +295,7 @@ describe('LocalHandler', () => {
         .mockReturnValueOnce({ isDirectory: () => false } as any) // CLAUDE.md
         .mockReturnValueOnce({ isDirectory: () => true } as any); // nonexistent-dir
 
-      const result = await localHandler.listFiles();
+      const result = await localDirectoryHandler.listFiles();
 
       expect(result).toEqual(['CLAUDE.md']);
     });
@@ -337,7 +337,7 @@ describe('LocalHandler', () => {
         .mockReturnValueOnce({ isDirectory: () => true } as any)  // node_modules (skipped)
         .mockReturnValueOnce({ isDirectory: () => true } as any); // src
 
-      const result = await localHandler.listFiles();
+      const result = await localDirectoryHandler.listFiles();
 
       expect(result).toEqual(['CLAUDE.md']);
     });
@@ -352,16 +352,16 @@ describe('LocalHandler', () => {
       // Initialize for getSourceInfo tests
       mockFs.existsSync.mockReturnValue(true);
       mockFs.statSync.mockReturnValue({ isDirectory: () => true } as any);
-      await localHandler.initialize(mockSourcePath);
+      await localDirectoryHandler.initialize(mockSourcePath);
     });
     
     it('should return source info with initialized path', async () => {
-      const result = localHandler.getSourceInfo();
+      const result = localDirectoryHandler.getSourceInfo();
       expect(result).toBe(`Local: ${resolvedPath}`);
     });
 
     it('should return source info even before initialization', () => {
-      const newHandler = new LocalHandler();
+      const newHandler = new LocalDirectoryHandler();
       const result = newHandler.getSourceInfo();
       expect(result).toBe('Local: ');
     });
@@ -371,7 +371,7 @@ describe('LocalHandler', () => {
     beforeEach(async () => {
       mockFs.existsSync.mockReturnValue(true);
       mockFs.statSync.mockReturnValue({ isDirectory: () => true } as any);
-      await localHandler.initialize(mockSourcePath);
+      await localDirectoryHandler.initialize(mockSourcePath);
     });
 
     it('should handle fs.readdirSync errors in listFiles', async () => {
@@ -379,7 +379,7 @@ describe('LocalHandler', () => {
         throw new Error('Permission denied');
       });
 
-      await expect(localHandler.listFiles()).rejects.toThrow('Permission denied');
+      await expect(localDirectoryHandler.listFiles()).rejects.toThrow('Permission denied');
     });
 
     it('should handle fs.statSync errors in listFiles', async () => {
@@ -389,7 +389,7 @@ describe('LocalHandler', () => {
         throw new Error('Stat error');
       });
 
-      await expect(localHandler.listFiles()).rejects.toThrow('Stat error');
+      await expect(localDirectoryHandler.listFiles()).rejects.toThrow('Stat error');
     });
   });
 });

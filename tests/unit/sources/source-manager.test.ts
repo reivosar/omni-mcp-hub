@@ -1,26 +1,26 @@
 import { OmniSourceManager } from '../../../src/sources/source-manager';
 import { SourceConfigManager } from '../../../src/config/source-config-manager';
 import { SourceManager, SourceHandler } from '../../../src/sources/source-handler';
-import { GitHubHandler } from '../../../src/handlers/github-handler';
-import { LocalHandler } from '../../../src/handlers/local-handler';
+import { GitHubRepositoryHandler } from '../../../src/github/github-repository-handler';
+import { LocalDirectoryHandler } from '../../../src/local/local-directory-handler';
 
 // Mock dependencies
 jest.mock('../../../src/config/source-config-manager');
 jest.mock('../../../src/sources/source-handler');
-jest.mock('../../../src/handlers/github-handler');
-jest.mock('../../../src/handlers/local-handler');
+jest.mock('../../../src/github/github-repository-handler');
+jest.mock('../../../src/local/local-directory-handler');
 
 const MockSourceConfigManager = SourceConfigManager as jest.MockedClass<typeof SourceConfigManager>;
 const MockSourceManager = SourceManager as jest.MockedClass<typeof SourceManager>;
-const MockGitHubHandler = GitHubHandler as jest.MockedClass<typeof GitHubHandler>;
-const MockLocalHandler = LocalHandler as jest.MockedClass<typeof LocalHandler>;
+const MockGitHubRepositoryHandler = GitHubRepositoryHandler as jest.MockedClass<typeof GitHubRepositoryHandler>;
+const MockLocalDirectoryHandler = LocalDirectoryHandler as jest.MockedClass<typeof LocalDirectoryHandler>;
 
 describe('OmniSourceManager', () => {
   let omniSourceManager: OmniSourceManager;
   let mockConfigLoader: jest.Mocked<SourceConfigManager>;
   let mockSourceManager: jest.Mocked<SourceManager>;
-  let mockGithubHandler: jest.Mocked<GitHubHandler>;
-  let mockLocalHandler: jest.Mocked<LocalHandler>;
+  let mockGitHubRepositoryHandler: jest.Mocked<GitHubRepositoryHandler>;
+  let mockLocalDirectoryHandler: jest.Mocked<LocalDirectoryHandler>;
   let mockSourceHandler: jest.Mocked<SourceHandler>;
 
   const originalEnv = process.env;
@@ -40,8 +40,8 @@ describe('OmniSourceManager', () => {
     // Create mock instances
     mockConfigLoader = new MockSourceConfigManager() as jest.Mocked<SourceConfigManager>;
     mockSourceManager = new MockSourceManager() as jest.Mocked<SourceManager>;
-    mockGithubHandler = new MockGitHubHandler('/tmp/repos') as jest.Mocked<GitHubHandler>;
-    mockLocalHandler = new MockLocalHandler() as jest.Mocked<LocalHandler>;
+    mockGitHubRepositoryHandler = new MockGitHubRepositoryHandler('/tmp/repos') as jest.Mocked<GitHubRepositoryHandler>;
+    mockLocalDirectoryHandler = new MockLocalDirectoryHandler() as jest.Mocked<LocalDirectoryHandler>;
     
     // Create generic source handler mock
     mockSourceHandler = {
@@ -55,8 +55,8 @@ describe('OmniSourceManager', () => {
     // Setup constructor mocks
     MockSourceConfigManager.mockImplementation(() => mockConfigLoader);
     MockSourceManager.mockImplementation(() => mockSourceManager);
-    MockGitHubHandler.mockImplementation(() => mockGithubHandler);
-    MockLocalHandler.mockImplementation(() => mockLocalHandler);
+    MockGitHubRepositoryHandler.mockImplementation(() => mockGitHubRepositoryHandler);
+    MockLocalDirectoryHandler.mockImplementation(() => mockLocalDirectoryHandler);
 
     omniSourceManager = new OmniSourceManager();
   });
@@ -74,10 +74,10 @@ describe('OmniSourceManager', () => {
     });
 
     it('should register GitHub and Local handlers', () => {
-      expect(MockGitHubHandler).toHaveBeenCalledWith('/tmp/repos');
-      expect(MockLocalHandler).toHaveBeenCalledTimes(2);
-      expect(mockSourceManager.registerHandler).toHaveBeenCalledWith('github', mockGithubHandler);
-      expect(mockSourceManager.registerHandler).toHaveBeenCalledWith('local', mockLocalHandler);
+      expect(MockGitHubRepositoryHandler).toHaveBeenCalledWith('/tmp/repos');
+      expect(MockLocalDirectoryHandler).toHaveBeenCalledTimes(2);
+      expect(mockSourceManager.registerHandler).toHaveBeenCalledWith('github', mockGitHubRepositoryHandler);
+      expect(mockSourceManager.registerHandler).toHaveBeenCalledWith('local', mockLocalDirectoryHandler);
     });
   });
 

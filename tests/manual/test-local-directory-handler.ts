@@ -1,11 +1,11 @@
-import { LocalHandler } from '../../src/handlers/local-handler';
+import { LocalDirectoryHandler } from '../../src/local/local-directory-handler';
 import * as path from 'path';
 
-async function testLocalHandler() {
-  console.log('Testing LocalHandler...');
+async function testLocalDirectoryHandler() {
+  console.log('Testing LocalDirectoryHandler...');
   
   const testDataPath = path.join(__dirname, '../../test-data');
-  const handler = new LocalHandler();
+  const handler = new LocalDirectoryHandler();
   
   try {
     // Initialize
@@ -35,4 +35,4 @@ async function testLocalHandler() {
   }
 }
 
-testLocalHandler();
+testLocalDirectoryHandler();

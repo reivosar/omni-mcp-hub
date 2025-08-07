@@ -1,6 +1,6 @@
 import { SourceManager, SourceHandler } from './source-handler';
-import { GitHubHandler } from '../handlers/github-handler';
-import { LocalHandler } from '../handlers/local-handler';
+import { GitHubRepositoryHandler } from '../github/github-repository-handler';
+import { LocalDirectoryHandler } from '../local/local-directory-handler';
 import { SourceConfigManager } from '../config/source-config-manager';
 import { ContentValidator } from '../utils/content-validator';
 
@@ -14,8 +14,8 @@ export class OmniSourceManager {
     this.configLoader = new SourceConfigManager();
 
     // Register handlers
-    this.sourceManager.registerHandler('github', new GitHubHandler('/tmp/repos'));
-    this.sourceManager.registerHandler('local', new LocalHandler());
+    this.sourceManager.registerHandler('github', new GitHubRepositoryHandler('/tmp/repos'));
+    this.sourceManager.registerHandler('local', new LocalDirectoryHandler());
   }
 
   async initializeSources() {

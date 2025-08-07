@@ -1,7 +1,7 @@
 import simpleGit, { SimpleGit } from 'simple-git';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { GitHubHandler } from '../../../src/handlers/github-handler';
+import { GitHubRepositoryHandler } from '../../../src/github/github-repository-handler';
 
 // Mock dependencies
 jest.mock('simple-git');
@@ -15,8 +15,8 @@ const mockSimpleGit = simpleGit as jest.MockedFunction<typeof simpleGit>;
 const mockFs = fs as jest.Mocked<typeof fs>;
 const mockPath = path as jest.Mocked<typeof path>;
 
-describe('GitHubHandler', () => {
-  let githubHandler: GitHubHandler;
+describe('GitHubRepositoryHandler', () => {
+  let repositoryHandler: GitHubRepositoryHandler;
   let mockGit: jest.Mocked<SimpleGit>;
   const baseDir = '/tmp/repos';
   const repoPath = 'owner/repo';
@@ -36,7 +36,7 @@ describe('GitHubHandler', () => {
       return filtered.join('/');
     });
     
-    githubHandler = new GitHubHandler(baseDir);
+    repositoryHandler = new GitHubRepositoryHandler(baseDir);
   });
 
   describe('constructor', () => {
@@ -45,7 +45,7 @@ describe('GitHubHandler', () => {
     });
 
     it('should store base directory', () => {
-      expect(githubHandler).toBeDefined();
+      expect(repositoryHandler).toBeDefined();
     });
   });
 
@@ -54,7 +54,7 @@ describe('GitHubHandler', () => {
       mockFs.existsSync.mockReturnValue(false); // Directory doesn't exist initially
       mockGit.clone.mockResolvedValue(undefined as any);
 
-      await githubHandler.initialize(repoPath);
+      await repositoryHandler.initialize(repoPath);
 
       expect(mockGit.clone).toHaveBeenCalledWith(
         'https://github.com/owner/repo.git',
@@ -69,7 +69,7 @@ describe('GitHubHandler', () => {
       mockFs.removeSync.mockImplementation(() => {}); // Mock removal
       mockGit.clone.mockResolvedValue(undefined as any);
 
-      await githubHandler.initialize(repoPath);
+      await repositoryHandler.initialize(repoPath);
 
       expect(mockFs.removeSync).toHaveBeenCalledWith('/tmp/repos/github-owner-repo');
       expect(mockGit.clone).toHaveBeenCalledWith(
@@ -80,17 +80,17 @@ describe('GitHubHandler', () => {
     });
 
     it('should throw error for invalid repository path (missing owner)', async () => {
-      await expect(githubHandler.initialize('repo'))
+      await expect(repositoryHandler.initialize('repo'))
         .rejects.toThrow('Invalid GitHub repository path: repo');
     });
 
     it('should throw error for invalid repository path (missing repo)', async () => {
-      await expect(githubHandler.initialize('owner/'))
+      await expect(repositoryHandler.initialize('owner/'))
         .rejects.toThrow('Invalid GitHub repository path: owner/');
     });
 
     it('should throw error for empty repository path', async () => {
-      await expect(githubHandler.initialize(''))
+      await expect(repositoryHandler.initialize(''))
         .rejects.toThrow('Invalid GitHub repository path: ');
     });
 
@@ -98,7 +98,7 @@ describe('GitHubHandler', () => {
       mockFs.existsSync.mockReturnValue(false);
       mockGit.clone.mockRejectedValue(new Error('Clone failed'));
 
-      await expect(githubHandler.initialize(repoPath))
+      await expect(repositoryHandler.initialize(repoPath))
         .rejects.toThrow('Clone failed');
     });
 
@@ -109,7 +109,7 @@ describe('GitHubHandler', () => {
       mockFs.existsSync.mockReturnValue(false);
       mockGit.clone.mockResolvedValue(undefined as any);
 
-      await githubHandler.initialize(complexRepoPath);
+      await repositoryHandler.initialize(complexRepoPath);
 
       expect(mockGit.clone).toHaveBeenCalledWith(
         'https://github.com/complex-org/complex-repo-name.git',
@@ -123,7 +123,7 @@ describe('GitHubHandler', () => {
     beforeEach(async () => {
       mockFs.existsSync.mockReturnValue(false);
       mockGit.clone.mockResolvedValue(undefined as any);
-      await githubHandler.initialize(repoPath);
+      await repositoryHandler.initialize(repoPath);
     });
 
     it('should get files that exist and are files', async () => {
@@ -147,7 +147,7 @@ describe('GitHubHandler', () => {
         .mockReturnValueOnce(content1)
         .mockReturnValueOnce(content2);
 
-      const result = await githubHandler.getFiles(patterns);
+      const result = await repositoryHandler.getFiles(patterns);
 
       expect(result).toEqual(new Map([
         ['CLAUDE.md', content1],
@@ -161,14 +161,14 @@ describe('GitHubHandler', () => {
       mockFs.existsSync.mockReturnValue(true);
       mockFs.statSync.mockReturnValue({ isFile: () => false } as any);
 
-      const result = await githubHandler.getFiles(patterns);
+      const result = await repositoryHandler.getFiles(patterns);
 
       expect(result).toEqual(new Map());
       expect(mockFs.readFileSync).not.toHaveBeenCalled();
     });
 
     it('should handle empty patterns array', async () => {
-      const result = await githubHandler.getFiles([]);
+      const result = await repositoryHandler.getFiles([]);
       expect(result).toEqual(new Map());
     });
 
@@ -181,7 +181,7 @@ describe('GitHubHandler', () => {
         throw new Error('File read error');
       });
 
-      await expect(githubHandler.getFiles(patterns)).rejects.toThrow('File read error');
+      await expect(repositoryHandler.getFiles(patterns)).rejects.toThrow('File read error');
     });
   });
 
@@ -189,7 +189,7 @@ describe('GitHubHandler', () => {
     beforeEach(async () => {
       mockFs.existsSync.mockReturnValue(false);
       mockGit.clone.mockResolvedValue(undefined as any);
-      await githubHandler.initialize(repoPath);
+      await repositoryHandler.initialize(repoPath);
     });
 
     it('should get file content when file exists', async () => {
@@ -199,7 +199,7 @@ describe('GitHubHandler', () => {
       mockFs.existsSync.mockReturnValue(true);
       mockFs.readFileSync.mockReturnValue(content);
 
-      const result = await githubHandler.getFile(fileName);
+      const result = await repositoryHandler.getFile(fileName);
 
       expect(result).toBe(content);
       expect(mockFs.readFileSync).toHaveBeenCalledWith('/tmp/repos/github-owner-repo/test.md', 'utf-8');
@@ -210,7 +210,7 @@ describe('GitHubHandler', () => {
 
       mockFs.existsSync.mockReturnValue(false);
 
-      const result = await githubHandler.getFile(fileName);
+      const result = await repositoryHandler.getFile(fileName);
 
       expect(result).toBeNull();
       expect(mockFs.readFileSync).not.toHaveBeenCalled();
@@ -224,7 +224,7 @@ describe('GitHubHandler', () => {
         throw new Error('Read permission denied');
       });
 
-      await expect(githubHandler.getFile(fileName)).rejects.toThrow('Read permission denied');
+      await expect(repositoryHandler.getFile(fileName)).rejects.toThrow('Read permission denied');
     });
   });
 
@@ -232,13 +232,13 @@ describe('GitHubHandler', () => {
     beforeEach(async () => {
       mockFs.existsSync.mockReturnValue(false);
       mockGit.clone.mockResolvedValue(undefined as any);
-      await githubHandler.initialize(repoPath);
+      await repositoryHandler.initialize(repoPath);
     });
 
     it('should return empty array if local directory does not exist', async () => {
       mockFs.existsSync.mockReturnValue(false);
 
-      const result = await githubHandler.listFiles();
+      const result = await repositoryHandler.listFiles();
 
       expect(result).toEqual([]);
     });
@@ -251,7 +251,7 @@ describe('GitHubHandler', () => {
       ] as any);
       mockFs.statSync.mockReturnValue({ isDirectory: () => false } as any);
 
-      const result = await githubHandler.listFiles();
+      const result = await repositoryHandler.listFiles();
 
       expect(result).toEqual([
         'CLAUDE.md',
@@ -264,7 +264,7 @@ describe('GitHubHandler', () => {
       mockFs.existsSync.mockReturnValue(true);
       mockFs.readdirSync.mockReturnValue([] as any);
 
-      const result = await githubHandler.listFiles();
+      const result = await repositoryHandler.listFiles();
 
       expect(result).toEqual([]);
     });
@@ -284,7 +284,7 @@ describe('GitHubHandler', () => {
         .mockReturnValueOnce({ isDirectory: () => true } as any)  // node_modules (skipped)
         .mockReturnValueOnce({ isDirectory: () => true } as any); // src (will recurse)
 
-      const result = await githubHandler.listFiles();
+      const result = await repositoryHandler.listFiles();
 
       expect(result).toEqual(['CLAUDE.md']);
     });
@@ -295,7 +295,7 @@ describe('GitHubHandler', () => {
         throw new Error('Permission denied');
       });
 
-      await expect(githubHandler.listFiles()).rejects.toThrow('Permission denied');
+      await expect(repositoryHandler.listFiles()).rejects.toThrow('Permission denied');
     });
   });
 
@@ -304,14 +304,14 @@ describe('GitHubHandler', () => {
       mockFs.existsSync.mockReturnValue(false);
       mockGit.clone.mockResolvedValue(undefined as any);
 
-      await githubHandler.initialize(repoPath);
-      const result = githubHandler.getSourceInfo();
+      await repositoryHandler.initialize(repoPath);
+      const result = repositoryHandler.getSourceInfo();
 
       expect(result).toBe(`GitHub: ${repoPath}`);
     });
 
     it('should return source info even before initialization', () => {
-      const result = githubHandler.getSourceInfo();
+      const result = repositoryHandler.getSourceInfo();
       expect(result).toBe('GitHub: ');
     });
   });
@@ -323,7 +323,7 @@ describe('GitHubHandler', () => {
         throw new Error('Cannot remove directory');
       });
 
-      await expect(githubHandler.initialize(repoPath))
+      await expect(repositoryHandler.initialize(repoPath))
         .rejects.toThrow('Cannot remove directory');
     });
 
@@ -331,7 +331,7 @@ describe('GitHubHandler', () => {
       mockFs.existsSync.mockReturnValue(false);
       mockGit.clone.mockRejectedValue(new Error('Network timeout'));
 
-      await expect(githubHandler.initialize(repoPath))
+      await expect(repositoryHandler.initialize(repoPath))
         .rejects.toThrow('Network timeout');
     });
 
@@ -341,7 +341,7 @@ describe('GitHubHandler', () => {
       mockGit.clone.mockResolvedValue(undefined as any);
 
       // The code splits on '/' and takes first two parts, so this should still work
-      await githubHandler.initialize(invalidRepoPath);
+      await repositoryHandler.initialize(invalidRepoPath);
 
       expect(mockGit.clone).toHaveBeenCalledWith(
         'https://github.com/invalid/repo/with/too/many/parts.git',
@@ -357,7 +357,7 @@ describe('GitHubHandler', () => {
       mockFs.existsSync.mockReturnValue(false);
       mockGit.clone.mockResolvedValue(undefined as any);
 
-      await githubHandler.initialize(specialRepoPath);
+      await repositoryHandler.initialize(specialRepoPath);
 
       expect(mockGit.clone).toHaveBeenCalledWith(
         'https://github.com/owner/repo-with-special_chars.test.git',

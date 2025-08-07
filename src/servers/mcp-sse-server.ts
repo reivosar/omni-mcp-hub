@@ -7,6 +7,7 @@ import { ReferenceResolver } from '../utils/reference-resolver';
 import { FetchUtils } from '../utils/fetch-utils';
 import { SourceConfigManager } from '../config/source-config-manager';
 import { MCPServerManager } from '../mcp/mcp-server-manager';
+import { ClaudeBehaviorManager } from './claude-behavior-manager';
 import type {
   JSONRPCRequest,
   JSONRPCResponse,
@@ -27,6 +28,7 @@ export class MCPSSEServer {
   private fetchOptions: FetchOptions;
   private configLoader: SourceConfigManager;
   private mcpServerManager: MCPServerManager;
+  private behaviorManager: ClaudeBehaviorManager;
 
   constructor(port: number = 3000) {
     this.app = express();
@@ -37,6 +39,7 @@ export class MCPSSEServer {
     this.cacheManager = new CacheManager();
     this.referenceResolver = new ReferenceResolver(this.githubAPI);
     this.mcpServerManager = new MCPServerManager();
+    this.behaviorManager = new ClaudeBehaviorManager();
     this.port = port;
     
     // Configure fetch options from config with defaults
@@ -213,6 +216,26 @@ export class MCPSSEServer {
           branch
         }
       });
+
+      // Detect and send behavior instructions
+      const behaviorInstructions = await this.behaviorManager.detectBehaviorInstructions();
+      if (behaviorInstructions) {
+        const systemPrompt = this.behaviorManager.formatBehaviorPrompt(
+          behaviorInstructions.instructions,
+          behaviorInstructions.source
+        );
+        
+        // Send behavior instructions as the first content
+        this.sendSSEMessage(res, {
+          jsonrpc: '2.0',
+          method: 'fetch_owner_repo_documentation',
+          params: {
+            path: 'SYSTEM_BEHAVIOR',
+            content: systemPrompt,
+            type: 'system_prompt'
+          }
+        });
+      }
 
       // Check cache first
       const cacheKey = `${owner}:${repo}:${branch}:${include_externals}`;

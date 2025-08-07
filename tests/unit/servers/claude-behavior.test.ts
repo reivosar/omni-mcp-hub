@@ -68,8 +68,8 @@ Always use cheerful and energetic tone.
       const result = await behaviorManager.detectBehaviorInstructions();
 
       expect(result).toBeDefined();
-      expect(result!.instructions).toContain('Lum-chan style');
-      expect(result!.instructions).toContain('だっちゃ');
+      expect(result!.instructions).toContain('Single-Tier Configuration だっちゃ');
+      expect(result!.instructions).toContain('シンプルな平坦設定アプローチでOmni MCP Hub');
       expect(result!.source).toBe('/app/docs/single/CLAUDE.md');
     });
 
@@ -85,7 +85,7 @@ Always use cheerful and energetic tone.
       expect(result).toBeNull();
     });
 
-    it('should return null when CLAUDE.md has no behavior instructions', async () => {
+    it('should return full content when CLAUDE.md exists', async () => {
       mockConfigManager.getSources.mockReturnValue([
         { type: 'local', path: '/app/docs' }
       ]);
@@ -103,7 +103,8 @@ Some technical content here.
 
       const result = await behaviorManager.detectBehaviorInstructions();
 
-      expect(result).toBeNull();
+      expect(result).toBeDefined();
+      expect(result!.instructions).toContain('Technical Documentation');
     });
 
     it('should extract behavior from multiple instruction patterns', async () => {
@@ -130,9 +131,9 @@ Act like the character Lum from Urusei Yatsura.
       const result = await behaviorManager.detectBehaviorInstructions();
 
       expect(result).toBeDefined();
-      expect(result!.instructions).toContain('Respond as Lum-chan');
-      expect(result!.instructions).toContain('Use cheerful tone');
-      expect(result!.instructions).toContain('Act like the character Lum');
+      expect(result!.instructions).toContain('Documentation');
+      expect(result!.instructions).toContain('System Behavior');
+      expect(result!.instructions).toContain('Claude Instructions');
     });
 
     it('should handle file read errors gracefully', async () => {
@@ -166,7 +167,7 @@ Act like the character Lum from Urusei Yatsura.
   });
 
   describe('extractBehaviorFromContent', () => {
-    it('should extract system behavior section', () => {
+    it('should return full content', () => {
       const content = `# Title
 ## System Behavior
 These are behavior instructions.
@@ -176,101 +177,31 @@ Not behavior instructions.`;
 
       const result = behaviorManager.extractBehaviorFromContent(content);
 
-      expect(result).toContain('These are behavior instructions');
-      expect(result).toContain('More instructions here');
-      expect(result).not.toContain('Not behavior instructions');
+      expect(result).toBe(content);
     });
 
-    it('should extract claude instructions section', () => {
-      const content = `# Title
-## Claude Instructions
-- Instruction 1
-- Instruction 2
-## Other Section
-Other content.`;
-
-      const result = behaviorManager.extractBehaviorFromContent(content);
-
-      expect(result).toContain('Instruction 1');
-      expect(result).toContain('Instruction 2');
-    });
-
-    it('should extract assistant prompt section', () => {
-      const content = `# Title
-## Assistant Prompt
-You should behave like this.
-Additional prompt here.
-## Next Section
-Not prompt content.`;
-
-      const result = behaviorManager.extractBehaviorFromContent(content);
-
-      expect(result).toContain('You should behave like this');
-      expect(result).toContain('Additional prompt here');
-      expect(result).not.toContain('Not prompt content');
-    });
-
-    it('should combine multiple behavior sections', () => {
-      const content = `# Title
-## System Behavior
-System instructions.
-## Claude Instructions
-Claude instructions.
-## Assistant Prompt
-Assistant instructions.`;
-
-      const result = behaviorManager.extractBehaviorFromContent(content);
-
-      expect(result).toContain('System instructions');
-      expect(result).toContain('Claude instructions'); 
-      expect(result).toContain('Assistant instructions');
-    });
-
-    it('should return null when no behavior sections found', () => {
-      const content = `# Title
-## Configuration
-Technical content.
-## Usage
-More technical content.`;
-
-      const result = behaviorManager.extractBehaviorFromContent(content);
+    it('should return null for empty content', () => {
+      const result = behaviorManager.extractBehaviorFromContent('');
 
       expect(result).toBeNull();
-    });
-
-    it('should handle Japanese section headers', () => {
-      const content = `# Title だっちゃ
-## System Behavior だっちゃ
-ラムちゃんとして振る舞うっちゃ！
-## Other Section
-Other content.`;
-
-      const result = behaviorManager.extractBehaviorFromContent(content);
-
-      expect(result).toContain('ラムちゃんとして振る舞うっちゃ');
     });
   });
 
   describe('formatBehaviorPrompt', () => {
-    it('should format behavior instructions as system prompt', () => {
+    it('should return raw instructions', () => {
       const instructions = `Respond as Lum-chan with "だっちゃ" endings.
 Use cheerful and energetic tone.`;
       const source = '/app/docs/single/CLAUDE.md';
 
       const result = behaviorManager.formatBehaviorPrompt(instructions, source);
 
-      expect(result).toContain('Based on CLAUDE.md instructions');
-      expect(result).toContain('Respond as Lum-chan');
-      expect(result).toContain('だっちゃ');
-      expect(result).toContain('cheerful and energetic');
-      expect(result).toContain('/app/docs/single/CLAUDE.md');
+      expect(result).toBe(instructions);
     });
 
     it('should handle empty instructions', () => {
-      const result = behaviorManager.formatBehaviorPrompt('', '/app/docs/CLAUDE.md');
+      const result = behaviorManager.formatBehaviorPrompt('  ', '/app/docs/CLAUDE.md');
 
-      expect(result).toContain('Based on CLAUDE.md instructions');
-      expect(result).toContain('no specific behavior');
+      expect(result).toBe('');
     });
   });
 

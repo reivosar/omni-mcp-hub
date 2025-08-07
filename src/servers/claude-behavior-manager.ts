@@ -66,53 +66,17 @@ export class ClaudeBehaviorManager {
    * Extracts behavior instructions from CLAUDE.md content
    */
   extractBehaviorFromContent(content: string): string | null {
-    const behaviorSections = [
-      'System Behavior',
-      'Claude Instructions', 
-      'Assistant Prompt',
-      'Behavior Instructions'
-    ];
-
-    let extractedContent = '';
-
-    for (const sectionName of behaviorSections) {
-      const patterns = [
-        // English headers
-        new RegExp(`##\\s*${sectionName}\\s*\\n([\\s\\S]*?)(?=\\n##|$)`, 'i'),
-        // Japanese headers (with だっちゃ)
-        new RegExp(`##\\s*${sectionName}[^\\n]*だっちゃ[^\\n]*\\n([\\s\\S]*?)(?=\\n##|$)`, 'i'),
-        // Mixed headers
-        new RegExp(`##\\s*${sectionName}[^\\n]*\\n([\\s\\S]*?)(?=\\n##|$)`, 'i')
-      ];
-
-      for (const pattern of patterns) {
-        const match = content.match(pattern);
-        if (match && match[1]) {
-          const sectionContent = match[1].trim();
-          if (sectionContent) {
-            extractedContent += `${sectionContent}\n\n`;
-          }
-          break; // Found this section, move to next
-        }
-      }
-    }
-
-    return extractedContent.trim() || null;
+    // Just use the entire CLAUDE.md content as behavior instructions
+    const trimmedContent = content.trim();
+    return trimmedContent || null;
   }
 
   /**
    * Formats behavior instructions as a system prompt
    */
-  formatBehaviorPrompt(instructions: string, source: string): string {
-    if (!instructions.trim()) {
-      return `Based on CLAUDE.md instructions from ${source}, maintain standard behavior with no specific behavior modifications.`;
-    }
-
-    return `Based on CLAUDE.md instructions from ${source}:
-
-${instructions}
-
-Please follow these behavior instructions in all your responses while maintaining your core functionality as Claude Code.`;
+  formatBehaviorPrompt(instructions: string, _source: string): string {
+    // Just return the raw instructions - let Claude interpret them
+    return instructions.trim();
   }
 
   /**

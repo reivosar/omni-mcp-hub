@@ -136,14 +136,108 @@ describe('MCPServerClient', () => {
   });
 });
 
+describe('MCPServerClient - Message Handling', () => {
+  let mockProcess: Partial<ChildProcess>;
+  let client: MCPServerClient;
+
+  beforeEach(() => {
+    mockProcess = {
+      stdout: {
+        on: jest.fn()
+      } as any,
+      stdin: {
+        write: jest.fn()
+      } as any
+    };
+    
+    client = new MCPServerClient(mockProcess as ChildProcess);
+  });
+
+  describe('message parsing', () => {
+    it('should handle multiple JSON messages in stdout data', () => {
+      const dataHandler = (mockProcess.stdout?.on as jest.Mock).mock.calls.find(call => call[0] === 'data')?.[1];
+      const handleMessageSpy = jest.spyOn(client as any, 'handleMessage');
+      
+      if (dataHandler) {
+        dataHandler(Buffer.from('{"id":1,"result":"test1"}\n{"id":2,"result":"test2"}\n'));
+        
+        expect(handleMessageSpy).toHaveBeenCalledTimes(2);
+        expect(handleMessageSpy).toHaveBeenCalledWith({id: 1, result: "test1"});
+        expect(handleMessageSpy).toHaveBeenCalledWith({id: 2, result: "test2"});
+      }
+    });
+
+    it('should handle malformed JSON messages', () => {
+      const dataHandler = (mockProcess.stdout?.on as jest.Mock).mock.calls.find(call => call[0] === 'data')?.[1];
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      
+      if (dataHandler) {
+        dataHandler(Buffer.from('invalid json\n'));
+        
+        expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to parse MCP message:', 'invalid json');
+      }
+      
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should resolve pending requests on response', () => {
+      const client = new MCPServerClient(mockProcess as ChildProcess);
+      const mockResolve = jest.fn();
+      const mockReject = jest.fn();
+      
+      // Set up pending request
+      (client as any).pendingRequests.set(1, { resolve: mockResolve, reject: mockReject });
+      
+      // Handle response message
+      (client as any).handleMessage({ id: 1, result: 'test' });
+      
+      expect(mockResolve).toHaveBeenCalledWith('test');
+      expect((client as any).pendingRequests.has(1)).toBe(false);
+    });
+
+    it('should reject pending requests on error response', () => {
+      const client = new MCPServerClient(mockProcess as ChildProcess);
+      const mockResolve = jest.fn();
+      const mockReject = jest.fn();
+      
+      // Set up pending request
+      (client as any).pendingRequests.set(1, { resolve: mockResolve, reject: mockReject });
+      
+      // Handle error response
+      (client as any).handleMessage({ id: 1, error: { message: 'test error' } });
+      
+      expect(mockReject).toHaveBeenCalledWith(expect.objectContaining({
+        message: 'test error'
+      }));
+      expect((client as any).pendingRequests.has(1)).toBe(false);
+    });
+
+    it('should send notification', () => {
+      (client as any).sendNotification('test-method', { param: 'value' });
+      
+      expect(mockProcess.stdin?.write).toHaveBeenCalledWith(
+        '{"jsonrpc":"2.0","method":"test-method","params":{"param":"value"}}\n'
+      );
+    });
+  });
+});
+
 describe('MCPServerManager', () => {
   let manager: MCPServerManager;
   let mockSandboxedExecutor: jest.Mocked<SandboxedExecutor>;
   let mockCommandValidator: jest.Mocked<CommandValidator>;
   let mockAuditLogger: jest.Mocked<AuditLogger>;
+  let mockConfig: MCPServerConfig;
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    mockConfig = {
+      name: 'test-server',
+      command: 'python',
+      args: ['-m', 'test'],
+      enabled: true
+    };
 
     mockSandboxedExecutor = {
       executeCommand: jest.fn(),
@@ -176,12 +270,6 @@ describe('MCPServerManager', () => {
   });
 
   describe('startServer', () => {
-    const mockConfig: MCPServerConfig = {
-      name: 'test-server',
-      command: 'python',
-      args: ['-m', 'test'],
-      enabled: true
-    };
 
     it('should reject disabled servers', async () => {
       const disabledConfig = { ...mockConfig, enabled: false };
@@ -240,6 +328,255 @@ describe('MCPServerManager', () => {
       await expect(manager.startServer(mockConfig)).rejects.toThrow('Failed to start MCP server test-server: Command failed');
     });
 
+    it('should handle disabled server', async () => {
+      const disabledConfig = { ...mockConfig, enabled: false };
+      
+      await expect(manager.startServer(disabledConfig)).rejects.toThrow('Server test-server is disabled');
+    });
+
+    it('should handle HTTP server type', async () => {
+      const httpConfig = { ...mockConfig, type: 'http' as const };
+      mockCommandValidator.validateMCPServerConfig.mockReturnValue({ allowed: true });
+      
+      const instance = await manager.startServer(httpConfig);
+      
+      expect(instance).toBeDefined();
+      expect(instance!.process).toBeNull();
+      expect(instance!.status).toBe('running');
+      expect(manager.getServer('test-server')).toBe(instance);
+    });
+
+    it('should handle NPM package verification success', async () => {
+      const npxConfig = {
+        ...mockConfig,
+        command: 'npx',
+        args: ['-y', '@test/package', 'arg1']
+      };
+      
+      mockCommandValidator.validateMCPServerConfig.mockReturnValue({ allowed: true });
+      
+      const mockExec = jest.fn().mockImplementation((cmd, options, callback) => {
+        callback(null, '1.0.0\n'); // Package exists
+      });
+      require('child_process').exec = mockExec;
+      
+      const mockProcess = {
+        on: jest.fn(),
+        stdout: { on: jest.fn() },
+        stdin: { write: jest.fn() },
+        stderr: { on: jest.fn() },
+        emit: jest.fn()
+      } as any;
+
+      mockSandboxedExecutor.executeCommand.mockResolvedValue({
+        success: true,
+        process: mockProcess
+      });
+
+      jest.spyOn(MCPServerClient.prototype, 'initialize').mockResolvedValue();
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const instance = await manager.startServer(npxConfig);
+
+      expect(mockExec).toHaveBeenCalledWith(
+        'npm view @test/package version',
+        { timeout: 10000 },
+        expect.any(Function)
+      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Package @test/package exists, version: 1.0.0')
+      );
+      
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should handle NPM package verification failure', async () => {
+      const npxConfig = {
+        ...mockConfig,
+        command: 'npx',
+        args: ['-y', '@nonexistent/package', 'arg1']
+      };
+      
+      mockCommandValidator.validateMCPServerConfig.mockReturnValue({ allowed: true });
+      
+      const mockExec = jest.fn().mockImplementation((cmd, options, callback) => {
+        callback(new Error('Package not found'), ''); // Package doesn't exist
+      });
+      require('child_process').exec = mockExec;
+      
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const result = await manager.startServer(npxConfig);
+
+      expect(result).toBeUndefined();
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Skipping MCP server test-server: Package @nonexistent/package does not exist')
+      );
+      
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should handle NPM package verification error gracefully', async () => {
+      const npxConfig = {
+        ...mockConfig,
+        command: 'npx',
+        args: ['-y', '@test/package', 'arg1']
+      };
+      
+      mockCommandValidator.validateMCPServerConfig.mockReturnValue({ allowed: true });
+      
+      const mockExec = jest.fn().mockImplementation(() => {
+        throw new Error('Network error');
+      });
+      require('child_process').exec = mockExec;
+      
+      const mockProcess = {
+        on: jest.fn(),
+        stdout: { on: jest.fn() },
+        stdin: { write: jest.fn() },
+        stderr: { on: jest.fn() },
+        emit: jest.fn()
+      } as any;
+
+      mockSandboxedExecutor.executeCommand.mockResolvedValue({
+        success: true,
+        process: mockProcess
+      });
+
+      jest.spyOn(MCPServerClient.prototype, 'initialize').mockResolvedValue();
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      await manager.startServer(npxConfig);
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Could not verify package @test/package for server test-server, continuing anyway:'),
+        expect.any(Error)
+      );
+      
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should handle server process error events', async () => {
+      mockCommandValidator.validateMCPServerConfig.mockReturnValue({ allowed: true });
+      
+      const mockProcess = {
+        on: jest.fn(),
+        stdout: { on: jest.fn() },
+        stdin: { write: jest.fn() },
+        stderr: { on: jest.fn() },
+        emit: jest.fn()
+      } as any;
+
+      mockSandboxedExecutor.executeCommand.mockResolvedValue({
+        success: true,
+        process: mockProcess
+      });
+
+      jest.spyOn(MCPServerClient.prototype, 'initialize').mockResolvedValue();
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const instance = await manager.startServer(mockConfig);
+
+      // Simulate error event
+      const errorHandler = mockProcess.on.mock.calls.find((call: any) => call[0] === 'error')[1];
+      const testError = new Error('Process error');
+      errorHandler(testError);
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('MCP server test-server error:', testError);
+      expect(instance!.status).toBe('error');
+      
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should handle server process exit events', async () => {
+      mockCommandValidator.validateMCPServerConfig.mockReturnValue({ allowed: true });
+      
+      const mockProcess = {
+        on: jest.fn(),
+        stdout: { on: jest.fn() },
+        stdin: { write: jest.fn() },
+        stderr: { on: jest.fn() },
+        emit: jest.fn()
+      } as any;
+
+      mockSandboxedExecutor.executeCommand.mockResolvedValue({
+        success: true,
+        process: mockProcess
+      });
+
+      jest.spyOn(MCPServerClient.prototype, 'initialize').mockResolvedValue();
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const instance = await manager.startServer(mockConfig);
+
+      // Simulate exit event
+      const exitHandler = mockProcess.on.mock.calls.find((call: any) => call[0] === 'exit')[1];
+      exitHandler(0);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('MCP server test-server exited with code 0');
+      expect(instance!.status).toBe('stopped');
+      expect(manager.getServer('test-server')).toBeUndefined();
+      
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should handle server stderr output', async () => {
+      mockCommandValidator.validateMCPServerConfig.mockReturnValue({ allowed: true });
+      
+      const mockProcess = {
+        on: jest.fn(),
+        stdout: { on: jest.fn() },
+        stdin: { write: jest.fn() },
+        stderr: { on: jest.fn() },
+        emit: jest.fn()
+      } as any;
+
+      mockSandboxedExecutor.executeCommand.mockResolvedValue({
+        success: true,
+        process: mockProcess
+      });
+
+      jest.spyOn(MCPServerClient.prototype, 'initialize').mockResolvedValue();
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      await manager.startServer(mockConfig);
+
+      // Simulate stderr data
+      const stderrHandler = mockProcess.stderr.on.mock.calls.find((call: any) => call[0] === 'data')[1];
+      stderrHandler(Buffer.from('Error message from server\n'));
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('MCP server test-server stderr:', 'Error message from server\n');
+      
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should handle client initialization failure gracefully', async () => {
+      mockCommandValidator.validateMCPServerConfig.mockReturnValue({ allowed: true });
+      
+      const mockProcess = {
+        on: jest.fn(),
+        stdout: { on: jest.fn() },
+        stdin: { write: jest.fn() },
+        stderr: { on: jest.fn() },
+        emit: jest.fn()
+      } as any;
+
+      mockSandboxedExecutor.executeCommand.mockResolvedValue({
+        success: true,
+        process: mockProcess
+      });
+
+      jest.spyOn(MCPServerClient.prototype, 'initialize').mockRejectedValue(new Error('MCP init failed'));
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const instance = await manager.startServer(mockConfig);
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to initialize MCP server test-server:', expect.any(Error));
+      expect(instance).toBeDefined(); // Should still return instance
+      
+      consoleErrorSpy.mockRestore();
+    });
+
     it('should handle install command', async () => {
       const configWithInstall = {
         ...mockConfig,
@@ -295,6 +632,145 @@ describe('MCPServerManager', () => {
 
     it('should throw error for non-existent server', async () => {
       await expect(manager.stopServer('nonexistent')).rejects.toThrow('Server nonexistent not found');
+    });
+  });
+
+  describe('initializeServers', () => {
+    it('should initialize multiple servers successfully', async () => {
+      const configs = [
+        { ...mockConfig, name: 'server1' },
+        { ...mockConfig, name: 'server2', enabled: false },
+        { ...mockConfig, name: 'server3' }
+      ];
+
+      mockCommandValidator.validateMCPServerConfig.mockReturnValue({ allowed: true });
+      
+      const mockProcess = {
+        on: jest.fn(),
+        stdout: { on: jest.fn() },
+        stdin: { write: jest.fn() },
+        stderr: { on: jest.fn() }
+      } as any;
+
+      mockSandboxedExecutor.executeCommand.mockResolvedValue({
+        success: true,
+        process: mockProcess
+      });
+
+      jest.spyOn(MCPServerClient.prototype, 'initialize').mockResolvedValue();
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      await manager.initializeServers(configs);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('Initializing 3 MCP servers...');
+      expect(consoleLogSpy).toHaveBeenCalledWith('Initialized 2 MCP servers');
+      
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should handle server initialization failures', async () => {
+      const configs = [
+        { ...mockConfig, name: 'good-server' },
+        { ...mockConfig, name: 'bad-server' }
+      ];
+
+      mockCommandValidator.validateMCPServerConfig
+        .mockReturnValueOnce({ allowed: true })
+        .mockReturnValueOnce({ allowed: false, reason: 'Security policy violation' });
+
+      const mockProcess = {
+        on: jest.fn(),
+        stdout: { on: jest.fn() },
+        stdin: { write: jest.fn() },
+        stderr: { on: jest.fn() }
+      } as any;
+
+      mockSandboxedExecutor.executeCommand.mockResolvedValue({
+        success: true,
+        process: mockProcess
+      });
+
+      jest.spyOn(MCPServerClient.prototype, 'initialize').mockResolvedValue();
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      await manager.initializeServers(configs);
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to initialize MCP server bad-server:',
+        expect.any(Error)
+      );
+      
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should skip servers that return undefined from startServer', async () => {
+      const configs = [{ ...mockConfig }];
+
+      mockCommandValidator.validateMCPServerConfig.mockReturnValue({ allowed: true });
+      
+      // Mock NPX package check to return undefined (skipped server)
+      const mockExec = jest.fn().mockImplementation((cmd, options, callback) => {
+        callback(new Error('Package not found'), '');
+      });
+      require('child_process').exec = mockExec;
+
+      const npxConfig = {
+        ...mockConfig,
+        command: 'npx',
+        args: ['-y', '@nonexistent/package']
+      };
+
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      await manager.initializeServers([npxConfig]);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('Skipped MCP server test-server');
+      
+      consoleLogSpy.mockRestore();
+      consoleWarnSpy.mockRestore();
+    });
+  });
+
+  describe('stopServer', () => {
+    it('should throw error for non-existent server', async () => {
+      await expect(manager.stopServer('nonexistent')).rejects.toThrow('Server nonexistent not found');
+    });
+
+    it('should kill server process and remove from servers map', async () => {
+      const mockProcess = { 
+        kill: jest.fn(),
+        on: jest.fn(),
+        stdout: { on: jest.fn() },
+        stdin: { write: jest.fn() }
+      } as any;
+
+      const instance = {
+        name: 'test-server',
+        process: mockProcess,
+        status: 'running' as const
+      } as MCPServerInstance;
+
+      (manager as any).servers.set('test-server', instance);
+
+      await manager.stopServer('test-server');
+
+      expect(mockProcess.kill).toHaveBeenCalled();
+      expect(manager.getServer('test-server')).toBeUndefined();
+    });
+
+    it('should handle HTTP servers (null process)', async () => {
+      const instance = {
+        name: 'http-server',
+        process: null,
+        status: 'running' as const
+      } as MCPServerInstance;
+
+      (manager as any).servers.set('http-server', instance);
+
+      await manager.stopServer('http-server');
+
+      expect(manager.getServer('http-server')).toBeUndefined();
     });
   });
 

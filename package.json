@@ -25,7 +25,9 @@
     "docker:build": "docker build -t docker-config-omni-mcp-hub:latest .",
     "docker:start:sse": "cd examples/docker && ./start-unified.sh local_sources sse",
     "docker:start:stdio": "cd examples/docker && ./start-unified.sh local_sources stdio",
-    "docker:start:unified": "cd examples/docker && ./start-unified.sh local_sources unified"
+    "docker:start:unified": "cd examples/docker && ./start-unified.sh local_sources unified",
+    "mcp:dev": "node dist/servers/claude-stdio-server.js --config ./configs/stdio.default.yaml --log-level=debug",
+    "mcp:test": "node dist/servers/claude-stdio-server.js --config ./configs/stdio.default.yaml"
   },
   "keywords": [
     "mcp",

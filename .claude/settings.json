@@ -1,0 +1,17 @@
+{
+  "hooks": [
+    {
+      "name": "load_behavior_instructions",
+      "trigger": "SessionStart",
+      "matchers": ["startup", "resume", "clear"],
+      "command": "ReadMcpResourceTool",
+      "args": {
+        "server": "omni-mcp-hub",
+        "uri": "file:///Users/mac/workspace/omni-mcp-hub/examples/docker/docs/single/CLAUDE.md"
+      },
+      "hookSpecificOutput": {
+        "additionalContext": "Apply the behavior instructions from this CLAUDE.md file to your responses."
+      }
+    }
+  ]
+}

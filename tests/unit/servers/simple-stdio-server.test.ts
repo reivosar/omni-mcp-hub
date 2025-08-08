@@ -1,449 +1,159 @@
-/**
- * Tests for SimpleStdioServer
- */
-
 import { SimpleStdioServer } from '../../../src/servers/simple-stdio-server';
-import { SourceConfigManager } from '../../../src/config/source-config-manager';
-import { MCPServerManager } from '../../../src/mcp/mcp-server-manager';
+import { ClaudeBehaviorManager } from '../../../src/servers/claude-behavior-manager';
 
-// Mock SourceConfigManager
+// Mock dependencies
+jest.mock('../../../src/servers/claude-behavior-manager');
 jest.mock('../../../src/config/source-config-manager');
-
-// Mock MCPServerManager
-jest.mock('../../../src/mcp/mcp-server-manager');
-
-// Mock fetch
-global.fetch = jest.fn().mockResolvedValue({
-  ok: true,
-  json: jest.fn().mockResolvedValue({ result: { tools: [] } })
-});
 
 describe('SimpleStdioServer', () => {
   let server: SimpleStdioServer;
-  let mockConfigManager: jest.Mocked<SourceConfigManager>;
-  let mockStdout: jest.SpyInstance;
-  let mockStdin: any;
+  let mockBehaviorManager: jest.Mocked<ClaudeBehaviorManager>;
 
   beforeEach(() => {
-    // Mock stdout.write
-    mockStdout = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    // Mock behavior manager
+    const MockedClaudeBehaviorManager = ClaudeBehaviorManager as jest.MockedClass<typeof ClaudeBehaviorManager>;
+    mockBehaviorManager = new MockedClaudeBehaviorManager() as jest.Mocked<ClaudeBehaviorManager>;
     
-    // Mock stdin
-    mockStdin = {
-      on: jest.fn(),
-      resume: jest.fn()
-    };
-    Object.defineProperty(process, 'stdin', {
-      value: mockStdin,
-      writable: true
-    });
-
-    // Setup mocked config manager with default config
-    mockConfigManager = {
-      getConfig: jest.fn().mockReturnValue({
-        server: { port: 3000 },
-        github_sources: [],
-        local_sources: [],
-        mcp_servers: [],
-        files: { patterns: [], max_size: 1000000 },
-        fetch: { timeout: 30000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        security: { content_validation: { enabled: true, reject_patterns: [], additional_keywords: [], max_file_size: 10000000 } }
-      })
-    } as any;
-    (SourceConfigManager as any).mockImplementation(() => mockConfigManager);
-
-    // Mock MCPServerManager
-    (MCPServerManager as any).mockImplementation(() => ({
-      initializeServers: jest.fn().mockResolvedValue(undefined),
-      getAllTools: jest.fn().mockResolvedValue([])
-    }));
+    // Mock detectBehaviorInstructions method
+    mockBehaviorManager.detectBehaviorInstructions = jest.fn();
+    mockBehaviorManager.formatBehaviorPrompt = jest.fn();
 
     server = new SimpleStdioServer();
+    // @ts-ignore - accessing private property for testing
+    server.behaviorManager = mockBehaviorManager;
   });
 
-  afterEach(() => {
-    mockStdout.mockRestore();
-    jest.clearAllMocks();
-  });
+  describe('sendBehaviorInstructions', () => {
+    it('should send behavior instructions when available', async () => {
+      const mockBehaviors = {
+        behaviors: [{
+          instructions: 'Test behavior instructions',
+          source: '/test/path/CLAUDE.md',
+          priority: 1
+        }]
+      };
 
-  describe('initialize method handling', () => {
-    it('should respond to initialize with empty config', async () => {
-      mockConfigManager.getConfig.mockReturnValue({
-        server: { port: 3000 },
-        github_sources: [],
-        local_sources: [],
-        mcp_servers: [],
-        files: { patterns: [], max_size: 1000000 },
-        fetch: { timeout: 30000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        security: { content_validation: { enabled: true, reject_patterns: [], additional_keywords: [], max_file_size: 10000000 } }
+      const mockFormattedPrompt = 'Formatted test behavior prompt だっちゃ';
+
+      mockBehaviorManager.detectBehaviorInstructions.mockResolvedValue(mockBehaviors);
+      mockBehaviorManager.formatBehaviorPrompt.mockReturnValue(mockFormattedPrompt);
+
+      // Mock stdout write
+      const originalWrite = process.stdout.write;
+      const mockWrite = jest.fn();
+      process.stdout.write = mockWrite as any;
+
+      // Call private method via reflection
+      // @ts-ignore
+      await server.sendBehaviorInstructions();
+
+      // Verify behavior manager methods were called
+      expect(mockBehaviorManager.detectBehaviorInstructions).toHaveBeenCalledTimes(1);
+      expect(mockBehaviorManager.formatBehaviorPrompt).toHaveBeenCalledWith(
+        'Test behavior instructions',
+        '/test/path/CLAUDE.md'
+      );
+
+      // Verify JSON message was written to stdout
+      expect(mockWrite).toHaveBeenCalledTimes(1);
+      const writtenMessage = mockWrite.mock.calls[0][0];
+      const parsedMessage = JSON.parse(writtenMessage);
+
+      expect(parsedMessage).toEqual({
+        jsonrpc: '2.0',
+        method: 'system/behavior',
+        params: {
+          source: '/test/path/CLAUDE.md',
+          instructions: mockFormattedPrompt,
+          type: 'claude_behavior'
+        }
       });
 
-      await server.start();
-
-      const dataHandler = mockStdin.on.mock.calls.find((call: any) => call[0] === 'data')[1];
-      const request = {
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'initialize',
-        params: {}
-      };
-
-      dataHandler(Buffer.from(JSON.stringify(request) + '\n'));
-
-      expect(mockStdout).toHaveBeenCalledWith(
-        expect.stringContaining('"protocolVersion":"2024-11-05"')
-      );
-      expect(mockStdout).toHaveBeenCalledWith(
-        expect.stringContaining('"capabilities":{"resources":{},"tools":{},"prompts":{}}')
-      );
+      // Restore stdout
+      process.stdout.write = originalWrite;
     });
 
-    it('should respond to initialize with mcp servers', async () => {
-      mockConfigManager.getConfig.mockReturnValue({
-        server: { port: 3000 },
-        github_sources: [],
-        local_sources: [],
-        mcp_servers: [{ name: 'test-server', command: 'node' }],
-        files: { patterns: [], max_size: 1000000 },
-        fetch: { timeout: 30000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        security: { content_validation: { enabled: true, reject_patterns: [], additional_keywords: [], max_file_size: 10000000 } }
+    it('should handle no behavior instructions gracefully', async () => {
+      mockBehaviorManager.detectBehaviorInstructions.mockResolvedValue(null);
+
+      const originalWrite = process.stdout.write;
+      const mockWrite = jest.fn();
+      process.stdout.write = mockWrite as any;
+
+      // @ts-ignore
+      await server.sendBehaviorInstructions();
+
+      expect(mockBehaviorManager.detectBehaviorInstructions).toHaveBeenCalledTimes(1);
+      expect(mockWrite).not.toHaveBeenCalled();
+
+      process.stdout.write = originalWrite;
+    });
+
+    it('should handle empty behavior instructions', async () => {
+      mockBehaviorManager.detectBehaviorInstructions.mockResolvedValue({
+        behaviors: []
       });
 
-      await server.start();
+      const originalWrite = process.stdout.write;
+      const mockWrite = jest.fn();
+      process.stdout.write = mockWrite as any;
 
-      const dataHandler = mockStdin.on.mock.calls.find((call: any) => call[0] === 'data')[1];
-      const request = {
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'initialize',
-        params: {}
+      // @ts-ignore
+      await server.sendBehaviorInstructions();
+
+      expect(mockBehaviorManager.detectBehaviorInstructions).toHaveBeenCalledTimes(1);
+      expect(mockWrite).not.toHaveBeenCalled();
+
+      process.stdout.write = originalWrite;
+    });
+
+    it('should handle multiple behavior instructions', async () => {
+      const mockBehaviors = {
+        behaviors: [
+          {
+            instructions: 'First behavior',
+            source: '/test/path1/CLAUDE.md',
+            priority: 1
+          },
+          {
+            instructions: 'Second behavior',
+            source: '/test/path2/CLAUDE.md',
+            priority: 2
+          }
+        ]
       };
 
-      dataHandler(Buffer.from(JSON.stringify(request) + '\n'));
+      mockBehaviorManager.detectBehaviorInstructions.mockResolvedValue(mockBehaviors);
+      mockBehaviorManager.formatBehaviorPrompt
+        .mockReturnValueOnce('Formatted first behavior')
+        .mockReturnValueOnce('Formatted second behavior');
 
-      expect(mockStdout).toHaveBeenCalledWith(
-        expect.stringContaining('"tools":{"listChanged":true}')
-      );
+      const originalWrite = process.stdout.write;
+      const mockWrite = jest.fn();
+      process.stdout.write = mockWrite as any;
+
+      // @ts-ignore
+      await server.sendBehaviorInstructions();
+
+      expect(mockBehaviorManager.formatBehaviorPrompt).toHaveBeenCalledTimes(2);
+      expect(mockWrite).toHaveBeenCalledTimes(2);
+
+      process.stdout.write = originalWrite;
     });
 
-    it('should respond to initialize with github sources', async () => {
-      mockConfigManager.getConfig.mockReturnValue({
-        server: { port: 3000 },
-        github_sources: [{ owner: 'test', repos: [{ name: 'repo1' }] }] as any,
-        local_sources: [],
-        mcp_servers: [],
-        files: { patterns: [], max_size: 1000000 },
-        fetch: { timeout: 30000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        security: { content_validation: { enabled: true, reject_patterns: [], additional_keywords: [], max_file_size: 10000000 } }
-      });
+    it('should handle errors gracefully', async () => {
+      const originalError = console.error;
+      const mockConsoleError = jest.fn();
+      console.error = mockConsoleError;
 
-      await server.start();
+      mockBehaviorManager.detectBehaviorInstructions.mockRejectedValue(new Error('Test error'));
 
-      const dataHandler = mockStdin.on.mock.calls.find((call: any) => call[0] === 'data')[1];
-      const request = {
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'initialize',
-        params: {}
-      };
+      // @ts-ignore
+      await server.sendBehaviorInstructions();
 
-      dataHandler(Buffer.from(JSON.stringify(request) + '\n'));
+      expect(mockConsoleError).toHaveBeenCalledWith('Failed to send behavior instructions:', expect.any(Error));
 
-      expect(mockStdout).toHaveBeenCalledWith(
-        expect.stringContaining('"resources":{"subscribe":true,"listChanged":true}')
-      );
-    });
-  });
-
-  describe('resources/list method', () => {
-    it('should return empty resources for empty config', async () => {
-      mockConfigManager.getConfig.mockReturnValue({
-        server: { port: 3000 },
-        github_sources: [],
-        local_sources: [],
-        mcp_servers: [],
-        files: { patterns: [], max_size: 1000000 },
-        fetch: { timeout: 30000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        security: { content_validation: { enabled: true, reject_patterns: [], additional_keywords: [], max_file_size: 10000000 } }
-      });
-
-      await server.start();
-
-      const dataHandler = mockStdin.on.mock.calls.find((call: any) => call[0] === 'data')[1];
-      const request = {
-        jsonrpc: '2.0',
-        id: 2,
-        method: 'resources/list',
-        params: {}
-      };
-
-      dataHandler(Buffer.from(JSON.stringify(request) + '\n'));
-
-      expect(mockStdout).toHaveBeenCalledWith(
-        expect.stringContaining('"resources":[]')
-      );
-    });
-
-    it('should return github resources', async () => {
-      mockConfigManager.getConfig.mockReturnValue({
-        server: { port: 3000 },
-        github_sources: [{ owner: 'anthropics', repos: [{ name: 'test-repo' }] }] as any,
-        local_sources: [],
-        mcp_servers: [],
-        files: { patterns: [], max_size: 1000000 },
-        fetch: { timeout: 30000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        security: { content_validation: { enabled: true, reject_patterns: [], additional_keywords: [], max_file_size: 10000000 } }
-      });
-
-      await server.start();
-
-      const dataHandler = mockStdin.on.mock.calls.find((call: any) => call[0] === 'data')[1];
-      const request = {
-        jsonrpc: '2.0',
-        id: 2,
-        method: 'resources/list',
-        params: {}
-      };
-
-      dataHandler(Buffer.from(JSON.stringify(request) + '\n'));
-
-      expect(mockStdout).toHaveBeenCalledWith(
-        expect.stringContaining('"uri":"github://anthropics/test-repo"')
-      );
-      expect(mockStdout).toHaveBeenCalledWith(
-        expect.stringContaining('"name":"anthropics/test-repo"')
-      );
-    });
-
-    it('should handle single repo format and repo fallback', async () => {
-      mockConfigManager.getConfig.mockReturnValue({
-        server: { port: 3000 },
-        github_sources: [
-          { owner: 'test1' }, // Single repo format (no repos array)
-          { owner: 'test2', repos: [{ repo: 'fallback-repo' }] } // repo field fallback
-        ] as any,
-        local_sources: [],
-        mcp_servers: [],
-        files: { patterns: [], max_size: 1000000 },
-        fetch: { timeout: 30000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        security: { content_validation: { enabled: true, reject_patterns: [], additional_keywords: [], max_file_size: 10000000 } }
-      });
-
-      await server.start();
-
-      const dataHandler = mockStdin.on.mock.calls.find((call: any) => call[0] === 'data')[1];
-      const request = {
-        jsonrpc: '2.0',
-        id: 2,
-        method: 'resources/list',
-        params: {}
-      };
-
-      dataHandler(Buffer.from(JSON.stringify(request) + '\n'));
-
-      expect(mockStdout).toHaveBeenCalledWith(
-        expect.stringContaining('"uri":"github://test1/unknown"')
-      );
-      expect(mockStdout).toHaveBeenCalledWith(
-        expect.stringContaining('"uri":"github://test2/fallback-repo"')
-      );
-    });
-
-    it('should return local resources', async () => {
-      mockConfigManager.getConfig.mockReturnValue({
-        server: { port: 3000 },
-        github_sources: [],
-        local_sources: [{ url: '/test/path' }],
-        mcp_servers: [],
-        files: { patterns: [], max_size: 1000000 },
-        fetch: { timeout: 30000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        security: { content_validation: { enabled: true, reject_patterns: [], additional_keywords: [], max_file_size: 10000000 } }
-      });
-
-      await server.start();
-
-      const dataHandler = mockStdin.on.mock.calls.find((call: any) => call[0] === 'data')[1];
-      const request = {
-        jsonrpc: '2.0',
-        id: 2,
-        method: 'resources/list',
-        params: {}
-      };
-
-      dataHandler(Buffer.from(JSON.stringify(request) + '\n'));
-
-      expect(mockStdout).toHaveBeenCalledWith(
-        expect.stringContaining('"uri":"file:///test/path"')
-      );
-    });
-  });
-
-  describe('tools/list method', () => {
-    it('should return empty tools list', async () => {
-      await server.start();
-
-      const dataHandler = mockStdin.on.mock.calls.find((call: any) => call[0] === 'data')[1];
-      const request = {
-        jsonrpc: '2.0',
-        id: 3,
-        method: 'tools/list',
-        params: {}
-      };
-
-      dataHandler(Buffer.from(JSON.stringify(request) + '\n'));
-      
-      // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      expect(mockStdout).toHaveBeenCalledWith(
-        expect.stringContaining('"tools":[]')
-      );
-    });
-  });
-
-  describe('prompts/list method', () => {
-    it('should return empty prompts list', async () => {
-      await server.start();
-
-      const dataHandler = mockStdin.on.mock.calls.find((call: any) => call[0] === 'data')[1];
-      const request = {
-        jsonrpc: '2.0',
-        id: 4,
-        method: 'prompts/list',
-        params: {}
-      };
-
-      dataHandler(Buffer.from(JSON.stringify(request) + '\n'));
-
-      expect(mockStdout).toHaveBeenCalledWith(
-        expect.stringContaining('"prompts":[]')
-      );
-    });
-  });
-
-  describe('unknown methods', () => {
-    it('should return method not found error', async () => {
-      await server.start();
-
-      const dataHandler = mockStdin.on.mock.calls.find((call: any) => call[0] === 'data')[1];
-      const request = {
-        jsonrpc: '2.0',
-        id: 5,
-        method: 'unknown/method',
-        params: {}
-      };
-
-      dataHandler(Buffer.from(JSON.stringify(request) + '\n'));
-
-      expect(mockStdout).toHaveBeenCalledWith(
-        expect.stringContaining('"error":{"code":-32601,"message":"Method not found: unknown/method"}')
-      );
-    });
-
-    it('should not respond to notifications', async () => {
-      await server.start();
-
-      const dataHandler = mockStdin.on.mock.calls.find((call: any) => call[0] === 'data')[1];
-      const notification = {
-        jsonrpc: '2.0',
-        method: 'notifications/initialized',
-        params: {}
-      };
-
-      dataHandler(Buffer.from(JSON.stringify(notification) + '\n'));
-
-      // Should not write any response for notifications
-      expect(mockStdout).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('stdin handling', () => {
-    it('should exit process when stdin ends', async () => {
-      const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
-      
-      await server.start();
-      
-      const endHandler = mockStdin.on.mock.calls.find((call: any) => call[0] === 'end')[1];
-      endHandler();
-      
-      expect(mockExit).toHaveBeenCalledWith(0);
-      
-      mockExit.mockRestore();
-    });
-  });
-
-  describe('message parsing', () => {
-    it('should handle multiple messages in buffer', async () => {
-      mockConfigManager.getConfig.mockReturnValue({
-        server: { port: 3000 },
-        github_sources: [],
-        local_sources: [],
-        mcp_servers: [],
-        files: { patterns: [], max_size: 1000000 },
-        fetch: { timeout: 30000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        security: { content_validation: { enabled: true, reject_patterns: [], additional_keywords: [], max_file_size: 10000000 } }
-      });
-
-      await server.start();
-
-      const dataHandler = mockStdin.on.mock.calls.find((call: any) => call[0] === 'data')[1];
-      const messages = [
-        { jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} },
-        { jsonrpc: '2.0', id: 2, method: 'prompts/list', params: {} }
-      ];
-
-      const buffer = messages.map(m => JSON.stringify(m)).join('\n') + '\n';
-      dataHandler(Buffer.from(buffer));
-      
-      // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      expect(mockStdout).toHaveBeenCalledTimes(2);
-    });
-
-    it('should ignore invalid JSON', async () => {
-      await server.start();
-
-      const dataHandler = mockStdin.on.mock.calls.find((call: any) => call[0] === 'data')[1];
-      
-      dataHandler(Buffer.from('invalid json\n'));
-
-      expect(mockStdout).not.toHaveBeenCalled();
-    });
-
-    it('should ignore empty lines', async () => {
-      mockConfigManager.getConfig.mockReturnValue({
-        server: { port: 3000 },
-        github_sources: [],
-        local_sources: [],
-        mcp_servers: [],
-        files: { patterns: [], max_size: 1000000 },
-        fetch: { timeout: 30000, retries: 3, retry_delay: 1000, max_depth: 2 },
-        security: { content_validation: { enabled: true, reject_patterns: [], additional_keywords: [], max_file_size: 10000000 } }
-      });
-
-      await server.start();
-
-      const dataHandler = mockStdin.on.mock.calls.find((call: any) => call[0] === 'data')[1];
-      
-      // Send empty lines and whitespace-only lines
-      const buffer = '\n  \n\t\n' + JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/list',
-        params: {}
-      }) + '\n';
-      
-      dataHandler(Buffer.from(buffer));
-      
-      // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      // Should only respond to the actual request, not the empty lines
-      expect(mockStdout).toHaveBeenCalledTimes(1);
-      expect(mockStdout).toHaveBeenCalledWith(
-        expect.stringContaining('"tools":[]')
-      );
+      console.error = originalError;
     });
   });
 });

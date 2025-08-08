@@ -21,8 +21,8 @@ module.exports = {
     'html'
   ],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-  testTimeout: 60000,
-  maxWorkers: "50%",
+  testTimeout: 30000,
+  maxWorkers: 1,
   forceExit: true,
   detectOpenHandles: true,
   verbose: false

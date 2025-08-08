@@ -567,4 +567,181 @@ describe('MCPSSEServer', () => {
       expect(mockRes.write).toHaveBeenCalledWith(expect.stringContaining('Method not found'));
     });
   });
+
+  describe('MCP Resource Methods', () => {
+    let mockReq: any;
+    let mockRes: any;
+
+    beforeEach(() => {
+      mockReq = {
+        method: 'POST',
+        body: {},
+        path: '/sse'
+      };
+      mockRes = {
+        writeHead: jest.fn(),
+        write: jest.fn(),
+        end: jest.fn()
+      };
+    });
+
+    describe('resources/list', () => {
+      it('should handle resources/list request', async () => {
+        // Configure mock to return resources
+        mockConfigLoader.getConfig.mockReturnValue({
+          ...mockConfig,
+          github_sources: [{ 
+            owner: 'test-owner', 
+            repos: [{ name: 'test-repo' }] 
+          }],
+          local_sources: [{ url: '/test/path' }]
+        } as any);
+
+        mockReq.body = {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'resources/list',
+          params: {}
+        };
+
+        const sseHandler = mockApp.all.mock.calls.find((call: any) => call[0] === '/sse')[1];
+        await sseHandler(mockReq, mockRes);
+
+        expect(mockRes.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
+          'Content-Type': 'text/event-stream'
+        }));
+        expect(mockRes.write).toHaveBeenCalledWith(expect.stringContaining('"resources"'));
+        expect(mockRes.write).toHaveBeenCalledWith(expect.stringContaining('github://test-owner/test-repo'));
+        expect(mockRes.write).toHaveBeenCalledWith(expect.stringContaining('file:///test/path'));
+        expect(mockRes.end).toHaveBeenCalled();
+      });
+
+      it('should return empty resources when no sources configured', async () => {
+        mockConfigLoader.getConfig.mockReturnValue({
+          ...mockConfig,
+          github_sources: [],
+          local_sources: []
+        } as any);
+
+        mockReq.body = {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'resources/list',
+          params: {}
+        };
+
+        const sseHandler = mockApp.all.mock.calls.find((call: any) => call[0] === '/sse')[1];
+        await sseHandler(mockReq, mockRes);
+
+        expect(mockRes.write).toHaveBeenCalledWith(expect.stringContaining('"resources":[]'));
+      });
+    });
+
+    describe('resources/read', () => {
+      it('should handle resources/read for GitHub URI', async () => {
+        mockGithubAPI.listFiles.mockResolvedValue(['CLAUDE.md']);
+        mockGithubAPI.getFileContent.mockResolvedValue('# Test Content\n\nThis is test content.');
+
+        mockReq.body = {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'resources/read',
+          params: {
+            uri: 'github://test-owner/test-repo'
+          }
+        };
+
+        const sseHandler = mockApp.all.mock.calls.find((call: any) => call[0] === '/sse')[1];
+        await sseHandler(mockReq, mockRes);
+
+        expect(mockGithubAPI.listFiles).toHaveBeenCalledWith('test-owner', 'test-repo', 'main', 'CLAUDE.md');
+        expect(mockGithubAPI.getFileContent).toHaveBeenCalledWith('test-owner', 'test-repo', 'CLAUDE.md', 'main');
+        expect(mockRes.write).toHaveBeenCalledWith(expect.stringContaining('"contents"'));
+        expect(mockRes.write).toHaveBeenCalledWith(expect.stringContaining('Test Content'));
+      });
+
+      it('should handle resources/read error for GitHub API', async () => {
+        mockGithubAPI.listFiles.mockRejectedValue(new Error('GitHub API error'));
+
+        mockReq.body = {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'resources/read',
+          params: {
+            uri: 'github://test-owner/test-repo'
+          }
+        };
+
+        const sseHandler = mockApp.all.mock.calls.find((call: any) => call[0] === '/sse')[1];
+        await sseHandler(mockReq, mockRes);
+
+        expect(mockRes.write).toHaveBeenCalledWith(expect.stringContaining('Error accessing repository'));
+      });
+
+      it('should return error for missing URI parameter', async () => {
+        mockReq.body = {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'resources/read',
+          params: {}
+        };
+
+        const sseHandler = mockApp.all.mock.calls.find((call: any) => call[0] === '/sse')[1];
+        await sseHandler(mockReq, mockRes);
+
+        expect(mockRes.write).toHaveBeenCalledWith(expect.stringContaining('"error"'));
+        expect(mockRes.write).toHaveBeenCalledWith(expect.stringContaining('Missing uri parameter'));
+      });
+
+      it('should return error for unsupported URI scheme', async () => {
+        mockReq.body = {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'resources/read',
+          params: {
+            uri: 'unsupported://test'
+          }
+        };
+
+        const sseHandler = mockApp.all.mock.calls.find((call: any) => call[0] === '/sse')[1];
+        await sseHandler(mockReq, mockRes);
+
+        expect(mockRes.write).toHaveBeenCalledWith(expect.stringContaining('Unsupported URI scheme'));
+      });
+
+      it('should return error for invalid GitHub URI format', async () => {
+        mockReq.body = {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'resources/read',
+          params: {
+            uri: 'github://invalid-format'
+          }
+        };
+
+        const sseHandler = mockApp.all.mock.calls.find((call: any) => call[0] === '/sse')[1];
+        await sseHandler(mockReq, mockRes);
+
+        expect(mockRes.write).toHaveBeenCalledWith(expect.stringContaining('Invalid GitHub URI format'));
+      });
+    });
+
+    it('should update server capabilities to include resources', () => {
+      const mockReq = {
+        method: 'GET',
+        path: '/sse'
+      };
+      const mockRes = {
+        writeHead: jest.fn(),
+        write: jest.fn(),
+        end: jest.fn()
+      };
+
+      const sseHandler = mockApp.all.mock.calls.find((call: any) => call[0] === '/sse')[1];
+      sseHandler(mockReq, mockRes);
+
+      expect(mockRes.write).toHaveBeenCalledWith(expect.stringContaining('resources/list'));
+      expect(mockRes.write).toHaveBeenCalledWith(expect.stringContaining('resources/read'));
+    });
+  });
 });

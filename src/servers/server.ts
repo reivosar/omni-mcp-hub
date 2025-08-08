@@ -29,6 +29,14 @@ export class OmniMCPServer {
       this.mcpServer?.start();
     }
   }
+
+  async close() {
+    if (this.mode === 'stdio') {
+      // Stdio server doesn't need explicit close
+    } else {
+      this.mcpServer?.close();
+    }
+  }
 }
 
 // Start server only when directly executed (not imported in unit tests)
@@ -36,8 +44,15 @@ if (require.main === module) {
   const server = new OmniMCPServer();
   server.initialize().catch(console.error);
 
-  process.on('SIGTERM', () => {
+  process.on('SIGTERM', async () => {
     console.log('Shutting down gracefully');
+    await server.close();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    console.log('Shutting down gracefully');
+    await server.close();
     process.exit(0);
   });
 }

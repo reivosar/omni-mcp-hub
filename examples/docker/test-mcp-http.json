@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "omni-http": {
+      "transport": {
+        "type": "sse",
+        "url": "http://localhost:3000/mcp"
+      }
+    }
+  }
+}

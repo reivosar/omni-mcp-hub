@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "omni-local": {
+      "command": "node",
+      "args": ["../../dist/servers/server.js"],
+      "env": {
+        "CONFIG_PATH": "dist/current-config.yaml",
+        "SOURCE_TYPE": "local_sources",
+        "MCP_MODE": "stdio"
+      }
+    }
+  }
+}

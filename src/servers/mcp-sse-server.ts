@@ -21,6 +21,7 @@ import type {
 
 export class MCPSSEServer {
   private app: express.Application;
+  private server?: any;
   private githubAPI: GitHubAPI;
   private cacheManager: CacheManager;
   private referenceResolver: ReferenceResolver;
@@ -127,7 +128,7 @@ export class MCPSSEServer {
             params: {
               name: 'git-mcp-compatible-server',
               version: '1.0.0',
-              capabilities: ['fetch_owner_repo_documentation']
+              capabilities: ['fetch_owner_repo_documentation', 'resources/list', 'resources/read']
             }
           });
           res.end();
@@ -188,6 +189,10 @@ export class MCPSSEServer {
       };
 
       await this.handleFetchDocumentation(request.id, finalParams, res);
+    } else if (request.method === 'resources/list') {
+      await this.handleResourcesList(request.id, res);
+    } else if (request.method === 'resources/read') {
+      await this.handleResourcesRead(request.id, request.params, res);
     } else {
       this.sendSSEError(res, request.id, -32601, `Method not found: ${request.method}`);
     }
@@ -433,6 +438,164 @@ export class MCPSSEServer {
     await this.cacheManager.setMCPData(owner, repo, branch, includeExternals, result, 300);
   }
 
+  private async handleResourcesList(requestId: string | number, res: express.Response) {
+    try {
+      const config = this.configLoader.getConfig();
+      const resources: any[] = [];
+      
+      // Add GitHub sources as resources
+      if ((config as any).github_sources) {
+        for (const source of (config as any).github_sources) {
+          const repos = source.repos || [source]; // Handle both single repo and multiple repos
+          for (const repo of repos) {
+            const repoName = repo.name || repo.repo || 'unknown';
+            resources.push({
+              uri: `github://${source.owner}/${repoName}`,
+              name: `${source.owner}/${repoName}`,
+              description: `GitHub repository: ${source.owner}/${repoName}`,
+              mimeType: 'application/json'
+            });
+          }
+        }
+      }
+      
+      // Add local sources as resources
+      if (config.local_sources) {
+        for (const source of config.local_sources) {
+          resources.push({
+            uri: `file://${source.url}`,
+            name: `Local: ${source.url}`,
+            description: `Local filesystem: ${source.url}`,
+            mimeType: 'text/plain'
+          });
+        }
+      }
+      
+      this.sendSSEMessage(res, {
+        jsonrpc: '2.0',
+        id: requestId,
+        result: {
+          resources
+        }
+      });
+    } catch (error) {
+      console.error('Resources list error:', error);
+      this.sendSSEError(res, requestId, -32603,
+        error instanceof Error ? error.message : 'Unknown error');
+    }
+  }
+
+  private async handleResourcesRead(requestId: string | number, params: any, res: express.Response) {
+    try {
+      const uri = params?.uri;
+      if (!uri) {
+        this.sendSSEError(res, requestId, -32602, 'Missing uri parameter');
+        return;
+      }
+
+      // Handle GitHub URIs
+      if (uri.startsWith('github://')) {
+        const match = uri.match(/^github:\/\/([^\/]+)\/([^\/]+)$/);
+        if (match) {
+          const [, owner, repo] = match;
+          
+          try {
+            // Get CLAUDE.md files from GitHub
+            const claudeFiles = await this.githubAPI.listFiles(owner, repo, 'main', 'CLAUDE.md');
+            let content = `# ${owner}/${repo}\n\nThis is a GitHub repository resource.\n\nRepository: https://github.com/${owner}/${repo}\n\n`;
+            
+            if (claudeFiles && claudeFiles.length > 0) {
+              content += `## CLAUDE.md Files Found:\n\n`;
+              for (const filePath of claudeFiles) {
+                try {
+                  const fileContent = await this.githubAPI.getFileContent(owner, repo, filePath, 'main');
+                  content += `### ${filePath}\n\n\`\`\`\n${fileContent}\n\`\`\`\n\n`;
+                } catch (fileError) {
+                  content += `### ${filePath}\n\nError reading file: ${fileError instanceof Error ? fileError.message : 'Unknown error'}\n\n`;
+                }
+              }
+            } else {
+              content += 'No CLAUDE.md files found in this repository.';
+            }
+
+            this.sendSSEMessage(res, {
+              jsonrpc: '2.0',
+              id: requestId,
+              result: {
+                contents: [{
+                  uri: uri,
+                  mimeType: 'text/markdown',
+                  text: content
+                }]
+              }
+            });
+          } catch (error) {
+            const errorContent = `# ${owner}/${repo}\n\nError accessing repository: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRepository: https://github.com/${owner}/${repo}`;
+            this.sendSSEMessage(res, {
+              jsonrpc: '2.0',
+              id: requestId,
+              result: {
+                contents: [{
+                  uri: uri,
+                  mimeType: 'text/markdown',
+                  text: errorContent
+                }]
+              }
+            });
+          }
+        } else {
+          this.sendSSEError(res, requestId, -32602, 'Invalid GitHub URI format');
+        }
+      } else if (uri.startsWith('file://')) {
+        // Handle file URIs (similar to stdio server implementation)
+        const fs = await import('fs');
+        const filePath = uri.replace('file://', '');
+        
+        try {
+          // Check if this path matches any configured local source
+          const config = this.configLoader.getConfig();
+          let matchedSource = null;
+          
+          if (config.local_sources) {
+            for (const source of config.local_sources) {
+              const sourcePath = source.url.replace('file://', '');
+              if (filePath.startsWith(sourcePath)) {
+                matchedSource = source;
+                break;
+              }
+            }
+          }
+          
+          if (matchedSource && fs.existsSync(filePath)) {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            this.sendSSEMessage(res, {
+              jsonrpc: '2.0',
+              id: requestId,
+              result: {
+                contents: [{
+                  uri: uri,
+                  mimeType: 'text/plain',
+                  text: content
+                }]
+              }
+            });
+          } else {
+            this.sendSSEError(res, requestId, -32602, 
+              matchedSource ? 'File not found' : 'File path not accessible - not in configured local sources');
+          }
+        } catch (error) {
+          this.sendSSEError(res, requestId, -32603,
+            `Failed to read file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      } else {
+        this.sendSSEError(res, requestId, -32602, 'Unsupported URI scheme');
+      }
+    } catch (error) {
+      console.error('Resources read error:', error);
+      this.sendSSEError(res, requestId, -32603,
+        error instanceof Error ? error.message : 'Unknown error');
+    }
+  }
 
   private sendSSEMessage(res: express.Response, message: JSONRPCNotification | JSONRPCResponse) {
     res.write(`event: message\n`);
@@ -611,10 +774,18 @@ export class MCPSSEServer {
   }
 
   start() {
-    this.app.listen(this.port, () => {
+    this.server = this.app.listen(this.port, () => {
       console.log(`MCP SSE Server started on port ${this.port}`);
       console.log(`Compatible with idosal/git-mcp clients`);
       console.log(`Endpoint: http://localhost:${this.port}/sse`);
     });
+  }
+
+  close() {
+    if (this.server) {
+      this.server.close(() => {
+        console.log('MCP SSE Server closed');
+      });
+    }
   }
 }

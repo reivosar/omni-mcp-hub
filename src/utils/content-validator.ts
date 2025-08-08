@@ -36,7 +36,7 @@ export class ContentValidator {
     /secret\s*[=:]\s*['""][^'""]{8,}['"]/i,
     /token\s*[=:]\s*['""][^'""]{20,}['"]/i,
     /\$\([^)]*\)/,
-    /`[^`]*`/,
+    /`[^`]*\$\([^)]*\)[^`]*`/,
     /;\s*(rm|del|format|sudo)/i,
     /<script[^>]*>/i,
     /javascript:/i,

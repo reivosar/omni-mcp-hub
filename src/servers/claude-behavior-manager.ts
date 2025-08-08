@@ -35,6 +35,9 @@ export class ClaudeBehaviorManager {
       return null;
     }
 
+    // Initialize source manager before using it
+    await this.sourceManager.initializeSources();
+
     const sources = this.configManager.getSources();
     const localSources = sources.filter(source => source.type === 'local');
     const behaviors: BehaviorInstructions[] = [];
@@ -46,8 +49,9 @@ export class ClaudeBehaviorManager {
         // Try to read CLAUDE.md from each local source
         const sourcePath = source.path.startsWith('/') ? source.path : `./${source.path}`;
         const claudeFilePath = `${sourcePath}/CLAUDE.md`;
+        const sourceUrl = `local:${sourcePath}`;
         
-        const content = await this.sourceManager.getSourceFile(sourcePath, 'CLAUDE.md');
+        const content = await this.sourceManager.getSourceFile(sourceUrl, 'CLAUDE.md');
         
         if (content) {
           const behaviorInstructions = this.extractBehaviorFromContent(content);

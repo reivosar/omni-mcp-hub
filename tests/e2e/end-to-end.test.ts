@@ -1,5 +1,5 @@
 import { spawn } from 'child_process';
-import { setTimeout } from 'timers/promises';
+import { setTimeout as delay } from 'timers/promises';
 import fetch from 'node-fetch';
 import nock from 'nock';
 
@@ -34,7 +34,7 @@ describe('End-to-End Tests', () => {
     // });
 
     // Wait for server to start
-    await setTimeout(3000);
+    await delay(3000);
 
     // Check if server is running
     let serverReady = false;
@@ -48,7 +48,7 @@ describe('End-to-End Tests', () => {
       } catch (e) {
         // Server not ready yet
       }
-      await setTimeout(500);
+      await delay(500);
     }
 
     if (!serverReady) {
@@ -57,25 +57,45 @@ describe('End-to-End Tests', () => {
   }, 30000);
 
   afterAll(async () => {
-    if (serverProcess) {
+    if (serverProcess && !serverProcess.killed) {
+      // Create a promise that resolves when the process exits
+      const processExit = new Promise<void>((resolve) => {
+        serverProcess.once('exit', () => resolve());
+        serverProcess.once('close', () => resolve());
+      });
+
+      // Send SIGTERM for graceful shutdown
       serverProcess.kill('SIGTERM');
       
-      // Wait for graceful shutdown
-      await setTimeout(2000);
+      // Create timeout handle so we can clear it
+      let timeoutHandle: NodeJS.Timeout | null = null;
+      const timeoutPromise = new Promise<void>((resolve) => {
+        timeoutHandle = setTimeout(() => {
+          if (!serverProcess.killed) {
+            serverProcess.kill('SIGKILL');
+          }
+          resolve();
+        }, 3000);
+      });
+
+      // Wait for either process exit or timeout
+      await Promise.race([processExit, timeoutPromise]);
+
+      // Clear timeout if it's still pending
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
       
+      // Force kill if still running
       if (!serverProcess.killed) {
         serverProcess.kill('SIGKILL');
-        await setTimeout(1000);
       }
-      
-      // Ensure process is fully terminated
-      try {
-        process.kill(serverProcess.pid, 0);
-        serverProcess.kill('SIGKILL');
-        await setTimeout(1000);
-      } catch (e) {
-        // Process already terminated
-      }
+    }
+    
+    // Clear any handles
+    if (serverProcess) {
+      serverProcess.removeAllListeners();
+      serverProcess = null;
     }
     
     // Restore nock settings

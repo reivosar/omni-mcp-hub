@@ -33,7 +33,8 @@ describe('ClaudeBehaviorManager', () => {
     } as any;
     
     mockSourceManager = {
-      getSourceFile: jest.fn()
+      getSourceFile: jest.fn(),
+      initializeSources: jest.fn().mockResolvedValue(undefined)
     } as any;
 
     MockSourceConfigManager.mockImplementation(() => mockConfigManager);

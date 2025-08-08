@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "omni-docker": {
+      "command": "docker",
+      "args": ["exec", "-i", "omni-mcp-hub-local_sources", "node", "/app/dist/servers/server.js"],
+      "env": {
+        "MCP_MODE": "stdio"
+      }
+    }
+  }
+}

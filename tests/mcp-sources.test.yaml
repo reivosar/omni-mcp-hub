@@ -1,15 +1,22 @@
-# Test configuration for MCP Server
-# Minimal configuration for running tests
+# Test configuration for MCP Server - Modern format
+# Updated to match current configuration structure
 
 server:
-  port: 3010
+  port: ${PORT}
 
-sources:
-  # Test sources with minimal configuration
+github_sources:
   - url: github:microsoft/vscode
     token: ${GITHUB_TOKEN_TEST}
-    
+    owner: microsoft
+    repo: vscode
+    branch: main
+
+local_sources:
   - url: /tmp/test-project
+    path: /tmp/test-project
+    behavior_priority: 1
+
+mcp_servers: []
 
 files:
   patterns:
@@ -22,5 +29,10 @@ fetch:
   retry_delay: 500
   max_depth: 2
 
-cache:
-  ttl: 60000  # 1 minute for tests
+security:
+  content_validation:
+    enabled: false
+    max_file_size: 10240
+
+behavior_detection:
+  enabled: true

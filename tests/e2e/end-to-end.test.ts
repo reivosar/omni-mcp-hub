@@ -5,7 +5,7 @@ import nock from 'nock';
 
 describe('End-to-End Tests', () => {
   let serverProcess: any;
-  const serverPort = 3010;
+  const serverPort = 3010 + Math.floor(Math.random() * 1000);
 
   beforeAll(async () => {
     // Allow real network connections to localhost for E2E tests
@@ -17,6 +17,7 @@ describe('End-to-End Tests', () => {
         ...process.env, 
         NODE_ENV: 'test',
         CONFIG_PATH: './tests/mcp-sources.test.yaml',
+        PORT: serverPort.toString(),
         GITHUB_TOKEN_TEST: 'test-token',
         GITHUB_WEBHOOK_SECRET_TEST: 'test-webhook-secret'
       },
@@ -60,10 +61,20 @@ describe('End-to-End Tests', () => {
       serverProcess.kill('SIGTERM');
       
       // Wait for graceful shutdown
-      await setTimeout(1000);
+      await setTimeout(2000);
       
       if (!serverProcess.killed) {
         serverProcess.kill('SIGKILL');
+        await setTimeout(1000);
+      }
+      
+      // Ensure process is fully terminated
+      try {
+        process.kill(serverProcess.pid, 0);
+        serverProcess.kill('SIGKILL');
+        await setTimeout(1000);
+      } catch (e) {
+        // Process already terminated
       }
     }
     

@@ -1,2 +1,2 @@
 local_sources:
-  - url: /app/docs/single
+    path: /app/docs/single

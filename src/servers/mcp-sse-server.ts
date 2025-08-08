@@ -245,7 +245,6 @@ export class MCPSSEServer {
       }
 
       // Check cache first
-      const cacheKey = `${owner}:${repo}:${branch}:${include_externals}`;
       let cachedData = null;
       
       try {

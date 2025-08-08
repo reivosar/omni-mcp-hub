@@ -3,6 +3,16 @@
  * Uses basic stdio communication without MCP SDK dependency
  */
 
+// Suppress punycode deprecation warning
+process.removeAllListeners('warning');
+process.on('warning', (warning) => {
+  if (warning.name === 'DeprecationWarning' && 
+      warning.message.includes('punycode')) {
+    return;
+  }
+  console.warn(warning);
+});
+
 import { SourceConfigManager } from '../config/source-config-manager';
 import { MCPSSEServer } from './mcp-sse-server';
 import { MCPServerManager } from '../mcp/mcp-server-manager';

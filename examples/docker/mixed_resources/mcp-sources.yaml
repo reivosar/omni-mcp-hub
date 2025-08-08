@@ -2,9 +2,9 @@ github_sources:
   - url: github:reivosar/claude-code-engineering-guide
 
 local_sources:
-  - url: /documents
-  - url: /projects
-  - url: /app/docs/multi
+  - path: /documents
+  - path: /projects
+  - path: /app/docs/multi
 
 mcp_servers:
   - name: filesystem

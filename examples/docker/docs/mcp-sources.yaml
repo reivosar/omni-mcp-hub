@@ -5,9 +5,9 @@ github_sources:
   - url: github:reivosar/claude-code-engineering-guide
 
 local_sources:
-  - url: /app/docs
-  - url: /documents  
-  - url: /projects
+  - path: /app/docs
+  - path: /documents  
+  - path: /projects
 
 # External reference examples
 external_references:

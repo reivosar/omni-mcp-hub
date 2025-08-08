@@ -89,6 +89,20 @@ describe('End-to-End Tests', () => {
       // Force kill if still running
       if (!serverProcess.killed) {
         serverProcess.kill('SIGKILL');
+        // Wait a bit for process to be killed
+        await delay(1000);
+      }
+      
+      // Close stdin/stdout/stderr to prevent pipe leaks
+      if (serverProcess.stdin && !serverProcess.stdin.destroyed) {
+        serverProcess.stdin.end();
+        serverProcess.stdin.destroy();
+      }
+      if (serverProcess.stdout && !serverProcess.stdout.destroyed) {
+        serverProcess.stdout.destroy();
+      }
+      if (serverProcess.stderr && !serverProcess.stderr.destroyed) {
+        serverProcess.stderr.destroy();
       }
     }
     

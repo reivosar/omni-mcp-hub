@@ -12,8 +12,7 @@ github_sources:
     branch: main
 
 local_sources:
-  - url: /tmp/test-project
-    path: /tmp/test-project
+  - path: /tmp/test-project
     behavior_priority: 1
 
 mcp_servers: []

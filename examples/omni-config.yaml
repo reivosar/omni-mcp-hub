@@ -6,11 +6,8 @@ autoLoad:
   # Profiles to auto-load on startup
   profiles:
     - name: "lum"
-      path: "./examples/lum-behavior.md"
+      path: "./lum-behavior.md"
       autoApply: true
-    - name: "pirate"
-      path: "./examples/pirate-behavior.md"
-      autoApply: false
 
 # File loading settings
 fileSettings:

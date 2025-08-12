@@ -19,9 +19,9 @@ export class ConfigLoader {
   private yamlConfigManager: YamlConfigManager;
   private fileScanner: FileScanner;
 
-  constructor(claudeConfigManager: ClaudeConfigManager) {
+  constructor(claudeConfigManager: ClaudeConfigManager, yamlConfigManager?: YamlConfigManager) {
     this.claudeConfigManager = claudeConfigManager;
-    this.yamlConfigManager = new YamlConfigManager();
+    this.yamlConfigManager = yamlConfigManager || YamlConfigManager.createWithPath('./examples/omni-config.yaml');
     this.fileScanner = new FileScanner(this.yamlConfigManager);
   }
 
@@ -99,8 +99,8 @@ export class ConfigLoader {
           const loadedConfig = await this.claudeConfigManager.loadClaudeConfig(fileInfo.path);
           activeProfiles.set(profileName, loadedConfig);
           
-          if (config.logging?.verboseFileLoading) {
-            console.error(`Auto-scanned profile '${profileName}': ${fileInfo.path}`);
+          if (this.yamlConfigManager.isVerboseProfileSwitching()) {
+            this.yamlConfigManager.log('info', `Auto-scanned profile '${profileName}': ${fileInfo.path}`);
           }
         } catch (error) {
           if (config.logging?.verboseFileLoading) {
@@ -126,6 +126,14 @@ export class ConfigLoader {
     
     for (const profile of profiles) {
       if (profile.path && profile.name) {
+        // Skip if autoApply is explicitly set to false
+        if (profile.autoApply === false) {
+          if (this.yamlConfigManager.isVerboseProfileSwitching()) {
+            this.yamlConfigManager.log('info', `Skipping profile '${profile.name}' (autoApply: false): ${profile.path}`);
+          }
+          continue;
+        }
+        
         try {
           const fullPath = path.isAbsolute(profile.path) 
             ? profile.path 
@@ -134,8 +142,18 @@ export class ConfigLoader {
           const loadedConfig = await this.claudeConfigManager.loadClaudeConfig(fullPath);
           activeProfiles.set(profile.name, loadedConfig);
           
-          if (config.logging?.verboseFileLoading) {
-            console.error(`Auto-loaded profile '${profile.name}': ${profile.path}`);
+          // If autoApply is true, apply the behavior immediately
+          if (profile.autoApply === true) {
+            const { BehaviorGenerator } = await import('../utils/behavior-generator.js');
+            const behaviorInstructions = BehaviorGenerator.generateInstructions(loadedConfig);
+            console.error(`\n=== APPLYING PROFILE '${profile.name}' ===`);
+            console.error(behaviorInstructions);
+            console.error(`=== END PROFILE APPLICATION ===\n`);
+          }
+          
+          if (this.yamlConfigManager.isVerboseProfileSwitching()) {
+            const applyStatus = profile.autoApply === true ? ' (APPLIED)' : '';
+            this.yamlConfigManager.log('info', `Auto-loaded profile '${profile.name}': ${profile.path}${applyStatus}`);
           }
         } catch (error) {
           if (config.logging?.verboseFileLoading) {

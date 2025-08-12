@@ -30,6 +30,8 @@ describe('ConfigLoader - Extended Tests', () => {
       loadYamlConfig: vi.fn(),
       getConfig: vi.fn(),
       generateProfileName: vi.fn(),
+      isVerboseProfileSwitching: vi.fn().mockReturnValue(false),
+      log: vi.fn(),
     };
     vi.mocked(YamlConfigManager).mockImplementation(() => mockYamlConfigManager);
 
@@ -55,7 +57,7 @@ describe('ConfigLoader - Extended Tests', () => {
         autoLoad: {
           profiles: [
             { name: 'test1', path: './test1.md', autoApply: true },
-            { name: 'test2', path: './test2.md', autoApply: false }
+            { name: 'test2', path: './test2.md', autoApply: true } // Changed to true so both load
           ]
         },
         logging: { verboseFileLoading: true }
@@ -72,6 +74,30 @@ describe('ConfigLoader - Extended Tests', () => {
       expect(result.size).toBe(2);
       expect(result.has('test1')).toBe(true);
       expect(result.has('test2')).toBe(true);
+    });
+
+    it('should skip profiles with autoApply: false', async () => {
+      const mockYamlConfig = {
+        autoLoad: {
+          profiles: [
+            { name: 'test1', path: './test1.md', autoApply: true },
+            { name: 'test2', path: './test2.md', autoApply: false } // This should be skipped
+          ]
+        },
+        logging: { verboseFileLoading: true }
+      };
+
+      mockYamlConfigManager.loadYamlConfig.mockResolvedValue(mockYamlConfig);
+      mockYamlConfigManager.getConfig.mockReturnValue(mockYamlConfig);
+      mockClaudeConfigManager.loadClaudeConfig.mockResolvedValue({ title: 'Test Config' });
+
+      const result = await configLoader.loadInitialConfig();
+
+      expect(mockYamlConfigManager.loadYamlConfig).toHaveBeenCalled();
+      expect(mockClaudeConfigManager.loadClaudeConfig).toHaveBeenCalledTimes(1); // Only test1 should load
+      expect(result.size).toBe(1);
+      expect(result.has('test1')).toBe(true);
+      expect(result.has('test2')).toBe(false); // test2 should be skipped
     });
 
     it('should handle YAML loading errors gracefully', async () => {

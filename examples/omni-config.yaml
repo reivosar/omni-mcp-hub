@@ -20,8 +20,7 @@ fileSettings:
   # Target directories for loading
   includePaths:
     - "./"
-    - "../configs/"
-    - "../profiles/"
+    - "./examples/"
   
   # File patterns to exclude
   excludePatterns:

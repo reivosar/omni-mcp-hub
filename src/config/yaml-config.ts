@@ -72,7 +72,7 @@ const DEFAULT_CONFIG: YamlConfig = {
   logging: {
     level: "info",
     verboseFileLoading: true,
-    verboseProfileSwitching: true
+    verboseProfileSwitching: false
   }
 };
 
@@ -80,11 +80,17 @@ export class YamlConfigManager {
   private config: YamlConfig = DEFAULT_CONFIG;
   private configPath: string = '';
 
+  constructor(configPath?: string) {
+    if (configPath) {
+      this.configPath = configPath;
+    }
+  }
+
   /**
    * Load YAML configuration file
    */
   async loadYamlConfig(configPath?: string): Promise<YamlConfig> {
-    const yamlPath = configPath || this.findYamlConfigFile();
+    const yamlPath = configPath || this.configPath || this.findYamlConfigFile();
     
     try {
       const content = await fs.readFile(yamlPath, 'utf-8');
@@ -111,7 +117,26 @@ export class YamlConfigManager {
    * Auto-detect configuration file path
    */
   private findYamlConfigFile(): string {
-    // Only look for omni-config.yaml in the current working directory
+    const possiblePaths = [
+      // Look in current working directory first
+      path.join(process.cwd(), 'omni-config.yaml'),
+      // Look in examples directory (for development/testing)
+      path.join(process.cwd(), 'examples', 'omni-config.yaml'),
+      // Look in parent directory's examples folder
+      path.join(process.cwd(), '..', 'examples', 'omni-config.yaml')
+    ];
+    
+    for (const configPath of possiblePaths) {
+      try {
+        // Check if file exists synchronously
+        require('fs').accessSync(configPath);
+        return configPath;
+      } catch (error) {
+        // File doesn't exist, continue to next path
+      }
+    }
+    
+    // Return default path if no config file found
     return path.join(process.cwd(), 'omni-config.yaml');
   }
 
@@ -156,6 +181,54 @@ export class YamlConfigManager {
    */
   getConfig(): YamlConfig {
     return this.config;
+  }
+
+  /**
+   * Check if logging should be output based on level
+   */
+  shouldLog(level: 'debug' | 'info' | 'warn' | 'error'): boolean {
+    const configLevel = this.config.logging?.level || 'info';
+    const levels = { debug: 0, info: 1, warn: 2, error: 3 };
+    return levels[level] >= levels[configLevel];
+  }
+
+  /**
+   * Log message with level check
+   */
+  log(level: 'debug' | 'info' | 'warn' | 'error', message: string): void {
+    if (this.shouldLog(level)) {
+      console.error(`[${level.toUpperCase()}] ${message}`);
+    }
+  }
+
+  /**
+   * Get default profile name
+   */
+  getDefaultProfile(): string {
+    return this.config.profileManagement?.defaultProfile || 'default';
+  }
+
+  /**
+   * Check if verbose profile switching is enabled
+   */
+  isVerboseProfileSwitching(): boolean {
+    return this.config.logging?.verboseProfileSwitching ?? false;
+  }
+
+  /**
+   * Create a YamlConfigManager with test configuration
+   */
+  static createForTest(config: YamlConfig): YamlConfigManager {
+    const manager = new YamlConfigManager();
+    manager.config = { ...DEFAULT_CONFIG, ...config };
+    return manager;
+  }
+
+  /**
+   * Create a YamlConfigManager for specific config file path
+   */
+  static createWithPath(configPath: string): YamlConfigManager {
+    return new YamlConfigManager(configPath);
   }
 
   /**

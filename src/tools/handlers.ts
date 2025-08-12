@@ -18,12 +18,16 @@ export class ToolHandlers {
   constructor(
     server: Server,
     claudeConfigManager: ClaudeConfigManager,
-    activeProfiles: Map<string, ClaudeConfig>
+    activeProfiles: Map<string, ClaudeConfig>,
+    fileScanner?: FileScanner
   ) {
     this.server = server;
     this.claudeConfigManager = claudeConfigManager;
     this.activeProfiles = activeProfiles;
-    this.fileScanner = new FileScanner(new YamlConfigManager());
+    // Determine correct path based on working directory
+    const isInExamplesDir = process.cwd().endsWith('/examples');
+    const yamlConfigPath = isInExamplesDir ? './omni-config.yaml' : './examples/omni-config.yaml';
+    this.fileScanner = fileScanner || new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath));
   }
 
   /**
@@ -168,8 +172,9 @@ export class ToolHandlers {
     
     try {
       const config = await this.claudeConfigManager.loadClaudeConfig(filePath);
-      // Auto-generate profile name from filename (without extension)
-      const autoProfileName = profileName || path.basename(filePath, path.extname(filePath));
+      // Auto-generate profile name from filename (without extension) or use default
+      const yamlConfigManager = new YamlConfigManager();
+      const autoProfileName = profileName || path.basename(filePath, path.extname(filePath)) || yamlConfigManager.getDefaultProfile();
       this.activeProfiles.set(autoProfileName, config);
       
       let responseMessages = [
@@ -239,13 +244,20 @@ export class ToolHandlers {
   private async handleListUnloadedConfigs(args: any) {
     try {
       const availableFiles = await this.fileScanner.scanForClaudeFiles();
-      const loadedPaths = Array.from(this.activeProfiles.values()).map(config => 
-        (config as any)._filePath
-      ).filter(Boolean);
+      
+      // Get loaded profile file paths - check multiple possible path properties
+      const loadedPaths = Array.from(this.activeProfiles.values()).map(config => {
+        const configAny = config as any;
+        return configAny._filePath || configAny.filePath || configAny.path || configAny._originalPath;
+      }).filter(Boolean);
       
       // Filter out already loaded files
       const unloadedFiles = availableFiles.filter(file => 
-        !loadedPaths.includes(file.path)
+        !loadedPaths.some(loadedPath => 
+          loadedPath === file.path || 
+          loadedPath === file.path.replace(process.cwd() + '/', './') ||
+          file.path === loadedPath.replace(process.cwd() + '/', './')
+        )
       ).map(file => ({
         path: file.path,
         isClaudeConfig: file.isClaudeConfig,

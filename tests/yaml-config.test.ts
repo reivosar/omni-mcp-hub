@@ -324,4 +324,218 @@ logging:
       expect(config.logging).toBeDefined();
     });
   });
+
+  describe('logging level functionality', () => {
+    beforeEach(() => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    describe('shouldLog', () => {
+      it('should respect debug level - all messages allowed', async () => {
+        const yamlContent = `
+logging:
+  level: "debug"
+`;
+        mockedFs.readFile.mockResolvedValue(yamlContent);
+        await manager.loadYamlConfig();
+
+        expect(manager.shouldLog('debug')).toBe(true);
+        expect(manager.shouldLog('info')).toBe(true);
+        expect(manager.shouldLog('warn')).toBe(true);
+        expect(manager.shouldLog('error')).toBe(true);
+      });
+
+      it('should respect info level - debug blocked', async () => {
+        const yamlContent = `
+logging:
+  level: "info"
+`;
+        mockedFs.readFile.mockResolvedValue(yamlContent);
+        await manager.loadYamlConfig();
+
+        expect(manager.shouldLog('debug')).toBe(false);
+        expect(manager.shouldLog('info')).toBe(true);
+        expect(manager.shouldLog('warn')).toBe(true);
+        expect(manager.shouldLog('error')).toBe(true);
+      });
+
+      it('should respect warn level - debug and info blocked', async () => {
+        const yamlContent = `
+logging:
+  level: "warn"
+`;
+        mockedFs.readFile.mockResolvedValue(yamlContent);
+        await manager.loadYamlConfig();
+
+        expect(manager.shouldLog('debug')).toBe(false);
+        expect(manager.shouldLog('info')).toBe(false);
+        expect(manager.shouldLog('warn')).toBe(true);
+        expect(manager.shouldLog('error')).toBe(true);
+      });
+
+      it('should respect error level - only errors allowed', async () => {
+        const yamlContent = `
+logging:
+  level: "error"
+`;
+        mockedFs.readFile.mockResolvedValue(yamlContent);
+        await manager.loadYamlConfig();
+
+        expect(manager.shouldLog('debug')).toBe(false);
+        expect(manager.shouldLog('info')).toBe(false);
+        expect(manager.shouldLog('warn')).toBe(false);
+        expect(manager.shouldLog('error')).toBe(true);
+      });
+
+      it('should default to info level when not specified', async () => {
+        mockedFs.readFile.mockResolvedValue('');
+        await manager.loadYamlConfig();
+
+        expect(manager.shouldLog('debug')).toBe(false);
+        expect(manager.shouldLog('info')).toBe(true);
+        expect(manager.shouldLog('warn')).toBe(true);
+        expect(manager.shouldLog('error')).toBe(true);
+      });
+    });
+
+    describe('log', () => {
+      it('should log with correct format when level allows', async () => {
+        const yamlContent = `
+logging:
+  level: "info"
+`;
+        mockedFs.readFile.mockResolvedValue(yamlContent);
+        await manager.loadYamlConfig();
+
+        manager.log('info', 'test message');
+        expect(console.error).toHaveBeenCalledWith('[INFO] test message');
+
+        manager.log('warn', 'warning message');
+        expect(console.error).toHaveBeenCalledWith('[WARN] warning message');
+
+        manager.log('error', 'error message');
+        expect(console.error).toHaveBeenCalledWith('[ERROR] error message');
+      });
+
+      it('should not log when level blocks message', async () => {
+        const yamlContent = `
+logging:
+  level: "error"
+`;
+        mockedFs.readFile.mockResolvedValue(yamlContent);
+        await manager.loadYamlConfig();
+
+        manager.log('debug', 'debug message');
+        manager.log('info', 'info message');
+        manager.log('warn', 'warn message');
+
+        expect(console.error).not.toHaveBeenCalled();
+
+        manager.log('error', 'error message');
+        expect(console.error).toHaveBeenCalledWith('[ERROR] error message');
+      });
+    });
+  });
+
+  describe('profile management functionality', () => {
+    describe('getDefaultProfile', () => {
+      it('should return configured default profile', async () => {
+        const yamlContent = `
+profileManagement:
+  defaultProfile: "custom-default"
+`;
+        mockedFs.readFile.mockResolvedValue(yamlContent);
+        await manager.loadYamlConfig();
+
+        expect(manager.getDefaultProfile()).toBe('custom-default');
+      });
+
+      it('should return fallback default when not configured', async () => {
+        mockedFs.readFile.mockResolvedValue('');
+        await manager.loadYamlConfig();
+
+        expect(manager.getDefaultProfile()).toBe('default');
+      });
+    });
+
+    describe('isVerboseProfileSwitching', () => {
+      it('should return true when enabled', async () => {
+        const yamlContent = `
+logging:
+  verboseProfileSwitching: true
+`;
+        mockedFs.readFile.mockResolvedValue(yamlContent);
+        await manager.loadYamlConfig();
+
+        expect(manager.isVerboseProfileSwitching()).toBe(true);
+      });
+
+      it('should return false when disabled', async () => {
+        const yamlContent = `
+logging:
+  verboseProfileSwitching: false
+`;
+        mockedFs.readFile.mockResolvedValue(yamlContent);
+        await manager.loadYamlConfig();
+
+        expect(manager.isVerboseProfileSwitching()).toBe(false);
+      });
+
+      it('should return false when not configured', async () => {
+        mockedFs.readFile.mockResolvedValue('');
+        await manager.loadYamlConfig();
+
+        expect(manager.isVerboseProfileSwitching()).toBe(false);
+      });
+    });
+  });
+
+  describe('static factory methods', () => {
+    describe('createForTest', () => {
+      it('should create manager with test configuration', () => {
+        const testConfig: YamlConfig = {
+          logging: { level: 'debug', verboseFileLoading: true },
+          profileManagement: { defaultProfile: 'test-profile' }
+        };
+
+        const testManager = YamlConfigManager.createForTest(testConfig);
+        const config = testManager.getConfig();
+
+        expect(config.logging?.level).toBe('debug');
+        expect(config.logging?.verboseFileLoading).toBe(true);
+        expect(config.profileManagement?.defaultProfile).toBe('test-profile');
+        // Should merge with defaults
+        expect(config.fileSettings?.configFiles?.claude).toBe('CLAUDE.md');
+      });
+    });
+
+    describe('createWithPath', () => {
+      it('should create manager with specified config path', () => {
+        const testPath = '/test/path/config.yaml';
+        const testManager = YamlConfigManager.createWithPath(testPath);
+
+        expect(testManager).toBeDefined();
+        // Note: We can't easily test the internal configPath without exposing it
+      });
+    });
+  });
+
+  describe('constructor with configPath', () => {
+    it('should accept configPath parameter', () => {
+      const testPath = '/test/config.yaml';
+      const testManager = new YamlConfigManager(testPath);
+
+      expect(testManager).toBeDefined();
+    });
+
+    it('should work without configPath parameter', () => {
+      const testManager = new YamlConfigManager();
+
+      expect(testManager).toBeDefined();
+    });
+  });
 });

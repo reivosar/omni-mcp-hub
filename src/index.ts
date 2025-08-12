@@ -7,6 +7,7 @@ import { ConfigLoader } from "./config/loader.js";
 import { ToolHandlers } from "./tools/handlers.js";
 import { ResourceHandlers } from "./resources/handlers.js";
 import { BehaviorGenerator } from "./utils/behavior-generator.js";
+import { YamlConfigManager } from "./config/yaml-config.js";
 
 export class OmniMCPServer {
   private server: Server;
@@ -31,7 +32,11 @@ export class OmniMCPServer {
     );
 
     this.claudeConfigManager = new ClaudeConfigManager();
-    this.configLoader = new ConfigLoader(this.claudeConfigManager);
+    // Determine correct path based on working directory
+    const isInExamplesDir = process.cwd().endsWith('/examples');
+    const yamlConfigPath = isInExamplesDir ? './omni-config.yaml' : './examples/omni-config.yaml';
+    const yamlConfigManager = YamlConfigManager.createWithPath(yamlConfigPath);
+    this.configLoader = new ConfigLoader(this.claudeConfigManager, yamlConfigManager);
     this.toolHandlers = new ToolHandlers(this.server, this.claudeConfigManager, this.activeProfiles);
     this.resourceHandlers = new ResourceHandlers(this.server, this.activeProfiles);
 

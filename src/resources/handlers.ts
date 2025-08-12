@@ -15,7 +15,10 @@ export class ResourceHandlers {
   constructor(server: Server, activeProfiles: Map<string, ClaudeConfig>) {
     this.server = server;
     this.activeProfiles = activeProfiles;
-    this.fileScanner = new FileScanner(new YamlConfigManager());
+    // Determine correct path based on working directory
+    const isInExamplesDir = process.cwd().endsWith('/examples');
+    const yamlConfigPath = isInExamplesDir ? './omni-config.yaml' : './examples/omni-config.yaml';
+    this.fileScanner = new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath));
   }
 
   /**

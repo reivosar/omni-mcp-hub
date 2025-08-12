@@ -25,20 +25,8 @@ echo -e "${GREEN}Build completed${NC}"
 echo ""
 
 # 2. Claude Code MCP Configuration
-echo -e "${YELLOW}2. Configuring Claude Code...${NC}"
-cat > ~/.claude.json << 'EOF'
-{
-  "mcpServers": {
-    "omni-mcp-hub": {
-      "command": "node",
-      "args": ["/Users/mac/workspace/omni-mcp-hub/dist/index.js"],
-      "description": "Omni MCP Hub - CLAUDE.md configuration manager",
-      "env": {}
-    }
-  }
-}
-EOF
-echo -e "${GREEN}Configuration saved to ~/.claude.json${NC}"
+echo -e "${YELLOW}2. MCP Configuration Ready${NC}"
+echo -e "${GREEN}Project-local .claude.json configured${NC}"
 echo ""
 
 # 3. Launch Claude Code

@@ -6,11 +6,14 @@ import {
 import * as path from 'path';
 import { ClaudeConfigManager, ClaudeConfig } from "../utils/claude-config.js";
 import { BehaviorGenerator } from "../utils/behavior-generator.js";
+import { FileScanner } from "../utils/file-scanner.js";
+import { YamlConfigManager } from "../config/yaml-config.js";
 
 export class ToolHandlers {
   private server: Server;
   private claudeConfigManager: ClaudeConfigManager;
   private activeProfiles: Map<string, ClaudeConfig>;
+  private fileScanner: FileScanner;
 
   constructor(
     server: Server,
@@ -20,6 +23,7 @@ export class ToolHandlers {
     this.server = server;
     this.claudeConfigManager = claudeConfigManager;
     this.activeProfiles = activeProfiles;
+    this.fileScanner = new FileScanner(new YamlConfigManager());
   }
 
   /**
@@ -69,6 +73,33 @@ export class ToolHandlers {
               required: [],
             },
           },
+          {
+            name: "list_loaded_configs",
+            description: "List all currently loaded configuration profiles",
+            inputSchema: {
+              type: "object",
+              properties: {},
+              required: [],
+            },
+          },
+          {
+            name: "list_unloaded_configs",
+            description: "List all configuration files that are not yet loaded",
+            inputSchema: {
+              type: "object",
+              properties: {},
+              required: [],
+            },
+          },
+          {
+            name: "list_all_configs",
+            description: "List both loaded and unloaded configuration files",
+            inputSchema: {
+              type: "object",
+              properties: {},
+              required: [],
+            },
+          },
         ],
       };
     });
@@ -87,6 +118,15 @@ export class ToolHandlers {
         
         case "list_claude_configs":
           return this.handleListClaudeConfigs(args);
+        
+        case "list_loaded_configs":
+          return this.handleListLoadedConfigs(args);
+        
+        case "list_unloaded_configs":
+          return this.handleListUnloadedConfigs(args);
+        
+        case "list_all_configs":
+          return this.handleListAllConfigs(args);
 
         default:
           throw new Error(`Unknown tool: ${name}`);
@@ -208,6 +248,116 @@ export class ToolHandlers {
         },
       ],
     };
+  }
+
+  /**
+   * Handle list_loaded_configs tool call
+   */
+  private async handleListLoadedConfigs(args: any) {
+    const loadedConfigNames = Array.from(this.activeProfiles.keys());
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Loaded configs (${loadedConfigNames.length}):\n\n${JSON.stringify(loadedConfigNames, null, 2)}`,
+        },
+      ],
+    };
+  }
+
+  /**
+   * Handle list_unloaded_configs tool call
+   */
+  private async handleListUnloadedConfigs(args: any) {
+    try {
+      const availableFiles = await this.fileScanner.scanForClaudeFiles();
+      const loadedPaths = Array.from(this.activeProfiles.values()).map(config => 
+        (config as any)._filePath
+      ).filter(Boolean);
+      
+      // Filter out already loaded files
+      const unloadedFiles = availableFiles.filter(file => 
+        !loadedPaths.includes(file.path)
+      ).map(file => ({
+        path: file.path,
+        isClaudeConfig: file.isClaudeConfig,
+        matchedPattern: file.matchedPattern
+      }));
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Unloaded configs (${unloadedFiles.length}):\n\n${JSON.stringify(unloadedFiles, null, 2)}`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Failed to scan for unloaded configs: ${error}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+
+  /**
+   * Handle list_all_configs tool call
+   */
+  private async handleListAllConfigs(args: any) {
+    try {
+      // Get loaded configs
+      const loadedConfigNames = Array.from(this.activeProfiles.keys());
+      
+      // Get all available files
+      const availableFiles = await this.fileScanner.scanForClaudeFiles();
+      const loadedPaths = Array.from(this.activeProfiles.values()).map(config => 
+        (config as any)._filePath
+      ).filter(Boolean);
+      
+      // Separate loaded and unloaded
+      const unloadedFiles = availableFiles.filter(file => 
+        !loadedPaths.includes(file.path)
+      ).map(file => ({
+        path: file.path,
+        isClaudeConfig: file.isClaudeConfig,
+        matchedPattern: file.matchedPattern
+      }));
+      
+      const result = {
+        loaded: loadedConfigNames,
+        unloaded: unloadedFiles,
+        summary: {
+          totalLoaded: loadedConfigNames.length,
+          totalUnloaded: unloadedFiles.length,
+          totalAvailable: loadedConfigNames.length + unloadedFiles.length
+        }
+      };
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: `All configs:\n\n${JSON.stringify(result, null, 2)}`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Failed to list all configs: ${error}`,
+          },
+        ],
+        isError: true,
+      };
+    }
   }
 
 

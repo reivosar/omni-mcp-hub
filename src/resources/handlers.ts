@@ -4,14 +4,18 @@ import {
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { ClaudeConfig } from "../utils/claude-config.js";
+import { FileScanner } from "../utils/file-scanner.js";
+import { YamlConfigManager } from "../config/yaml-config.js";
 
 export class ResourceHandlers {
   private server: Server;
   private activeProfiles: Map<string, ClaudeConfig>;
+  private fileScanner: FileScanner;
 
   constructor(server: Server, activeProfiles: Map<string, ClaudeConfig>) {
     this.server = server;
     this.activeProfiles = activeProfiles;
+    this.fileScanner = new FileScanner(new YamlConfigManager());
   }
 
   /**
@@ -29,24 +33,24 @@ export class ResourceHandlers {
     this.server.setRequestHandler(ListResourcesRequestSchema, async () => {
       const baseResources = [
         {
-          uri: "info://server",
-          name: "Server Information",
-          description: "Basic information about this MCP server",
-          mimeType: "text/plain",
+          uri: "config://files/scannable",
+          name: "Scannable Config Files",
+          description: "All configuration files that can be loaded (not yet active)",
+          mimeType: "application/json",
         },
         {
-          uri: "greeting://world",
-          name: "World Greeting", 
-          description: "A greeting message for the world",
-          mimeType: "text/plain",
+          uri: "config://profiles/active",
+          name: "Active Profiles List",
+          description: "List of currently loaded/active profile names",
+          mimeType: "application/json",
         },
       ];
 
-      // Add dynamic resources for each loaded profile
+      // Add dynamic resources for each loaded profile (active/assigned profiles)
       const profileResources = Array.from(this.activeProfiles.keys()).map(profileName => ({
-        uri: `claude://profile/${profileName}`,
-        name: `Claude Profile: ${profileName}`,
-        description: `Configuration details for Claude profile '${profileName}'`,
+        uri: `config://profile/active/${profileName}`,
+        name: `Active: ${profileName}`,
+        description: `Configuration details for active profile '${profileName}'`,
         mimeType: "application/json",
       }));
 
@@ -64,31 +68,57 @@ export class ResourceHandlers {
       const { uri } = request.params;
 
       switch (uri) {
-        case "info://server":
-          return {
-            contents: [
-              {
-                uri,
-                mimeType: "text/plain",
-                text: "Omni MCP Hub Server v1.0.0 - A universal MCP server for Claude Code integration with CLAUDE.md management",
-              },
-            ],
-          };
+        case "config://files/scannable":
+          try {
+            const availableFiles = await this.fileScanner.scanForClaudeFiles();
+            const fileList = availableFiles.map(file => ({
+              path: file.path,
+              isClaudeConfig: file.isClaudeConfig,
+              matchedPattern: file.matchedPattern
+            }));
+            
+            return {
+              contents: [
+                {
+                  uri,
+                  mimeType: "application/json",
+                  text: JSON.stringify({
+                    totalFiles: fileList.length,
+                    files: fileList
+                  }, null, 2),
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              contents: [
+                {
+                  uri,
+                  mimeType: "application/json",
+                  text: JSON.stringify({ error: `Failed to scan files: ${error}` }, null, 2),
+                },
+              ],
+            };
+          }
 
-        case "greeting://world":
+        case "config://profiles/active":
+          const activeProfileNames = Array.from(this.activeProfiles.keys());
           return {
             contents: [
               {
                 uri,
-                mimeType: "text/plain",
-                text: "Hello, World! This is a greeting from the Omni MCP Hub server with CLAUDE.md support.",
+                mimeType: "application/json",
+                text: JSON.stringify({
+                  totalActiveProfiles: activeProfileNames.length,
+                  activeProfiles: activeProfileNames
+                }, null, 2),
               },
             ],
           };
 
         default:
-          // Handle claude://profile/{name} resources
-          const profileMatch = uri.match(/^claude:\/\/profile\/(.+)$/);
+          // Handle config://profile/active/{name} resources
+          const profileMatch = uri.match(/^config:\/\/profile\/active\/(.+)$/);
           if (profileMatch) {
             const profileName = profileMatch[1];
             const config = this.activeProfiles.get(profileName);

@@ -1,0 +1,78 @@
+# Omni MCP Hub Configuration
+# File loading, exclusion, and configuration file name customization settings
+
+# Auto-loading settings
+autoLoad:
+  # Profiles to auto-load on startup
+  profiles:
+    - name: "lum"
+      path: "./examples/lum-behavior.md"
+      autoApply: true
+    - name: "pirate"
+      path: "./examples/pirate-behavior.md"
+      autoApply: false
+
+# File loading settings
+fileSettings:
+  # Configuration file name customization
+  configFiles:
+    claude: "CLAUDE.md"        # CLAUDE.md file name
+    behavior: "*-behavior.md"  # Behavior configuration file pattern
+    custom: "*-config.md"      # Custom configuration file pattern
+  
+  # Target directories for loading
+  includePaths:
+    - "./examples/"
+    - "./configs/"
+    - "./profiles/"
+  
+  # File patterns to exclude
+  excludePatterns:
+    - "*.tmp"
+    - "*.backup"
+    - "*~"
+    - ".git/**"
+    - "node_modules/**"
+    - "dist/**"
+  
+  # Allowed file extensions for loading
+  allowedExtensions:
+    - ".md"
+    - ".markdown"
+    - ".txt"
+
+# Directory scanning settings
+directoryScanning:
+  # Whether to recursively scan subdirectories
+  recursive: true
+  
+  # Maximum scan depth (0 for unlimited)
+  maxDepth: 3
+  
+  # Whether to include hidden files and directories
+  includeHidden: false
+  
+  # Whether to follow symbolic links
+  followSymlinks: false
+
+# Profile management settings
+profileManagement:
+  # Whether to allow duplicate profile names
+  allowDuplicateNames: false
+  
+  # Auto-generation rule for profile names
+  autoNamePattern: "%filename%"  # %filename%, %dirname%, %path%
+  
+  # Default profile
+  defaultProfile: "default"
+
+# Logging settings
+logging:
+  # Log level (debug, info, warn, error)
+  level: "info"
+  
+  # Verbose logging during file loading
+  verboseFileLoading: true
+  
+  # Verbose logging during profile switching
+  verboseProfileSwitching: true

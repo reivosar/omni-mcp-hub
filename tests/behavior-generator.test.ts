@@ -101,7 +101,7 @@ describe('BehaviorGenerator', () => {
       const result = BehaviorGenerator.generateInstructions(config);
       const lines = result.split('\n');
 
-      // 順序を確認: instructions -> customInstructions -> ... -> memory -> tools
+      // Verify order: instructions -> customInstructions -> ... -> memory -> tools
       const instructionsIndex = lines.findIndex(line => line === '# System Instructions');
       const customIndex = lines.findIndex(line => line === '# Custom Instructions');
       const memoryIndex = lines.findIndex(line => line === '# Memory Context');
@@ -123,7 +123,7 @@ describe('BehaviorGenerator', () => {
       expect(result).toContain('- Valid instruction');
       expect(result).toContain('- Another valid');
       expect(result).toContain('- Valid rule');
-      expect(result).toContain('- '); // 空文字列も含まれる
+      expect(result).toContain('- '); // Empty strings are also included
     });
   });
 });

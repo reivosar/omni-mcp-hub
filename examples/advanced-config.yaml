@@ -1,0 +1,69 @@
+# Advanced Configuration Example
+# Shows all available options with different settings
+
+# Advanced auto-loading with multiple profiles
+autoLoad:
+  profiles:
+    - name: "lum-character"
+      path: "./examples/lum-behavior.md"
+      autoApply: true
+    - name: "pirate-character"
+      path: "./examples/pirate-behavior.md"
+      autoApply: false
+    - name: "special-character"
+      path: "./examples/special-behavior.md"
+      autoApply: false
+
+# Comprehensive file settings
+fileSettings:
+  # Custom file patterns
+  configFiles:
+    claude: "CLAUDE.md"
+    behavior: "*-behavior.md"
+    custom: "*-config.md"
+  
+  # Multiple include paths
+  includePaths:
+    - "./examples/"
+    - "./configs/"
+    - "./profiles/"
+    - "./characters/"
+  
+  # Extensive exclusion patterns
+  excludePatterns:
+    - "*.tmp"
+    - "*.backup"
+    - "*.bak"
+    - "*~"
+    - ".git/**"
+    - ".svn/**"
+    - "node_modules/**"
+    - "dist/**"
+    - "build/**"
+    - "coverage/**"
+  
+  # Multiple file extensions
+  allowedExtensions:
+    - ".md"
+    - ".markdown"
+    - ".txt"
+    - ".text"
+
+# Advanced directory scanning
+directoryScanning:
+  recursive: true
+  maxDepth: 5  # Deep scanning
+  includeHidden: true  # Include hidden files
+  followSymlinks: true  # Follow symbolic links
+
+# Advanced profile management
+profileManagement:
+  allowDuplicateNames: false
+  autoNamePattern: "%dirname%_%filename%"  # Include directory name
+  defaultProfile: "default-character"
+
+# Verbose logging
+logging:
+  level: "debug"  # Maximum verbosity
+  verboseFileLoading: true
+  verboseProfileSwitching: true

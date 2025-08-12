@@ -9,7 +9,7 @@ const rootDir = path.dirname(__dirname);
 
 describe('Integration Tests', () => {
   beforeAll(async () => {
-    // プロジェクトをビルド
+    // Build project
     await new Promise((resolve, reject) => {
       const buildProcess = spawn('npm', ['run', 'build'], {
         cwd: rootDir,
@@ -106,13 +106,13 @@ describe('Integration Tests', () => {
       const mdFiles = files.filter(file => file.endsWith('.md') && file !== 'README-MCP-SETUP.md');
       expect(mdFiles.length).toBeGreaterThan(0);
 
-      // 各.mdファイルが有効なCLAUDE.md形式かチェック
+      // Check if each .md file is in valid CLAUDE.md format
       for (const file of mdFiles) {
         const filePath = path.join(examplesDir, file);
         const content = await fs.readFile(filePath, 'utf-8');
 
         expect(content).toContain('# Instructions');
-        // Project Nameは必須ではないが、あれば正しい形式かチェック
+        // Project Name is not required, but check correct format if present
         if (content.includes('Project Name:')) {
           expect(content).toMatch(/Project Name: .+/);
         }
@@ -123,7 +123,7 @@ describe('Integration Tests', () => {
       const startScript = path.join(rootDir, 'examples/start.sh');
       const stats = await fs.stat(startScript);
       
-      // 実行権限があることを確認 (Unix系システムのみ)
+      // Verify executable permissions (Unix systems only)
       if (process.platform !== 'win32') {
         expect(stats.mode & parseInt('111', 8)).toBeGreaterThan(0);
       }
@@ -137,10 +137,10 @@ describe('Integration Tests', () => {
 
   describe('Server Functionality', () => {
     it('should import and instantiate server without errors', async () => {
-      // 動的importでサーバーコードをテスト
+      // Test server code with dynamic import
       const indexPath = path.join(rootDir, 'dist/index.js');
       
-      // ファイルが存在し、構文的に正しいことを確認
+      // Verify file exists and is syntactically correct
       const content = await fs.readFile(indexPath, 'utf-8');
       expect(content).toContain('OmniMCPServer');
       expect(content).toContain('@modelcontextprotocol/sdk');
@@ -178,7 +178,7 @@ describe('Integration Tests', () => {
         memory: 'Test memory'
       };
 
-      // 設定オブジェクトの形式が正しいことを確認
+      // Verify configuration object format is correct
       expect(testConfig.project_name).toBeTruthy();
       expect(Array.isArray(testConfig.customInstructions)).toBe(true);
       expect(Array.isArray(testConfig.rules)).toBe(true);

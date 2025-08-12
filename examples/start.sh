@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Omni MCP Hub - セットアップスクリプト
-# 使い方: ./examples/start.sh
+# Omni MCP Hub - Setup Script
+# Usage: ./examples/start.sh
 
 set -e
 
@@ -13,19 +13,19 @@ NC='\033[0m'
 
 PROJECT_DIR="/Users/mac/workspace/omni-mcp-hub"
 
-echo -e "${BLUE}🔧 Omni MCP Hub セットアップ${NC}"
+echo -e "${BLUE}🔧 Omni MCP Hub Setup${NC}"
 echo ""
 
 cd "$PROJECT_DIR"
 
-# 1. ビルド
-echo -e "${YELLOW}1. プロジェクトをビルド中...${NC}"
+# 1. Build
+echo -e "${YELLOW}1. Building project...${NC}"
 npm run build
-echo -e "${GREEN}✅ ビルド完了${NC}"
+echo -e "${GREEN}✅ Build completed${NC}"
 echo ""
 
-# 2. Claude Code MCP設定
-echo -e "${YELLOW}2. Claude Code設定中...${NC}"
+# 2. Claude Code MCP Configuration
+echo -e "${YELLOW}2. Configuring Claude Code...${NC}"
 cat > ~/.claude.json << 'EOF'
 {
   "mcpServers": {
@@ -38,15 +38,15 @@ cat > ~/.claude.json << 'EOF'
   }
 }
 EOF
-echo -e "${GREEN}✅ ~/.claude.json に設定を保存${NC}"
+echo -e "${GREEN}✅ Configuration saved to ~/.claude.json${NC}"
 echo ""
 
-# 3. Claude Code起動
-echo -e "${YELLOW}3. Claude Code起動中...${NC}"
+# 3. Launch Claude Code
+echo -e "${YELLOW}3. Starting Claude Code...${NC}"
 echo ""
-echo -e "${GREEN}🎉 セットアップ完了！Claude Codeを起動します...${NC}"
+echo -e "${GREEN}🎉 Setup completed! Starting Claude Code...${NC}"
 echo ""
-echo -e "${BLUE}使用可能なコマンド:${NC}"
+echo -e "${BLUE}Available commands:${NC}"
 echo "   /use add a:5 b:3"
 echo "   /use echo message:\"Hello MCP!\""
 echo "   /use find_claude_files directory:\"./examples\""
@@ -54,16 +54,16 @@ echo "   /use load_claude_config filePath:\"./examples/lum-behavior.md\" profile
 echo "   /use apply_claude_behavior profileName:\"lum\""
 echo ""
 
-# 4. ラムちゃん設定ファイルを表示
-echo -e "${YELLOW}4. ラムちゃん設定ファイル表示中...${NC}"
+# 4. Display Lum character configuration file
+echo -e "${YELLOW}4. Displaying Lum character configuration file...${NC}"
 echo ""
 if [ -f "./examples/lum-behavior.md" ]; then
     cat ./examples/lum-behavior.md
-    echo -e "${GREEN}✅ ラムちゃん設定ファイル読み込み完了${NC}"
+    echo -e "${GREEN}✅ Lum character configuration file loaded successfully${NC}"
 else
-    echo -e "${RED}❌ ラムちゃん設定ファイルが見つかりません: ./examples/lum-behavior.md${NC}"
+    echo -e "${RED}❌ Lum character configuration file not found: ./examples/lum-behavior.md${NC}"
 fi
 echo ""
 
-# Claude Code起動
+# Launch Claude Code
 exec claude

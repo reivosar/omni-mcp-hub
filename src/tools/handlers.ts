@@ -172,13 +172,13 @@ export class ToolHandlers {
    * Handle load_claude_config tool call
    */
   private async handleLoadClaudeConfig(args: any) {
-    // 単一の文字列引数または通常のオブジェクト引数をサポート
+    // Support single string argument or normal object argument
     let filePath: string = '';
     let profileName: string | undefined;
-    let autoApply: boolean = true; // デフォルトで自動適用
+    let autoApply: boolean = true; // Auto-apply by default
     
     if (typeof args === 'string') {
-      // 文字列の場合はfilePathとして扱う
+      // Treat as filePath if string
       filePath = args;
     } else if (args && typeof args === 'object') {
       const argsObj = args as { 
@@ -190,7 +190,7 @@ export class ToolHandlers {
       profileName = argsObj.profileName;
       autoApply = argsObj.autoApply !== undefined ? argsObj.autoApply : true;
       
-      // filePathが空の場合、第一引数を探す
+      // If filePath is empty, look for first argument
       if (!filePath) {
         const keys = Object.keys(args);
         if (keys.length > 0 && keys[0] !== 'profileName' && keys[0] !== 'autoApply') {
@@ -213,7 +213,7 @@ export class ToolHandlers {
     
     try {
       const config = await this.claudeConfigManager.loadClaudeConfig(filePath);
-      // ファイル名からプロファイル名を自動生成（拡張子を除いた部分）
+      // Auto-generate profile name from filename (without extension)
       const autoProfileName = profileName || path.basename(filePath, path.extname(filePath));
       this.activeProfiles.set(autoProfileName, config);
       
@@ -224,7 +224,7 @@ export class ToolHandlers {
         },
       ];
       
-      // 自動適用が有効な場合
+      // If auto-apply is enabled
       if (autoApply) {
         const behaviorInstructions = BehaviorGenerator.generateInstructions(config);
         responseMessages.push(
@@ -379,12 +379,12 @@ export class ToolHandlers {
    * Handle apply_claude_behavior tool call
    */
   private async handleApplyClaudeBehavior(args: any) {
-    // 単一の文字列引数または通常のオブジェクト引数をサポート
+    // Support single string argument or normal object argument
     let profileName: string | string[] | undefined;
     let temporary = false;
     
     if (typeof args === 'string') {
-      // 文字列の場合はprofileNameとして扱う
+      // Treat as profileName if string
       profileName = args;
     } else {
       ({ profileName, temporary = false } = args as {
@@ -393,17 +393,17 @@ export class ToolHandlers {
       });
     }
 
-    // 複数プロファイルまたは全プロファイルをサポート
+    // Support multiple profiles or all profiles
     let profilesToApply: string[] = [];
     
     if (!profileName) {
-      // プロファイル名が指定されていない場合は全プロファイルを適用
+      // Apply all profiles if no profile name is specified
       profilesToApply = Array.from(this.activeProfiles.keys());
     } else if (Array.isArray(profileName)) {
-      // 配列の場合は複数プロファイル
+      // Multiple profiles if array
       profilesToApply = profileName;
     } else {
-      // 文字列の場合は単一プロファイル
+      // Single profile if string
       profilesToApply = [profileName];
     }
 
@@ -418,7 +418,7 @@ export class ToolHandlers {
       };
     }
 
-    // 各プロファイルの設定をマージ
+    // Merge each profile's configuration
     const mergedInstructions: string[] = [];
     const appliedProfiles: string[] = [];
     

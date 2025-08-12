@@ -13,16 +13,16 @@ describe('ClaudeConfigManager', () => {
 
   beforeEach(async () => {
     manager = new ClaudeConfigManager();
-    // テスト用ディレクトリ作成
+    // Create test directory
     await fs.mkdir(testDir, { recursive: true });
   });
 
   afterEach(async () => {
-    // テスト用ディレクトリをクリーンアップ
+    // Clean up test directory
     try {
       await fs.rm(testDir, { recursive: true, force: true });
     } catch (e) {
-      // エラーを無視
+      // Ignore errors
     }
   });
 
@@ -76,7 +76,7 @@ Test memory content here.`;
       expect(config.version).toBe('1.0.0');
       expect(config.instructions).toBe('Test instructions here.');
       expect(config.customInstructions).toHaveLength(2);
-      expect(config.customInstructions[0]).toBe('- Custom instruction 1');
+      expect(config.customInstructions?.[0]).toBe('- Custom instruction 1');
       expect(config.rules).toHaveLength(2);
       expect(config.knowledge).toHaveLength(2);
       expect(config.context).toHaveLength(2);
@@ -150,7 +150,7 @@ Some instructions.`;
 
   describe('findClaudeFiles', () => {
     it('should find CLAUDE.md files in directory', async () => {
-      // テスト用のCLAUDE.mdファイルを作成（claude.mdを含むファイル名のみ）
+      // Create test CLAUDE.md file (only filenames containing claude.md)
       await fs.writeFile(path.join(testDir, 'CLAUDE.md'), '# Test');
       await fs.writeFile(path.join(testDir, 'custom-claude.md'), '# Config 1');
       await fs.writeFile(path.join(testDir, 'another-claude.md'), '# Config 2');

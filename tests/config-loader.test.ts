@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// ファイルシステムをモック
+// Mock filesystem
 vi.mock('fs/promises');
 const mockedFs = vi.mocked(fs);
 
@@ -49,10 +49,20 @@ describe('ConfigLoader', () => {
         instructions: 'Test instructions'
       };
 
-      // .mcp-config.json の読み込みをモック
-      mockedFs.readFile.mockResolvedValueOnce(JSON.stringify(mockConfig));
+      // Mock file reading setup
+      mockedFs.readFile.mockImplementation((filePath) => {
+        if ((filePath as string).includes('.mcp-config.json')) {
+          return Promise.resolve(JSON.stringify(mockConfig));
+        }
+        // YAML config file doesn't exist
+        return Promise.reject(new Error('File not found'));
+      });
 
-      // CLAUDE.md ファイルの読み込みをモック
+      // Mock for directory scanning
+      mockedFs.readdir.mockResolvedValue([]);
+      mockedFs.stat.mockResolvedValue({ isFile: () => true } as any);
+
+      // Mock CLAUDE.md file reading
       mockClaudeConfigManager.loadClaudeConfig.mockResolvedValue(mockClaudeConfig);
 
       const result = await configLoader.loadInitialConfig();
@@ -76,8 +86,12 @@ describe('ConfigLoader', () => {
     });
 
     it('should return empty map when .mcp-config.json does not exist', async () => {
-      // ファイル読み込みエラーをモック
+      // Mock file reading error
       mockedFs.readFile.mockRejectedValue(new Error('File not found'));
+      
+      // Mock for directory scanning
+      mockedFs.readdir.mockResolvedValue([]);
+      mockedFs.stat.mockResolvedValue({ isFile: () => true } as any);
 
       const result = await configLoader.loadInitialConfig();
 
@@ -86,7 +100,16 @@ describe('ConfigLoader', () => {
     });
 
     it('should return empty map when .mcp-config.json is invalid JSON', async () => {
-      mockedFs.readFile.mockResolvedValueOnce('{ invalid json }');
+      mockedFs.readFile.mockImplementation((filePath) => {
+        if ((filePath as string).includes('.mcp-config.json')) {
+          return Promise.resolve('{ invalid json }');
+        }
+        return Promise.reject(new Error('File not found'));
+      });
+      
+      // Mock for directory scanning
+      mockedFs.readdir.mockResolvedValue([]);
+      mockedFs.stat.mockResolvedValue({ isFile: () => true } as any);
 
       const result = await configLoader.loadInitialConfig();
 
@@ -99,7 +122,16 @@ describe('ConfigLoader', () => {
         initialProfiles: 'not an array'
       };
 
-      mockedFs.readFile.mockResolvedValueOnce(JSON.stringify(invalidConfig));
+      mockedFs.readFile.mockImplementation((filePath) => {
+        if ((filePath as string).includes('.mcp-config.json')) {
+          return Promise.resolve(JSON.stringify(invalidConfig));
+        }
+        return Promise.reject(new Error('File not found'));
+      });
+      
+      // Mock for directory scanning
+      mockedFs.readdir.mockResolvedValue([]);
+      mockedFs.stat.mockResolvedValue({ isFile: () => true } as any);
 
       const result = await configLoader.loadInitialConfig();
 
@@ -115,16 +147,16 @@ describe('ConfigLoader', () => {
             path: './valid.md'
           },
           {
-            name: '', // 空の名前
+            name: '', // Empty name
             path: './empty-name.md'
           },
           {
             name: 'missing-path-profile'
-            // pathがない
+            // No path
           },
           {
             path: './missing-name.md'
-            // nameがない
+            // No name
           }
         ]
       };
@@ -133,12 +165,22 @@ describe('ConfigLoader', () => {
         project_name: 'Valid Project'
       };
 
-      mockedFs.readFile.mockResolvedValueOnce(JSON.stringify(mockConfig));
+      mockedFs.readFile.mockImplementation((filePath) => {
+        if ((filePath as string).includes('.mcp-config.json')) {
+          return Promise.resolve(JSON.stringify(mockConfig));
+        }
+        return Promise.reject(new Error('File not found'));
+      });
+      
+      // Mock for directory scanning
+      mockedFs.readdir.mockResolvedValue([]);
+      mockedFs.stat.mockResolvedValue({ isFile: () => true } as any);
+      
       mockClaudeConfigManager.loadClaudeConfig.mockResolvedValue(mockClaudeConfig);
 
       const result = await configLoader.loadInitialConfig();
 
-      // 有効なプロファイルのみ読み込まれる
+      // Only valid profiles are loaded
       expect(mockClaudeConfigManager.loadClaudeConfig).toHaveBeenCalledTimes(1);
       expect(result.size).toBe(1);
       expect(result.has('valid-profile')).toBe(true);
@@ -162,9 +204,18 @@ describe('ConfigLoader', () => {
         project_name: 'Working Project'
       };
 
-      mockedFs.readFile.mockResolvedValueOnce(JSON.stringify(mockConfig));
+      mockedFs.readFile.mockImplementation((filePath) => {
+        if ((filePath as string).includes('.mcp-config.json')) {
+          return Promise.resolve(JSON.stringify(mockConfig));
+        }
+        return Promise.reject(new Error('File not found'));
+      });
       
-      // 最初の呼び出しは失敗、2番目は成功
+      // Mock for directory scanning
+      mockedFs.readdir.mockResolvedValue([]);
+      mockedFs.stat.mockResolvedValue({ isFile: () => true } as any);
+      
+      // First call fails, second call succeeds
       mockClaudeConfigManager.loadClaudeConfig
         .mockRejectedValueOnce(new Error('Failed to load config'))
         .mockResolvedValueOnce(workingConfig);
@@ -191,7 +242,17 @@ describe('ConfigLoader', () => {
         ]
       };
 
-      mockedFs.readFile.mockResolvedValueOnce(JSON.stringify(mockConfig));
+      mockedFs.readFile.mockImplementation((filePath) => {
+        if ((filePath as string).includes('.mcp-config.json')) {
+          return Promise.resolve(JSON.stringify(mockConfig));
+        }
+        return Promise.reject(new Error('File not found'));
+      });
+      
+      // Mock for directory scanning
+      mockedFs.readdir.mockResolvedValue([]);
+      mockedFs.stat.mockResolvedValue({ isFile: () => true } as any);
+      
       mockClaudeConfigManager.loadClaudeConfig.mockResolvedValue({});
 
       await configLoader.loadInitialConfig();
@@ -209,7 +270,16 @@ describe('ConfigLoader', () => {
         initialProfiles: []
       };
 
-      mockedFs.readFile.mockResolvedValueOnce(JSON.stringify(mockConfig));
+      mockedFs.readFile.mockImplementation((filePath) => {
+        if ((filePath as string).includes('.mcp-config.json')) {
+          return Promise.resolve(JSON.stringify(mockConfig));
+        }
+        return Promise.reject(new Error('File not found'));
+      });
+      
+      // Mock for directory scanning
+      mockedFs.readdir.mockResolvedValue([]);
+      mockedFs.stat.mockResolvedValue({ isFile: () => true } as any);
 
       const result = await configLoader.loadInitialConfig();
 
@@ -222,7 +292,16 @@ describe('ConfigLoader', () => {
         someOtherProperty: 'value'
       };
 
-      mockedFs.readFile.mockResolvedValueOnce(JSON.stringify(mockConfig));
+      mockedFs.readFile.mockImplementation((filePath) => {
+        if ((filePath as string).includes('.mcp-config.json')) {
+          return Promise.resolve(JSON.stringify(mockConfig));
+        }
+        return Promise.reject(new Error('File not found'));
+      });
+      
+      // Mock for directory scanning
+      mockedFs.readdir.mockResolvedValue([]);
+      mockedFs.stat.mockResolvedValue({ isFile: () => true } as any);
 
       const result = await configLoader.loadInitialConfig();
 

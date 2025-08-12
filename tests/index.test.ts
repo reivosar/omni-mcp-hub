@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// ファイルシステムをモック
+// Mock filesystem
 vi.mock('fs/promises');
 const mockedFs = vi.mocked(fs);
 
@@ -17,7 +17,7 @@ describe('OmniMCPServer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     
-    // .mcp-config.jsonの読み込みをモック（存在しない場合）
+    // Mock .mcp-config.json loading (when it doesn't exist)
     mockedFs.readFile.mockRejectedValue(new Error('File not found'));
   });
 
@@ -34,7 +34,7 @@ describe('OmniMCPServer', () => {
     it('should initialize with empty profiles when no config file exists', () => {
       server = new OmniMCPServer();
       
-      // loadInitialConfigが失敗しても正常に動作することを確認
+      // Verify it works normally even if loadInitialConfig fails
       expect(server).toBeDefined();
     });
 
@@ -44,7 +44,7 @@ describe('OmniMCPServer', () => {
       const serverInstance = server.getServer();
       expect(serverInstance).toBeDefined();
       
-      // ハンドラーが設定されていることを間接的に確認
+      // Indirectly verify handlers are configured
       expect(typeof serverInstance.connect).toBe('function');
       expect(typeof serverInstance.setRequestHandler).toBe('function');
     });
@@ -229,7 +229,7 @@ describe('OmniMCPServer', () => {
       const serverResult = server.generateBehaviorInstructions(config);
       const generatorResult = BehaviorGenerator.generateInstructions(config);
 
-      // サーバーの結果がBehaviorGeneratorと同じであることを確認
+      // Verify server result matches BehaviorGenerator
       expect(serverResult).toBe(generatorResult);
     });
 
@@ -250,10 +250,10 @@ describe('OmniMCPServer', () => {
     it('should manage active profiles correctly', () => {
       const profiles = server.getActiveProfiles();
       
-      // 初期状態では空
+      // Initially empty
       expect(profiles.size).toBe(0);
       
-      // プロファイルを追加
+      // Add profile
       const testConfig = {
         project_name: 'Test Project',
         instructions: 'Test instructions'
@@ -275,7 +275,7 @@ describe('OmniMCPServer', () => {
       expect(profiles.size).toBe(3);
       expect(Array.from(profiles.keys())).toEqual(['profile1', 'profile2', 'profile3']);
       
-      // プロファイル削除
+      // Remove profile
       profiles.delete('profile2');
       expect(profiles.size).toBe(2);
       expect(profiles.has('profile2')).toBe(false);
@@ -298,7 +298,7 @@ describe('OmniMCPServer', () => {
     it('should have correct server configuration', () => {
       const serverInstance = server.getServer();
       
-      // サーバーインスタンスが正しく設定されていることを確認
+      // Verify server instance is correctly configured
       expect(serverInstance).toBeDefined();
     });
   });
@@ -377,7 +377,7 @@ describe('OmniMCPServer', () => {
         ['profile2', { name: 'Profile 2' }]
       ]);
 
-      // プロファイルリソースの生成ロジック
+      // Profile resource generation logic
       const profileResources = Array.from(activeProfiles.keys()).map(profileName => ({
         uri: `claude://profile/${profileName}`,
         name: `Claude Profile: ${profileName}`,

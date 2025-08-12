@@ -50,7 +50,7 @@ echo -e "${BLUE}Available commands:${NC}"
 echo "   /use add a:5 b:3"
 echo "   /use echo message:\"Hello MCP!\""
 echo "   /use load_claude_config filePath:\"./examples/lum-behavior.md\" profileName:\"lum\""
-echo "   /use list_claude_profiles"
+echo "   /use list_claude_configs"
 echo ""
 
 # 4. Display Lum character configuration file

@@ -61,8 +61,8 @@ export class ToolHandlers {
             },
           },
           {
-            name: "list_claude_profiles",
-            description: "List all loaded Claude configuration profiles",
+            name: "list_claude_configs",
+            description: "List all loaded Claude configurations",
             inputSchema: {
               type: "object",
               properties: {},
@@ -85,8 +85,8 @@ export class ToolHandlers {
         case "load_claude_config":
           return this.handleLoadClaudeConfig(args);
         
-        case "list_claude_profiles":
-          return this.handleListClaudeProfiles(args);
+        case "list_claude_configs":
+          return this.handleListClaudeConfigs(args);
 
         default:
           throw new Error(`Unknown tool: ${name}`);
@@ -188,9 +188,9 @@ export class ToolHandlers {
 
 
   /**
-   * Handle list_claude_profiles tool call
+   * Handle list_claude_configs tool call
    */
-  private async handleListClaudeProfiles(args: any) {
+  private async handleListClaudeConfigs(args: any) {
     const profiles = Array.from(this.activeProfiles.entries()).map(([name, config]) => {
       return {
         name,

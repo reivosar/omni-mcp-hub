@@ -47,7 +47,7 @@ This automatically runs:
 
 ### CLAUDE.md Management Tools
 - **load_claude_config**: Load and activate a CLAUDE.md configuration file
-- **list_claude_profiles**: List all loaded Claude configuration profiles
+- **list_claude_configs**: List all loaded Claude configurations
 
 ## Available Resources
 
@@ -65,8 +65,8 @@ This automatically runs:
 /use load_claude_config filePath:"./examples/pirate-behavior.md" profileName:"pirate"
 /use load_claude_config filePath:"./examples/special-behavior.md" profileName:"kansai"
 
-# List loaded profiles
-/use list_claude_profiles
+# List loaded configs
+/use list_claude_configs
 ```
 
 ### CLAUDE.md Format

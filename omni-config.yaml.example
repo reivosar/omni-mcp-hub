@@ -1,78 +1,96 @@
 # Omni MCP Hub Configuration
-# File loading, exclusion, and configuration file name customization settings
+# Comprehensive configuration for CLAUDE.md file management, auto-loading, and scanning
 
-# Auto-loading settings
+# Auto-loading configurations on server startup
 autoLoad:
-  # Profiles to auto-load on startup
+  # List of CLAUDE.md configurations to automatically load when the server starts
+  # This is useful for having your preferred configurations ready immediately
   profiles:
-    - name: "lum"
-      path: "./examples/lum-behavior.md"
-      autoApply: true
-    - name: "pirate"
-      path: "./examples/pirate-behavior.md"
-      autoApply: false
+    # Example configuration entry (remove or modify as needed):
+    # - name: "my-config"              # Unique name for this configuration
+    #   path: "./path/to/config.md"    # Path to CLAUDE.md file (relative or absolute)
+    #   autoApply: true                # Whether to automatically apply this config
+    #                                  # true = load and apply immediately
+    #                                  # false = load but don't apply (manual activation needed)
 
-# File loading settings
+# File scanning and filtering settings
 fileSettings:
-  # Configuration file name customization
+  # Custom file name patterns for different types of configuration files
+  # These patterns are used when auto-scanning directories for CLAUDE.md files
   configFiles:
-    claude: "CLAUDE.md"        # CLAUDE.md file name
-    behavior: "*-behavior.md"  # Behavior configuration file pattern
-    custom: "*-config.md"      # Custom configuration file pattern
+    claude: "CLAUDE.md"        # Standard CLAUDE.md configuration files
+    behavior: "*-behavior.md"  # Files ending with -behavior.md (e.g., pirate-behavior.md)
+    custom: "*-config.md"      # Files ending with -config.md (e.g., my-config.md)
   
-  # Target directories for loading
+  # Directories to include when auto-scanning for configuration files
+  # Only files in these directories will be automatically discovered
   includePaths:
-    - "./examples/"
-    - "./configs/"
-    - "./profiles/"
+    - "./examples/"            # Example configurations
+    - "./configs/"             # Main configuration directory
+    - "./profiles/"            # User profile configurations
   
-  # File patterns to exclude
+  # File and directory patterns to exclude from scanning
+  # Use glob patterns (* = any characters, ** = any directories)
   excludePatterns:
-    - "*.tmp"
-    - "*.backup"
-    - "*~"
-    - ".git/**"
-    - "node_modules/**"
-    - "dist/**"
+    - "*.tmp"                  # Temporary files
+    - "*.backup"               # Backup files
+    - "*~"                     # Editor backup files
+    - ".git/**"                # Git repository files
+    - "node_modules/**"        # Node.js dependencies
+    - "dist/**"                # Build output directory
+    - "*.log"                  # Log files
   
-  # Allowed file extensions for loading
+  # File extensions that are allowed for CLAUDE.md configuration files
+  # Files with other extensions will be ignored during scanning
   allowedExtensions:
-    - ".md"
-    - ".markdown"
-    - ".txt"
+    - ".md"                    # Markdown files (standard)
+    - ".markdown"              # Alternative markdown extension
+    - ".txt"                   # Plain text files
 
-# Directory scanning settings
+# Directory scanning behavior
 directoryScanning:
-  # Whether to recursively scan subdirectories
+  # Whether to scan subdirectories recursively
+  # true = scan all subdirectories, false = only scan top-level directory
   recursive: true
   
-  # Maximum scan depth (0 for unlimited)
+  # Maximum directory depth to scan (prevents infinite recursion)
+  # 0 = unlimited depth, 1 = only top level, 2 = one level deep, etc.
   maxDepth: 3
   
-  # Whether to include hidden files and directories
+  # Whether to include hidden files and directories (starting with .)
+  # true = include .hidden-config.md, false = skip hidden files
   includeHidden: false
   
-  # Whether to follow symbolic links
+  # Whether to follow symbolic links during scanning
+  # true = follow symlinks (can cause infinite loops), false = ignore symlinks
   followSymlinks: false
 
-# Profile management settings
+# Profile and configuration management
 profileManagement:
-  # Whether to allow duplicate profile names
+  # Whether to allow multiple configurations with the same name
+  # true = allow duplicates, false = reject duplicate names
   allowDuplicateNames: false
   
-  # Auto-generation rule for profile names
-  autoNamePattern: "%filename%"  # %filename%, %dirname%, %path%
+  # Pattern for automatically generating profile names from file paths
+  # Available variables: %filename%, %dirname%, %path%
+  # Examples:
+  #   "%filename%" -> "my-config" (from my-config.md)
+  #   "%dirname%_%filename%" -> "profiles_my-config" (from profiles/my-config.md)
+  autoNamePattern: "%filename%"
   
-  # Default profile
+  # Default profile name to use when none is specified
   defaultProfile: "default"
 
-# Logging settings
+# Logging and debugging options
 logging:
-  # Log level (debug, info, warn, error)
+  # Log level for console output
+  # "debug" = all messages, "info" = normal messages, "warn" = warnings only, "error" = errors only
   level: "info"
   
-  # Verbose logging during file loading
+  # Show detailed messages when loading configuration files
+  # true = show "✅ Loaded config: path/to/file.md", false = silent loading
   verboseFileLoading: true
   
-  # Verbose logging during profile switching
+  # Show detailed messages when switching between profiles
+  # true = show profile activation messages, false = silent switching
   verboseProfileSwitching: true

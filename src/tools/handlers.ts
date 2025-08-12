@@ -65,15 +65,6 @@ export class ToolHandlers {
             },
           },
           {
-            name: "list_claude_configs",
-            description: "List all loaded Claude configurations",
-            inputSchema: {
-              type: "object",
-              properties: {},
-              required: [],
-            },
-          },
-          {
             name: "list_loaded_configs",
             description: "List all currently loaded configuration profiles",
             inputSchema: {
@@ -116,8 +107,6 @@ export class ToolHandlers {
         case "load_claude_config":
           return this.handleLoadClaudeConfig(args);
         
-        case "list_claude_configs":
-          return this.handleListClaudeConfigs(args);
         
         case "list_loaded_configs":
           return this.handleListLoadedConfigs(args);
@@ -227,28 +216,6 @@ export class ToolHandlers {
   }
 
 
-  /**
-   * Handle list_claude_configs tool call
-   */
-  private async handleListClaudeConfigs(args: any) {
-    const configs = Array.from(this.activeProfiles.entries()).map(([name, config]) => {
-      return {
-        name,
-        filePath: (config as any)._filePath || "unknown",
-        lastModified: (config as any)._lastModified || "unknown",
-        sections: Object.keys(config).filter(k => !k.startsWith('_')),
-      };
-    });
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Loaded Claude configurations:\n\n${JSON.stringify(configs, null, 2)}`,
-        },
-      ],
-    };
-  }
 
   /**
    * Handle list_loaded_configs tool call

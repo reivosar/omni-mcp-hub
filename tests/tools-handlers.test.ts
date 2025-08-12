@@ -167,15 +167,6 @@ describe('ToolHandlers', () => {
       expect(result.content[0].text).toContain('Successfully loaded');
     });
 
-    it('should call list_claude_configs handler directly', async () => {
-      // Add test profile
-      activeProfiles.set('test', { title: 'Test Config', _filePath: '/test/config.md' } as any);
-      
-      const result = await (toolHandlers as any).handleListClaudeConfigs({});
-      
-      expect(result.content[0].text).toContain('Loaded Claude configurations:');
-      expect(result.content[0].text).toContain('test');
-    });
 
     it('should setup handlers without error', () => {
       const setupSpy = vi.spyOn(server, 'setRequestHandler');
@@ -205,7 +196,6 @@ describe('ToolHandlers', () => {
       await callToolHandler({ params: { name: 'list_loaded_configs', arguments: {} } });
       await callToolHandler({ params: { name: 'list_unloaded_configs', arguments: {} } });
       await callToolHandler({ params: { name: 'list_all_configs', arguments: {} } });
-      await callToolHandler({ params: { name: 'list_claude_configs', arguments: {} } });
       await callToolHandler({ params: { name: 'load_claude_config', arguments: { filePath: '/test.md' } } });
       
       // Test unknown tool
@@ -231,12 +221,11 @@ describe('ToolHandlers', () => {
       
       const result = await listToolsHandler();
       expect(result.tools).toBeDefined();
-      expect(result.tools.length).toBe(5);
+      expect(result.tools.length).toBe(4);
       
       // Verify all tools are registered
       const toolNames = result.tools.map((t: any) => t.name);
       expect(toolNames).toContain('load_claude_config');
-      expect(toolNames).toContain('list_claude_configs');
       expect(toolNames).toContain('list_loaded_configs');
       expect(toolNames).toContain('list_unloaded_configs');
       expect(toolNames).toContain('list_all_configs');

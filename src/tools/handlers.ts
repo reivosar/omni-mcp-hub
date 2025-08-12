@@ -191,7 +191,7 @@ export class ToolHandlers {
    * Handle list_claude_configs tool call
    */
   private async handleListClaudeConfigs(args: any) {
-    const profiles = Array.from(this.activeProfiles.entries()).map(([name, config]) => {
+    const configs = Array.from(this.activeProfiles.entries()).map(([name, config]) => {
       return {
         name,
         filePath: (config as any)._filePath || "unknown",
@@ -204,7 +204,7 @@ export class ToolHandlers {
       content: [
         {
           type: "text",
-          text: `Loaded Claude profiles:\n\n${JSON.stringify(profiles, null, 2)}`,
+          text: `Loaded Claude configurations:\n\n${JSON.stringify(configs, null, 2)}`,
         },
       ],
     };

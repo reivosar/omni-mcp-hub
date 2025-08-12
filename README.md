@@ -13,24 +13,27 @@ A universal MCP (Model Context Protocol) server for Claude Code integration with
 - **Dynamic Behavior**: Switch between different Claude personalities/behaviors
 - **Profile Management**: Support for multiple configuration profiles
 - **Persistent Storage**: Save and update CLAUDE.md files
+- **YAML Configuration**: Advanced file scanning and configuration via `omni-config.yaml`
+- **Auto-loading**: Automatically load profiles on startup via configuration
+- **File Filtering**: Exclude/include files with configurable patterns
 
 ## Quick Start
 
-**たった1コマンドで起動：**
+**Start with a single command:**
 
 ```bash
 ./examples/start.sh
 ```
 
-これだけで以下を自動実行：
-1. 依存関係インストール（初回のみ `npm install` が必要）
-2. プロジェクトビルド
-3. Claude Code MCP設定
-4. MCPサーバー起動
+This automatically runs:
+1. Install dependencies (you need to run `npm install` once initially)
+2. Build project
+3. Configure Claude Code MCP settings
+4. Start MCP server
 
-**Claude Code側での操作：**
-1. 新しいターミナルで `claude` を実行
-2. テストコマンド実行：
+**Using Claude Code:**
+1. Run `claude` in a new terminal
+2. Execute test commands:
    ```
    /use add a:5 b:3
    /use echo message:"Hello MCP!"
@@ -58,18 +61,18 @@ A universal MCP (Model Context Protocol) server for Claude Code integration with
 
 ## CLAUDE.md Configuration
 
-### キャラクター設定の切り替え
+### Character Configuration Examples
 
 ```bash
-# ラムちゃんモード（だっちゃ〜♪）
+# Lum character mode (energetic anime character)
 /use load_claude_config filePath:"./examples/lum-behavior.md" profileName:"lum"
 /use apply_claude_behavior profileName:"lum"
 
-# 海賊モード（Arrr! Ahoy matey!）
+# Pirate mode (Arrr! Ahoy matey!)
 /use load_claude_config filePath:"./examples/pirate-behavior.md" profileName:"pirate"
 /use apply_claude_behavior profileName:"pirate"
 
-# 関西弁モード（〜やで、〜やんか）
+# Kansai dialect mode (casual Japanese dialect)
 /use load_claude_config filePath:"./examples/special-behavior.md" profileName:"kansai"
 /use apply_claude_behavior profileName:"kansai"
 ```
@@ -117,6 +120,48 @@ Your main system instructions here...
 Memory context and information to remember...
 ```
 
+## YAML Configuration
+
+The server supports advanced configuration via `omni-config.yaml` in your working directory. This enables:
+
+- **Auto-loading profiles** on startup
+- **File filtering** with exclude/include patterns
+- **Directory scanning** with depth control  
+- **Custom naming patterns** for profiles
+- **Logging control** for verbose output
+
+### Example Configuration
+
+```yaml
+# Auto-load profiles on startup
+autoLoad:
+  profiles:
+    - name: "lum"
+      path: "./examples/lum-behavior.md"
+      autoApply: true
+
+# File scanning settings  
+fileSettings:
+  excludePatterns:
+    - "*.tmp"
+    - "node_modules/**"
+  allowedExtensions:
+    - ".md"
+    - ".txt"
+
+# Directory scanning
+directoryScanning:
+  recursive: true
+  maxDepth: 3
+
+# Logging
+logging:
+  level: "info"
+  verboseFileLoading: true
+```
+
+See `omni-config.yaml.example` and files in `examples/` for more configuration options.
+
 ## Development
 
 ### Project Structure
@@ -125,14 +170,16 @@ Memory context and information to remember...
 src/
 ├── index.ts                    # Main server class (slim orchestrator)
 ├── config/
-│   └── loader.ts              # Initial configuration loader (.mcp-config.json)
+│   ├── loader.ts              # Configuration loader (.mcp-config.json, YAML)
+│   └── yaml-config.ts         # YAML configuration manager
 ├── tools/
 │   └── handlers.ts            # MCP tool handlers (load_claude_config, etc.)
 ├── resources/
 │   └── handlers.ts            # MCP resource handlers (server info, profiles)
 └── utils/
     ├── claude-config.ts       # CLAUDE.md file parser and manager
-    └── behavior-generator.ts  # Claude behavior instruction generator
+    ├── behavior-generator.ts  # Claude behavior instruction generator
+    └── file-scanner.ts        # Directory scanning with pattern matching
 ```
 
 ### Architecture
@@ -193,12 +240,16 @@ npm run test:ui
 - `tests/claude-config.test.ts` - Unit tests for ClaudeConfigManager
 - `tests/behavior-generator.test.ts` - Unit tests for BehaviorGenerator  
 - `tests/config-loader.test.ts` - Unit tests for ConfigLoader
+- `tests/yaml-config.test.ts` - Unit tests for YamlConfigManager
+- `tests/file-scanner.test.ts` - Unit tests for FileScanner
 - `tests/index.test.ts` - Unit tests for OmniMCPServer main class
 - `tests/integration.test.ts` - Integration tests for the complete system
 
 All tests are written using **Vitest** with TypeScript support and provide comprehensive coverage of:
 - CLAUDE.md file parsing and saving
 - Configuration profile management
+- YAML configuration loading and validation
+- File scanning with pattern matching
 - MCP server tool handlers
 - Integration between all components
 

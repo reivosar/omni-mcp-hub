@@ -89,11 +89,11 @@ echo ""
 # 4. Display YAML configuration file
 echo -e "${YELLOW}4. Displaying YAML configuration file...${NC}"
 echo ""
-if [ -f "./omni-config.yaml" ]; then
-    cat ./omni-config.yaml
+if [ -f "examples/omni-config.yaml" ]; then
+    cat examples/omni-config.yaml
     echo -e "${GREEN}YAML configuration file loaded successfully${NC}"
 else
-    echo -e "${RED}YAML configuration file not found: ./omni-config.yaml${NC}"
+    echo -e "${RED}YAML configuration file not found: examples/omni-config.yaml${NC}"
 fi
 echo ""
 

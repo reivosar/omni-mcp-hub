@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "omni-mcp-hub": {
+      "command": "node",
+      "args": ["/Users/mac/workspace/omni-mcp-hub/dist/index.js"],
+      "description": "Omni MCP Hub - CLAUDE.md configuration manager",
+      "env": {}
+    }
+  }
+}

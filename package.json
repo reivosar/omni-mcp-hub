@@ -1,0 +1,42 @@
+{
+  "name": "omni-mcp-hub",
+  "version": "1.0.0",
+  "description": "Universal MCP server for Claude Code integration",
+  "main": "dist/index.js",
+  "bin": {
+    "omni-mcp-hub": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "run-all": "./examples/run-all.sh",
+    "dev": "tsx src/index.ts",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/reivosar/omni-mcp-hub.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/reivosar/omni-mcp-hub/issues"
+  },
+  "homepage": "https://github.com/reivosar/omni-mcp-hub#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.2",
+    "@types/node": "^24.2.1",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@vitest/ui": "^2.1.8",
+    "vitest": "^2.1.8",
+    "@vitest/coverage-v8": "^2.1.8"
+  }
+}

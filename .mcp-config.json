@@ -1,0 +1,8 @@
+{
+  "initialProfiles": [
+    {
+      "name": "lum",
+      "path": "./examples/lum-behavior.md"
+    }
+  ]
+}

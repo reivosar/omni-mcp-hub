@@ -25,8 +25,53 @@ echo -e "${GREEN}Build completed${NC}"
 echo ""
 
 # 2. Claude Code MCP Configuration
-echo -e "${YELLOW}2. MCP Configuration Ready${NC}"
-echo -e "${GREEN}Project-local .claude.json configured${NC}"
+echo -e "${YELLOW}2. Setting up MCP Configuration...${NC}"
+
+MCP_CONFIG="$HOME/.claude.json"
+
+if [ -f "$MCP_CONFIG" ]; then
+    echo "Updating existing MCP configuration..."
+    cp "$MCP_CONFIG" "$MCP_CONFIG.backup"
+    
+    python3 -c "
+import json
+
+config_path = '$MCP_CONFIG'
+with open(config_path, 'r') as f:
+    config = json.load(f)
+
+if 'mcpServers' not in config:
+    config['mcpServers'] = {}
+
+config['mcpServers']['omni-mcp-hub'] = {
+    'command': 'node',
+    'args': ['$PROJECT_DIR/dist/index.js'],
+    'description': 'Omni MCP Hub - CLAUDE.md configuration manager',
+    'env': {}
+}
+
+with open(config_path, 'w') as f:
+    json.dump(config, f, indent=2)
+"
+else
+    echo "Creating new MCP configuration..."
+    cat > "$MCP_CONFIG" <<EOF
+{
+  "mcpServers": {
+    "omni-mcp-hub": {
+      "command": "node",
+      "args": [
+        "$PROJECT_DIR/dist/index.js"
+      ],
+      "description": "Omni MCP Hub - CLAUDE.md configuration manager",
+      "env": {}
+    }
+  }
+}
+EOF
+fi
+
+echo -e "${GREEN}MCP configuration updated in ~/.claude.json${NC}"
 echo ""
 
 # 3. Launch Claude Code

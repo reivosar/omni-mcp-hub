@@ -2,6 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { fileURLToPath } from 'url';
+import { minimatch } from 'minimatch';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -162,23 +163,7 @@ export class YamlConfigManager {
    */
   matchesPattern(filePath: string, pattern: string): boolean {
     const fileName = path.basename(filePath);
-    
-    try {
-      // Convert glob pattern to regex
-      // First temporarily replace * and ?
-      let regexPattern = pattern
-        .replace(/\*/g, '__ASTERISK__')
-        .replace(/\?/g, '__QUESTION__')
-        .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape special chars
-        .replace(/__ASTERISK__/g, '.*') // * -> .*
-        .replace(/__QUESTION__/g, '.'); // ? -> .
-      
-      const regex = new RegExp(`^${regexPattern}$`, 'i');
-      return regex.test(fileName);
-    } catch (error) {
-      // Fallback to simple string comparison on regex error
-      return fileName.toLowerCase() === pattern.toLowerCase();
-    }
+    return minimatch(fileName, pattern, { nocase: true });
   }
 
   /**

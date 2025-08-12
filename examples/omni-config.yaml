@@ -19,9 +19,9 @@ fileSettings:
   
   # Target directories for loading
   includePaths:
-    - "./examples/"
-    - "./configs/"
-    - "./profiles/"
+    - "./"
+    - "../configs/"
+    - "../profiles/"
   
   # File patterns to exclude
   excludePatterns:

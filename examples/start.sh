@@ -11,7 +11,7 @@ BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-PROJECT_DIR="/Users/mac/workspace/omni-mcp-hub"
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo -e "${BLUE}🔧 Omni MCP Hub Setup${NC}"
 echo ""

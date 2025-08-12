@@ -38,11 +38,34 @@ export class FileScanner {
     
     const files: FileInfo[] = [];
     
-    try {
-      await this.scanDirectory(targetPath, files, scanOptions, 0);
-    } catch (error) {
-      if (config.logging?.verboseFileLoading) {
-        console.error(`❌ Directory scan error: ${targetPath}`, error);
+    // If includePaths are configured, scan those directories
+    const includePaths = config.fileSettings?.includePaths || [];
+    if (includePaths.length > 0) {
+      for (const includePath of includePaths) {
+        const absolutePath = path.isAbsolute(includePath) 
+          ? includePath 
+          : path.join(process.cwd(), includePath);
+        
+        try {
+          const stat = await fs.stat(absolutePath);
+          if (stat.isDirectory()) {
+            await this.scanDirectory(absolutePath, files, scanOptions, 0);
+          }
+        } catch (error) {
+          // Directory doesn't exist, skip it
+          if (config.logging?.verboseFileLoading) {
+            console.error(`Directory not found: ${absolutePath}`);
+          }
+        }
+      }
+    } else {
+      // No includePaths configured, scan targetPath
+      try {
+        await this.scanDirectory(targetPath, files, scanOptions, 0);
+      } catch (error) {
+        if (config.logging?.verboseFileLoading) {
+          console.error(`Directory scan error: ${targetPath}`, error);
+        }
       }
     }
 

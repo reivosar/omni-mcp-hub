@@ -100,11 +100,11 @@ export class ConfigLoader {
           activeProfiles.set(profileName, loadedConfig);
           
           if (config.logging?.verboseFileLoading) {
-            console.error(`✅ Auto-scanned profile '${profileName}': ${fileInfo.path}`);
+            console.error(`Auto-scanned profile '${profileName}': ${fileInfo.path}`);
           }
         } catch (error) {
           if (config.logging?.verboseFileLoading) {
-            console.error(`❌ Auto-scan profile '${profileName}' failed: ${error}`);
+            console.error(`Auto-scan profile '${profileName}' failed: ${error}`);
           }
         }
       }
@@ -135,11 +135,11 @@ export class ConfigLoader {
           activeProfiles.set(profile.name, loadedConfig);
           
           if (config.logging?.verboseFileLoading) {
-            console.error(`✅ Auto-loaded profile '${profile.name}': ${profile.path}`);
+            console.error(`Auto-loaded profile '${profile.name}': ${profile.path}`);
           }
         } catch (error) {
           if (config.logging?.verboseFileLoading) {
-            console.error(`❌ Profile '${profile.name}' loading failed: ${error}`);
+            console.error(`Profile '${profile.name}' loading failed: ${error}`);
           }
         }
       }
@@ -162,9 +162,9 @@ export class ConfigLoader {
           
           const loadedConfig = await this.claudeConfigManager.loadClaudeConfig(fullPath);
           activeProfiles.set(profile.name, loadedConfig);
-          console.error(`✅ Auto-loaded profile '${profile.name}': ${profile.path}`);
+          console.error(`Auto-loaded profile '${profile.name}': ${profile.path}`);
         } catch (error) {
-          console.error(`❌ Failed to load profile '${profile.name}': ${error}`);
+          console.error(`Failed to load profile '${profile.name}': ${error}`);
         }
       }
     }

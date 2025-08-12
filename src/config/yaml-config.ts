@@ -94,13 +94,13 @@ export class YamlConfigManager {
       this.configPath = yamlPath;
       
       if (this.config.logging?.verboseFileLoading) {
-        console.log(`✅ Loaded YAML config: ${yamlPath}`);
+        console.log(`Loaded YAML config: ${yamlPath}`);
       }
       
       return this.config;
     } catch (error) {
       if (this.config.logging?.verboseFileLoading) {
-        console.log(`⚠️ YAML config not found, using defaults: ${yamlPath}`);
+        console.log(`YAML config not found, using defaults: ${yamlPath}`);
       }
       return this.config;
     }
@@ -259,7 +259,7 @@ export class YamlConfigManager {
     await fs.writeFile(savePath, yamlContent, 'utf-8');
     
     if (this.config.logging?.verboseFileLoading) {
-      console.log(`✅ Saved YAML config: ${savePath}`);
+      console.log(`Saved YAML config: ${savePath}`);
     }
   }
 

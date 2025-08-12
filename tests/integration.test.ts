@@ -34,8 +34,7 @@ describe('Integration Tests', () => {
         'src/index.ts',
         'src/utils/claude-config.ts',
         'examples/start.sh',
-        'examples/lum-behavior.md',
-        '.mcp-config.json'
+        'examples/lum-behavior.md'
       ];
 
       for (const file of requiredFiles) {
@@ -82,19 +81,14 @@ describe('Integration Tests', () => {
       expect(tsconfig.compilerOptions.module).toBeTruthy();
     });
 
-    it('should have valid .mcp-config.json', async () => {
-      const mcpConfigPath = path.join(rootDir, '.mcp-config.json');
-      const content = await fs.readFile(mcpConfigPath, 'utf-8');
-      const mcpConfig = JSON.parse(content);
-
-      expect(mcpConfig.initialProfiles).toBeTruthy();
-      expect(Array.isArray(mcpConfig.initialProfiles)).toBe(true);
+    it('should have valid omni-config.yaml in examples', async () => {
+      const yamlConfigPath = path.join(rootDir, 'examples/omni-config.yaml');
+      const content = await fs.readFile(yamlConfigPath, 'utf-8');
       
-      if (mcpConfig.initialProfiles.length > 0) {
-        const profile = mcpConfig.initialProfiles[0];
-        expect(profile.name).toBeTruthy();
-        expect(profile.path).toBeTruthy();
-      }
+      // Should be valid YAML and have expected structure
+      expect(content).toContain('autoLoad:');
+      expect(content).toContain('profiles:');
+      expect(content).toContain('fileSettings:');
     });
   });
 

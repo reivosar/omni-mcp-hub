@@ -61,73 +61,11 @@ export class ToolHandlers {
             },
           },
           {
-            name: "get_claude_behavior",
-            description: "Get the current Claude behavior configuration",
-            inputSchema: {
-              type: "object",
-              properties: {
-                profileName: { 
-                  type: "string", 
-                  description: "Profile name to get (optional, defaults to 'default')" 
-                },
-              },
-              required: [],
-            },
-          },
-          {
-            name: "update_claude_config",
-            description: "Update Claude configuration and save to file",
-            inputSchema: {
-              type: "object",
-              properties: {
-                filePath: { type: "string", description: "Path to save the configuration" },
-                config: { type: "object", description: "Configuration object to save" },
-                profileName: { 
-                  type: "string", 
-                  description: "Profile name (optional)" 
-                },
-              },
-              required: ["filePath", "config"],
-            },
-          },
-          {
             name: "list_claude_profiles",
             description: "List all loaded Claude configuration profiles",
             inputSchema: {
               type: "object",
               properties: {},
-              required: [],
-            },
-          },
-          {
-            name: "find_claude_files",
-            description: "Find CLAUDE.md files in a directory",
-            inputSchema: {
-              type: "object",
-              properties: {
-                directory: { 
-                  type: "string", 
-                  description: "Directory to search for CLAUDE.md files" 
-                },
-              },
-              required: ["directory"],
-            },
-          },
-          {
-            name: "apply_claude_behavior",
-            description: "Apply a loaded configuration to modify Claude's behavior",
-            inputSchema: {
-              type: "object",
-              properties: {
-                profileName: { 
-                  type: "string", 
-                  description: "Profile name to apply (defaults to 'default')" 
-                },
-                temporary: { 
-                  type: "boolean", 
-                  description: "Whether this is a temporary application (default: false)" 
-                },
-              },
               required: [],
             },
           },
@@ -147,20 +85,8 @@ export class ToolHandlers {
         case "load_claude_config":
           return this.handleLoadClaudeConfig(args);
         
-        case "get_claude_behavior":
-          return this.handleGetClaudeBehavior(args);
-        
-        case "update_claude_config":
-          return this.handleUpdateClaudeConfig(args);
-        
         case "list_claude_profiles":
           return this.handleListClaudeProfiles(args);
-        
-        case "find_claude_files":
-          return this.handleFindClaudeFiles(args);
-        
-        case "apply_claude_behavior":
-          return this.handleApplyClaudeBehavior(args);
 
         default:
           throw new Error(`Unknown tool: ${name}`);
@@ -260,68 +186,6 @@ export class ToolHandlers {
     }
   }
 
-  /**
-   * Handle get_claude_behavior tool call
-   */
-  private async handleGetClaudeBehavior(args: any) {
-    const { profileName = "default" } = args as { profileName?: string };
-    
-    const config = this.activeProfiles.get(profileName);
-    if (!config) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `No configuration found for profile '${profileName}'`,
-          },
-        ],
-      };
-    }
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Current Claude behavior configuration for '${profileName}':\n\n${JSON.stringify(config, null, 2)}`,
-        },
-      ],
-    };
-  }
-
-  /**
-   * Handle update_claude_config tool call
-   */
-  private async handleUpdateClaudeConfig(args: any) {
-    const { filePath, config, profileName = "default" } = args as {
-      filePath: string;
-      config: ClaudeConfig;
-      profileName?: string;
-    };
-
-    try {
-      await this.claudeConfigManager.saveClaude(filePath, config);
-      this.activeProfiles.set(profileName, config);
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Successfully updated and saved configuration to ${filePath}`,
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Failed to update configuration: ${error}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  }
 
   /**
    * Handle list_claude_profiles tool call
@@ -346,113 +210,5 @@ export class ToolHandlers {
     };
   }
 
-  /**
-   * Handle find_claude_files tool call
-   */
-  private async handleFindClaudeFiles(args: any) {
-    const { directory } = args as { directory: string };
 
-    try {
-      const files = await this.claudeConfigManager.findClaudeFiles(directory);
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Found CLAUDE.md files:\n${files.map(f => `- ${f}`).join('\n')}`,
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Failed to search for CLAUDE.md files: ${error}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  }
-
-  /**
-   * Handle apply_claude_behavior tool call
-   */
-  private async handleApplyClaudeBehavior(args: any) {
-    // Support single string argument or normal object argument
-    let profileName: string | string[] | undefined;
-    let temporary = false;
-    
-    if (typeof args === 'string') {
-      // Treat as profileName if string
-      profileName = args;
-    } else {
-      ({ profileName, temporary = false } = args as {
-        profileName?: string | string[];
-        temporary?: boolean;
-      });
-    }
-
-    // Support multiple profiles or all profiles
-    let profilesToApply: string[] = [];
-    
-    if (!profileName) {
-      // Apply all profiles if no profile name is specified
-      profilesToApply = Array.from(this.activeProfiles.keys());
-    } else if (Array.isArray(profileName)) {
-      // Multiple profiles if array
-      profilesToApply = profileName;
-    } else {
-      // Single profile if string
-      profilesToApply = [profileName];
-    }
-
-    if (profilesToApply.length === 0) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `No profiles loaded. Use 'load_claude_config' to load configurations first.`,
-          },
-        ],
-      };
-    }
-
-    // Merge each profile's configuration
-    const mergedInstructions: string[] = [];
-    const appliedProfiles: string[] = [];
-    
-    for (const name of profilesToApply) {
-      const config = this.activeProfiles.get(name);
-      if (config) {
-        const instructions = BehaviorGenerator.generateInstructions(config);
-        mergedInstructions.push(`\n=== Profile: ${name} ===\n${instructions}`);
-        appliedProfiles.push(name);
-      }
-    }
-
-    if (appliedProfiles.length === 0) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `No valid configurations found for specified profile(s): ${profilesToApply.join(', ')}`,
-          },
-        ],
-      };
-    }
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Applying Claude behavior from ${appliedProfiles.length} profile(s): ${appliedProfiles.join(', ')}${temporary ? ' (temporarily)' : ''}`,
-        },
-        {
-          type: "text",
-          text: mergedInstructions.join('\n'),
-        },
-      ],
-    };
-  }
 }

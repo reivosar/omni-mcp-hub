@@ -47,11 +47,7 @@ This automatically runs:
 
 ### CLAUDE.md Management Tools
 - **load_claude_config**: Load and activate a CLAUDE.md configuration file
-- **get_claude_behavior**: Get the current Claude behavior configuration
-- **update_claude_config**: Update Claude configuration and save to file
-- **list_claude_profiles**: List all loaded Claude configuration profiles  
-- **find_claude_files**: Find CLAUDE.md files in a directory
-- **apply_claude_behavior**: Apply a loaded configuration to modify Claude's behavior
+- **list_claude_profiles**: List all loaded Claude configuration profiles
 
 ## Available Resources
 
@@ -64,17 +60,13 @@ This automatically runs:
 ### Character Configuration Examples
 
 ```bash
-# Lum character mode (energetic anime character)
+# Load character configurations (automatically applied)
 /use load_claude_config filePath:"./examples/lum-behavior.md" profileName:"lum"
-/use apply_claude_behavior profileName:"lum"
-
-# Pirate mode (Arrr! Ahoy matey!)
 /use load_claude_config filePath:"./examples/pirate-behavior.md" profileName:"pirate"
-/use apply_claude_behavior profileName:"pirate"
-
-# Kansai dialect mode (casual Japanese dialect)
 /use load_claude_config filePath:"./examples/special-behavior.md" profileName:"kansai"
-/use apply_claude_behavior profileName:"kansai"
+
+# List loaded profiles
+/use list_claude_profiles
 ```
 
 ### CLAUDE.md Format

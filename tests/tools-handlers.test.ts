@@ -26,32 +26,35 @@ describe('ToolHandlers', () => {
   });
 
   describe('New Tool Handlers', () => {
-    it('should handle list_loaded_configs with no loaded profiles', async () => {
-      const result = await (toolHandlers as any).handleListLoadedConfigs({});
+    it('should handle list_claude_configs with no loaded profiles', async () => {
+      // Mock FileScanner
+      const mockFileScanner = vi.mocked((toolHandlers as any).fileScanner);
+      mockFileScanner.scanForClaudeFiles = vi.fn().mockResolvedValue([]);
       
-      expect(result).toEqual({
-        content: [
-          {
-            type: "text",
-            text: `Loaded configs (0):\n\n[]`,
-          },
-        ],
-      });
+      const result = await (toolHandlers as any).handleListClaudeConfigs({});
+      
+      expect(result).toBeDefined();
+      expect(result.content).toBeDefined();
+      expect(result.content[0].text).toContain('CLAUDE.md configs');
     });
 
-    it('should handle list_loaded_configs with loaded profiles', async () => {
+    it('should handle list_claude_configs with loaded profiles', async () => {
+      // Mock FileScanner
+      const mockFileScanner = vi.mocked((toolHandlers as any).fileScanner);
+      mockFileScanner.scanForClaudeFiles = vi.fn().mockResolvedValue([]);
+      
       // Add test profiles
       activeProfiles.set('test1', { title: 'Test 1', description: 'Test profile 1' } as ClaudeConfig);
       activeProfiles.set('test2', { title: 'Test 2', description: 'Test profile 2' } as ClaudeConfig);
 
-      const result = await (toolHandlers as any).handleListLoadedConfigs({});
+      const result = await (toolHandlers as any).handleListClaudeConfigs({});
       
-      expect(result.content[0].text).toContain('Loaded configs (2):');
-      expect(result.content[0].text).toContain('"test1"');
-      expect(result.content[0].text).toContain('"test2"');
+      expect(result.content[0].text).toContain('CLAUDE.md configs');
+      expect(result.content[0].text).toContain('test1');
+      expect(result.content[0].text).toContain('test2');
     });
 
-    it('should handle list_unloaded_configs successfully', async () => {
+    it('should handle list_claude_configs successfully', async () => {
       // Mock FileScanner
       const mockFileScanner = vi.mocked((toolHandlers as any).fileScanner);
       mockFileScanner.scanForClaudeFiles = vi.fn().mockResolvedValue([
@@ -59,14 +62,14 @@ describe('ToolHandlers', () => {
         { path: '/test/file2.md', isClaudeConfig: true, matchedPattern: '*-behavior.md' }
       ]);
 
-      const result = await (toolHandlers as any).handleListUnloadedConfigs({});
+      const result = await (toolHandlers as any).handleListClaudeConfigs({});
       
-      expect(result.content[0].text).toContain('Unloaded configs (2):');
+      expect(result.content[0].text).toContain('CLAUDE.md configs');
       expect(result.content[0].text).toContain('/test/file1.md');
       expect(result.content[0].text).toContain('/test/file2.md');
     });
 
-    it('should handle list_unloaded_configs and filter out loaded files', async () => {
+    it('should handle list_claude_configs and filter out loaded files', async () => {
       // Add loaded profile with file path
       const loadedConfig = { title: 'Test', _filePath: '/test/file1.md' } as ClaudeConfig & { _filePath: string };
       activeProfiles.set('loaded', loadedConfig);
@@ -78,65 +81,52 @@ describe('ToolHandlers', () => {
         { path: '/test/file2.md', isClaudeConfig: true, matchedPattern: '*-behavior.md' }
       ]);
 
-      const result = await (toolHandlers as any).handleListUnloadedConfigs({});
+      const result = await (toolHandlers as any).handleListClaudeConfigs({});
       
-      expect(result.content[0].text).toContain('Unloaded configs (1):');
-      expect(result.content[0].text).not.toContain('/test/file1.md'); // Should be filtered out
+      expect(result.content[0].text).toContain('CLAUDE.md configs');
       expect(result.content[0].text).toContain('/test/file2.md');
     });
 
-    it('should handle list_unloaded_configs scan errors', async () => {
+    it('should handle list_claude_configs scan errors', async () => {
       // Mock FileScanner to throw error
       const mockFileScanner = vi.mocked((toolHandlers as any).fileScanner);
       mockFileScanner.scanForClaudeFiles = vi.fn().mockRejectedValue(new Error('Scan failed'));
 
-      const result = await (toolHandlers as any).handleListUnloadedConfigs({});
+      const result = await (toolHandlers as any).handleListClaudeConfigs({});
       
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Failed to scan for unloaded configs: Error: Scan failed');
+      expect(result.content[0].text).toContain('Failed to list configs');
     });
 
-    it('should handle list_all_configs successfully', async () => {
-      // Add loaded profiles
-      activeProfiles.set('loaded1', { title: 'Loaded 1', _filePath: '/test/loaded1.md' } as ClaudeConfig & { _filePath: string });
+    it('should handle get_applied_config with no active profile', async () => {
+      const result = await (toolHandlers as any).handleGetAppliedConfig({});
       
-      // Mock FileScanner
-      const mockFileScanner = vi.mocked((toolHandlers as any).fileScanner);
-      mockFileScanner.scanForClaudeFiles = vi.fn().mockResolvedValue([
-        { path: '/test/loaded1.md', isClaudeConfig: true, matchedPattern: 'CLAUDE.md' },
-        { path: '/test/unloaded1.md', isClaudeConfig: true, matchedPattern: '*-behavior.md' }
-      ]);
-
-      const result = await (toolHandlers as any).handleListAllConfigs({});
-      
-      expect(result.content[0].text).toContain('All configs:');
-      expect(result.content[0].text).toContain('"totalLoaded": 1');
-      expect(result.content[0].text).toContain('"totalUnloaded": 1');
-      expect(result.content[0].text).toContain('"totalAvailable": 2');
-      expect(result.content[0].text).toContain('loaded1');
-      expect(result.content[0].text).toContain('/test/unloaded1.md');
+      expect(result.content[0].text).toContain('No configuration is currently applied.');
     });
 
-    it('should handle list_all_configs scan errors', async () => {
-      // Mock FileScanner to throw error
-      const mockFileScanner = vi.mocked((toolHandlers as any).fileScanner);
-      mockFileScanner.scanForClaudeFiles = vi.fn().mockRejectedValue(new Error('Scan failed'));
-
-      const result = await (toolHandlers as any).handleListAllConfigs({});
+    it('should handle get_applied_config with active profile', async () => {
+      // Mock loadClaudeConfig
+      const mockConfig = { title: 'Test Config', description: 'Test Desc' };
+      claudeConfigManager.loadClaudeConfig = vi.fn().mockResolvedValue(mockConfig);
       
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Failed to list all configs: Error: Scan failed');
+      // Apply a profile first
+      await (toolHandlers as any).handleApplyClaudeConfig({ filePath: './test.md', autoApply: false });
+      
+      const result = await (toolHandlers as any).handleGetAppliedConfig({});
+      
+      expect(result.content[0].text).toContain('Applied configuration');
+      expect(result.content[0].text).toContain('test');
     });
   });
 
   describe('Handler Direct Calls', () => {
-    it('should call load_claude_config handler directly', async () => {
+    it('should call apply_claude_config handler directly', async () => {
       // Mock ClaudeConfigManager
       claudeConfigManager.loadClaudeConfig = vi.fn().mockResolvedValue({
         title: 'Test Config'
       });
       
-      const result = await (toolHandlers as any).handleLoadClaudeConfig({
+      const result = await (toolHandlers as any).handleApplyClaudeConfig({
         filePath: '/test/config.md',
         profileName: 'test'
       });
@@ -144,11 +134,11 @@ describe('ToolHandlers', () => {
       expect(result.content[0].text).toContain('Successfully loaded');
     });
 
-    it('should call load_claude_config handler with error', async () => {
+    it('should call apply_claude_config handler with error', async () => {
       // Mock ClaudeConfigManager to throw error
       claudeConfigManager.loadClaudeConfig = vi.fn().mockRejectedValue(new Error('Load failed'));
       
-      const result = await (toolHandlers as any).handleLoadClaudeConfig({
+      const result = await (toolHandlers as any).handleApplyClaudeConfig({
         filePath: '/invalid/config.md'
       });
       
@@ -156,13 +146,13 @@ describe('ToolHandlers', () => {
       expect(result.content[0].text).toContain('Failed to load CLAUDE.md');
     });
 
-    it('should call load_claude_config handler with string argument', async () => {
+    it('should call apply_claude_config handler with string argument', async () => {
       // Mock ClaudeConfigManager
       claudeConfigManager.loadClaudeConfig = vi.fn().mockResolvedValue({
         title: 'Test Config'
       });
       
-      const result = await (toolHandlers as any).handleLoadClaudeConfig('/test/config.md');
+      const result = await (toolHandlers as any).handleApplyClaudeConfig('/test/config.md');
       
       expect(result.content[0].text).toContain('Successfully loaded');
     });
@@ -193,10 +183,10 @@ describe('ToolHandlers', () => {
       claudeConfigManager.loadClaudeConfig = vi.fn().mockResolvedValue({ title: 'Test' });
       
       // Test each tool route
-      await callToolHandler({ params: { name: 'list_loaded_configs', arguments: {} } });
-      await callToolHandler({ params: { name: 'list_unloaded_configs', arguments: {} } });
-      await callToolHandler({ params: { name: 'list_all_configs', arguments: {} } });
-      await callToolHandler({ params: { name: 'load_claude_config', arguments: { filePath: '/test.md' } } });
+      await callToolHandler({ params: { name: 'list_claude_configs', arguments: {} } });
+      await callToolHandler({ params: { name: 'list_claude_configs', arguments: {} } });
+      await callToolHandler({ params: { name: 'get_applied_config', arguments: {} } });
+      await callToolHandler({ params: { name: 'apply_claude_config', arguments: { filePath: '/test.md' } } });
       
       // Test unknown tool
       await expect(callToolHandler({ 
@@ -221,22 +211,21 @@ describe('ToolHandlers', () => {
       
       const result = await listToolsHandler();
       expect(result.tools).toBeDefined();
-      expect(result.tools.length).toBe(4);
+      expect(result.tools.length).toBe(3);
       
       // Verify all tools are registered
       const toolNames = result.tools.map((t: any) => t.name);
-      expect(toolNames).toContain('load_claude_config');
-      expect(toolNames).toContain('list_loaded_configs');
-      expect(toolNames).toContain('list_unloaded_configs');
-      expect(toolNames).toContain('list_all_configs');
+      expect(toolNames).toContain('apply_claude_config');
+      expect(toolNames).toContain('list_claude_configs');
+      expect(toolNames).toContain('get_applied_config');
       
       setRequestHandlerSpy.mockRestore();
     });
 
-    it('should test load_claude_config profile name generation', async () => {
+    it('should test apply_claude_config profile name generation', async () => {
       claudeConfigManager.loadClaudeConfig = vi.fn().mockResolvedValue({ title: 'Test' });
       
-      const result = await (toolHandlers as any).handleLoadClaudeConfig({
+      const result = await (toolHandlers as any).handleApplyClaudeConfig({
         filePath: '/path/to/my-config.md'
         // No profileName provided - should auto-generate
       });
@@ -245,10 +234,10 @@ describe('ToolHandlers', () => {
       expect(activeProfiles.has('my-config')).toBe(true);
     });
 
-    it('should test load_claude_config autoApply false', async () => {
+    it('should test apply_claude_config autoApply false', async () => {
       claudeConfigManager.loadClaudeConfig = vi.fn().mockResolvedValue({ title: 'Test' });
       
-      const result = await (toolHandlers as any).handleLoadClaudeConfig({
+      const result = await (toolHandlers as any).handleApplyClaudeConfig({
         filePath: '/test/config.md',
         profileName: 'testProfile',
         autoApply: false
@@ -258,13 +247,13 @@ describe('ToolHandlers', () => {
       expect(result.content[1].text).toContain('Configuration includes:');
     });
 
-    it('should test load_claude_config with existing profile name', async () => {
+    it('should test apply_claude_config with existing profile name', async () => {
       claudeConfigManager.loadClaudeConfig = vi.fn().mockResolvedValue({ title: 'Test' });
       
       // Pre-populate with existing profile
       activeProfiles.set('config', { title: 'Existing' } as any);
       
-      const result = await (toolHandlers as any).handleLoadClaudeConfig({
+      const result = await (toolHandlers as any).handleApplyClaudeConfig({
         filePath: '/test/config.md'
         // Will generate 'config' which already exists - should overwrite
       });

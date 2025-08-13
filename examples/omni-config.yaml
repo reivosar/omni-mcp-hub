@@ -6,8 +6,17 @@ autoLoad:
   # Profiles to auto-load on startup
   profiles:
     - name: "lum"
-      path: "./lum-behavior.md"
+      path: "./examples/lum-behavior.md"
       autoApply: true
+    - name: "zoro"
+      path: "./examples/zoro-behavior.md"
+      autoApply: false
+    - name: "tsundere"
+      path: "./examples/tsundere-behavior.md"
+      autoApply: false
+    - name: "naruto"
+      path: "./examples/naruto-behavior.md"
+      autoApply: false
 
 # File loading settings
 fileSettings:
@@ -30,6 +39,7 @@ fileSettings:
     - ".git/**"
     - "node_modules/**"
     - "dist/**"
+    - "unloaded-behavior.md"  # Test file - should not be auto-loaded
   
   # Allowed file extensions for loading
   allowedExtensions:

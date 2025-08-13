@@ -71,7 +71,7 @@ describe('OmniMCPServer', () => {
       server = new OmniMCPServer();
     });
 
-    it('should validate load_claude_config arguments - string format', () => {
+    it('should validate apply_claude_config arguments - string format', () => {
       const args = './test-config.md';
       
       let filePath: string = '';
@@ -96,7 +96,7 @@ describe('OmniMCPServer', () => {
       expect(autoApply).toBe(true);
     });
 
-    it('should validate load_claude_config arguments - object format', () => {
+    it('should validate apply_claude_config arguments - object format', () => {
       const args = {
         filePath: './test-config.md',
         profileName: 'test',

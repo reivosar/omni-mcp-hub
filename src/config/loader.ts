@@ -97,6 +97,9 @@ export class ConfigLoader {
 
         try {
           const loadedConfig = await this.claudeConfigManager.loadClaudeConfig(fileInfo.path);
+          // Mark as auto-scanned (not explicitly auto-apply)
+          (loadedConfig as any)._autoScanned = true;
+          (loadedConfig as any)._filePath = fileInfo.path;
           activeProfiles.set(profileName, loadedConfig);
           
           if (this.yamlConfigManager.isVerboseProfileSwitching()) {
@@ -140,6 +143,9 @@ export class ConfigLoader {
             : path.join(process.cwd(), profile.path);
           
           const loadedConfig = await this.claudeConfigManager.loadClaudeConfig(fullPath);
+          // Mark config with autoApply flag for later use
+          (loadedConfig as any)._autoApply = profile.autoApply === true;
+          (loadedConfig as any)._filePath = fullPath;
           activeProfiles.set(profile.name, loadedConfig);
           
           // If autoApply is true, apply the behavior immediately

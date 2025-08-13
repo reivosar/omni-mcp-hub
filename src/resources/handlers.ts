@@ -49,6 +49,19 @@ export class ResourceHandlers {
         },
       ];
 
+      // Check for auto-apply profiles
+      const autoApplyProfiles = Array.from(this.activeProfiles.entries())
+        .filter(([name, config]) => (config as any)._autoApply === true);
+      
+      if (autoApplyProfiles.length > 0) {
+        baseResources.unshift({
+          uri: "config://auto-apply",
+          name: "🚀 Auto-Apply Instructions",
+          description: `Automatically apply ${autoApplyProfiles.length} profile(s) marked for auto-application`,
+          mimeType: "text/plain",
+        });
+      }
+
       // Add dynamic resources for each loaded profile (active/assigned profiles)
       const profileResources = Array.from(this.activeProfiles.keys()).map(profileName => ({
         uri: `config://profile/active/${profileName}`,
@@ -103,6 +116,43 @@ export class ResourceHandlers {
               ],
             };
           }
+
+        case "config://auto-apply":
+          const autoApplyProfiles = Array.from(this.activeProfiles.entries())
+            .filter(([name, config]) => (config as any)._autoApply === true);
+          
+          if (autoApplyProfiles.length === 0) {
+            return {
+              contents: [
+                {
+                  uri,
+                  mimeType: "text/plain",
+                  text: "No profiles marked for auto-apply",
+                },
+              ],
+            };
+          }
+          
+          // Combine all auto-apply profiles into instructions
+          let combinedInstructions = "# AUTO-APPLIED CONFIGURATION\n\n";
+          combinedInstructions += "The following behavior profiles have been automatically loaded:\n\n";
+          
+          for (const [name, config] of autoApplyProfiles) {
+            const { BehaviorGenerator } = await import('../utils/behavior-generator.js');
+            combinedInstructions += `## Profile: ${name}\n\n`;
+            combinedInstructions += BehaviorGenerator.generateInstructions(config);
+            combinedInstructions += "\n\n---\n\n";
+          }
+          
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: "text/plain",
+                text: combinedInstructions,
+              },
+            ],
+          };
 
         case "config://profiles/active":
           const activeProfileNames = Array.from(this.activeProfiles.keys());

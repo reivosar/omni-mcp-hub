@@ -37,6 +37,9 @@ This automatically runs:
    ```
    /use add a:5 b:3
    /use echo message:"Hello MCP!"
+   /use apply_claude_config lum-behavior
+   /use list_claude_configs
+   /use get_applied_config
    ```
 
 ## Available Tools
@@ -46,27 +49,36 @@ This automatically runs:
 - **echo**: Echo back a message
 
 ### CLAUDE.md Management Tools
-- **load_claude_config**: Load and activate a CLAUDE.md configuration file
-- **list_claude_configs**: List all loaded Claude configurations
+- **apply_claude_config**: Load and apply a CLAUDE.md configuration file
+- **list_claude_configs**: List all CLAUDE.md configuration files (both loaded and available)
+- **get_applied_config**: Get information about the currently applied configuration
 
 ## Available Resources
 
 - **info://server**: Server information
 - **greeting://world**: A greeting message
-- **claude://profile/{name}**: Dynamic resources for each loaded CLAUDE.md profile
+- **config://auto-apply**: Auto-apply instructions (when profiles have autoApply: true)
+- **config://files/scannable**: Scannable configuration files
+- **config://profiles/active**: Active configuration profiles
 
 ## CLAUDE.md Configuration
 
 ### Character Configuration Examples
 
 ```bash
-# Load character configurations (automatically applied)
-/use load_claude_config filePath:"./examples/lum-behavior.md" profileName:"lum"
-/use load_claude_config filePath:"./examples/pirate-behavior.md" profileName:"pirate"
-/use load_claude_config filePath:"./examples/special-behavior.md" profileName:"kansai"
+# Apply character configurations
+/use apply_claude_config filePath:"./examples/lum-behavior.md" profileName:"lum"
+/use apply_claude_config filePath:"./examples/pirate-behavior.md" profileName:"pirate"
+/use apply_claude_config filePath:"./examples/special-behavior.md" profileName:"kansai"
 
-# List loaded configs
+# Or use short form (auto-resolves paths)
+/use apply_claude_config lum-behavior
+
+# List all configs (loaded and available)
 /use list_claude_configs
+
+# Get currently applied configuration
+/use get_applied_config
 ```
 
 ### CLAUDE.md Format
@@ -130,7 +142,7 @@ autoLoad:
   profiles:
     - name: "lum"
       path: "./examples/lum-behavior.md"
-      autoApply: true
+      autoApply: true  # Note: See limitations below
 
 # File scanning settings  
 fileSettings:
@@ -154,6 +166,21 @@ logging:
 
 See `omni-config.yaml.example` and files in `examples/` for more configuration options.
 
+### Auto-Apply Limitations
+
+**Important**: The `autoApply: true` setting has limitations due to MCP architecture:
+
+- **Profiles are loaded but not automatically applied**: When the MCP server starts, it loads profiles marked with `autoApply: true` into memory, but cannot directly modify Claude's behavior.
+- **Manual application required**: You must run `/use apply_claude_config <profile>` in Claude Code to actually apply the behavior.
+- **MCP constraint**: MCP tools cannot directly modify Claude's system prompts or behavior - they can only return instructions that Claude chooses to follow.
+
+To apply a profile after starting Claude Code:
+```
+/use apply_claude_config lum-behavior
+```
+
+This is a fundamental limitation of the MCP protocol, not a bug in the implementation.
+
 ## Development
 
 ### Project Structure
@@ -165,7 +192,7 @@ src/
 │   ├── loader.ts              # Configuration loader (.mcp-config.json, YAML)
 │   └── yaml-config.ts         # YAML configuration manager
 ├── tools/
-│   └── handlers.ts            # MCP tool handlers (load_claude_config, etc.)
+│   └── handlers.ts            # MCP tool handlers (apply_claude_config, etc.)
 ├── resources/
 │   └── handlers.ts            # MCP resource handlers (server info, profiles)
 └── utils/
@@ -188,8 +215,9 @@ Each module is **independently testable** and has a **single responsibility**.
 
 ### Adding New Tools
 
-1. Add tool definition to `src/tools/handlers.ts` in `setupListToolsHandler()`
-2. Add tool implementation to `src/tools/handlers.ts` in `setupCallToolHandler()`
+1. Add tool definition to `src/tools/handlers.ts` in the tools array
+2. Add case handler in `setupCallToolHandler()` method
+3. Add tool implementation method
 3. Create tests in `tests/` directory
 4. Rebuild: `npm run build`
 
@@ -232,8 +260,11 @@ npm run test:ui
 - `tests/claude-config.test.ts` - Unit tests for ClaudeConfigManager
 - `tests/behavior-generator.test.ts` - Unit tests for BehaviorGenerator  
 - `tests/config-loader.test.ts` - Unit tests for ConfigLoader
+- `tests/config-loader-extended.test.ts` - Extended tests for YAML integration
 - `tests/yaml-config.test.ts` - Unit tests for YamlConfigManager
 - `tests/file-scanner.test.ts` - Unit tests for FileScanner
+- `tests/tools-handlers.test.ts` - Unit tests for MCP tool handlers
+- `tests/resources-handlers.test.ts` - Unit tests for MCP resource handlers
 - `tests/index.test.ts` - Unit tests for OmniMCPServer main class
 - `tests/integration.test.ts` - Integration tests for the complete system
 
@@ -242,8 +273,11 @@ All tests are written using **Vitest** with TypeScript support and provide compr
 - Configuration profile management
 - YAML configuration loading and validation
 - File scanning with pattern matching
-- MCP server tool handlers
+- MCP tool handlers (`apply_claude_config`, `list_claude_configs`, `get_applied_config`)
+- MCP resource handlers
 - Integration between all components
+
+**Test Coverage**: 89.66% (195 tests passing)
 
 ## Scripts
 

@@ -14,6 +14,8 @@ export class ToolHandlers {
   private claudeConfigManager: ClaudeConfigManager;
   private activeProfiles: Map<string, ClaudeConfig>;
   private fileScanner: FileScanner;
+  private lastAppliedProfile: string | null = null;
+  private lastAppliedTime: string | null = null;
 
   constructor(
     server: Server,
@@ -47,7 +49,7 @@ export class ToolHandlers {
         tools: [
           // CLAUDE.md management tools
           {
-            name: "load_claude_config",
+            name: "apply_claude_config",
             description: "Load and activate a CLAUDE.md configuration file",
             inputSchema: {
               type: "object",
@@ -69,8 +71,8 @@ export class ToolHandlers {
             },
           },
           {
-            name: "list_loaded_configs",
-            description: "List all currently loaded configuration profiles",
+            name: "list_claude_configs",
+            description: "List all CLAUDE.md configuration files (both loaded and available)",
             inputSchema: {
               type: "object",
               properties: {},
@@ -78,17 +80,8 @@ export class ToolHandlers {
             },
           },
           {
-            name: "list_unloaded_configs",
-            description: "List all configuration files that are not yet loaded",
-            inputSchema: {
-              type: "object",
-              properties: {},
-              required: [],
-            },
-          },
-          {
-            name: "list_all_configs",
-            description: "List both loaded and unloaded configuration files",
+            name: "get_applied_config",
+            description: "Get information about the currently applied configuration",
             inputSchema: {
               type: "object",
               properties: {},
@@ -108,18 +101,15 @@ export class ToolHandlers {
       const { name, arguments: args } = request.params;
 
       switch (name) {
-        case "load_claude_config":
-          return this.handleLoadClaudeConfig(args);
+        case "apply_claude_config":
+          return this.handleApplyClaudeConfig(args);
         
         
-        case "list_loaded_configs":
-          return this.handleListLoadedConfigs(args);
+        case "list_claude_configs":
+          return this.handleListClaudeConfigs(args);
         
-        case "list_unloaded_configs":
-          return this.handleListUnloadedConfigs(args);
-        
-        case "list_all_configs":
-          return this.handleListAllConfigs(args);
+        case "get_applied_config":
+          return this.handleGetAppliedConfig(args);
 
         default:
           throw new Error(`Unknown tool: ${name}`);
@@ -128,9 +118,9 @@ export class ToolHandlers {
   }
 
   /**
-   * Handle load_claude_config tool call
+   * Handle apply_claude_config tool call
    */
-  private async handleLoadClaudeConfig(args: any) {
+  private async handleApplyClaudeConfig(args: any) {
     // Support single string argument or normal object argument
     let filePath: string = '';
     let profileName: string | undefined;
@@ -171,16 +161,43 @@ export class ToolHandlers {
     }
     
     try {
-      const config = await this.claudeConfigManager.loadClaudeConfig(filePath);
+      // Try to resolve file path if it's just a name without extension
+      let resolvedFilePath = filePath;
+      if (!path.extname(filePath) && !filePath.includes('/')) {
+        // Try common patterns for profile names
+        const possiblePaths = [
+          `${filePath}.md`,
+          `./examples/${filePath}.md`,
+          `./examples/${filePath}`,
+          `./${filePath}.md`,
+          `./${filePath}`
+        ];
+        
+        for (const possiblePath of possiblePaths) {
+          try {
+            await this.claudeConfigManager.loadClaudeConfig(possiblePath);
+            resolvedFilePath = possiblePath;
+            break;
+          } catch {
+            // Continue to next path
+          }
+        }
+      }
+      
+      const config = await this.claudeConfigManager.loadClaudeConfig(resolvedFilePath);
       // Auto-generate profile name from filename (without extension) or use default
       const yamlConfigManager = new YamlConfigManager();
-      const autoProfileName = profileName || path.basename(filePath, path.extname(filePath)) || yamlConfigManager.getDefaultProfile();
+      const autoProfileName = profileName || path.basename(resolvedFilePath, path.extname(resolvedFilePath)) || yamlConfigManager.getDefaultProfile();
       this.activeProfiles.set(autoProfileName, config);
+      
+      // Track the last applied profile
+      this.lastAppliedProfile = autoProfileName;
+      this.lastAppliedTime = new Date().toISOString();
       
       let responseMessages = [
         {
           type: "text" as const,
-          text: `Successfully loaded CLAUDE.md configuration from ${filePath} as profile '${autoProfileName}'`,
+          text: `Successfully loaded CLAUDE.md configuration from ${resolvedFilePath} as profile '${autoProfileName}'`,
         },
       ];
       
@@ -223,72 +240,9 @@ export class ToolHandlers {
 
 
   /**
-   * Handle list_loaded_configs tool call
+   * Handle list_claude_configs tool call
    */
-  private async handleListLoadedConfigs(args: any) {
-    const loadedConfigNames = Array.from(this.activeProfiles.keys());
-    
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Loaded configs (${loadedConfigNames.length}):\n\n${JSON.stringify(loadedConfigNames, null, 2)}`,
-        },
-      ],
-    };
-  }
-
-  /**
-   * Handle list_unloaded_configs tool call
-   */
-  private async handleListUnloadedConfigs(args: any) {
-    try {
-      const availableFiles = await this.fileScanner.scanForClaudeFiles();
-      
-      // Get loaded profile file paths - check multiple possible path properties
-      const loadedPaths = Array.from(this.activeProfiles.values()).map(config => {
-        const configAny = config as any;
-        return configAny._filePath || configAny.filePath || configAny.path || configAny._originalPath;
-      }).filter(Boolean);
-      
-      // Filter out already loaded files
-      const unloadedFiles = availableFiles.filter(file => 
-        !loadedPaths.some(loadedPath => 
-          loadedPath === file.path || 
-          loadedPath === file.path.replace(process.cwd() + '/', './') ||
-          file.path === loadedPath.replace(process.cwd() + '/', './')
-        )
-      ).map(file => ({
-        path: file.path,
-        isClaudeConfig: file.isClaudeConfig,
-        matchedPattern: file.matchedPattern
-      }));
-      
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Unloaded configs (${unloadedFiles.length}):\n\n${JSON.stringify(unloadedFiles, null, 2)}`,
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Failed to scan for unloaded configs: ${error}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  }
-
-  /**
-   * Handle list_all_configs tool call
-   */
-  private async handleListAllConfigs(args: any) {
+  private async handleListClaudeConfigs(args: any) {
     try {
       // Get loaded configs
       const loadedConfigNames = Array.from(this.activeProfiles.keys());
@@ -309,12 +263,20 @@ export class ToolHandlers {
       }));
       
       const result = {
-        loaded: loadedConfigNames,
-        unloaded: unloadedFiles,
+        loaded: loadedConfigNames.map(name => ({
+          name,
+          status: "loaded",
+          path: (this.activeProfiles.get(name) as any)?._filePath || "unknown"
+        })),
+        available: unloadedFiles.map(file => ({
+          path: file.path,
+          status: "available",
+          pattern: file.matchedPattern
+        })),
         summary: {
           totalLoaded: loadedConfigNames.length,
-          totalUnloaded: unloadedFiles.length,
-          totalAvailable: loadedConfigNames.length + unloadedFiles.length
+          totalAvailable: unloadedFiles.length,
+          total: loadedConfigNames.length + unloadedFiles.length
         }
       };
       
@@ -322,7 +284,7 @@ export class ToolHandlers {
         content: [
           {
             type: "text",
-            text: `All configs:\n\n${JSON.stringify(result, null, 2)}`,
+            text: `CLAUDE.md configs:\n\n${JSON.stringify(result, null, 2)}`,
           },
         ],
       };
@@ -331,12 +293,61 @@ export class ToolHandlers {
         content: [
           {
             type: "text",
-            text: `Failed to list all configs: ${error}`,
+            text: `Failed to list configs: ${error}`,
           },
         ],
         isError: true,
       };
     }
+  }
+  
+  /**
+   * Handle get_active_profile tool call - returns currently applied profile info
+   */
+  private async handleGetAppliedConfig(args: any) {
+    // Track the last applied profile (we'll need to store this when apply_claude_config is called)
+    const lastAppliedProfile = this.lastAppliedProfile;
+    
+    if (!lastAppliedProfile) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "No configuration is currently applied.",
+          },
+        ],
+      };
+    }
+    
+    const config = this.activeProfiles.get(lastAppliedProfile);
+    if (!config) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Configuration '${lastAppliedProfile}' was applied but is no longer in memory.`,
+          },
+        ],
+      };
+    }
+    
+    const profileInfo = {
+      name: lastAppliedProfile,
+      title: config.title || "Untitled",
+      description: config.description || "No description",
+      path: (config as any)._filePath || "unknown",
+      appliedAt: this.lastAppliedTime || "unknown",
+      sections: Object.keys(config).filter(k => !k.startsWith('_')),
+    };
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Applied configuration:\n\n${JSON.stringify(profileInfo, null, 2)}`,
+        },
+      ],
+    };
   }
 
 

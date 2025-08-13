@@ -148,6 +148,41 @@ export class ToolHandlers {
       }
     }
     
+    // If no filePath but profileName is provided, try to find the file
+    if (!filePath && profileName) {
+      // First check if profile is already loaded
+      if (this.activeProfiles.has(profileName)) {
+        const config = this.activeProfiles.get(profileName);
+        const existingPath = (config as any)?._filePath;
+        if (existingPath) {
+          filePath = existingPath;
+        }
+      }
+      
+      // If still no filePath, try common paths
+      if (!filePath) {
+        const possiblePaths = [
+          `${profileName}.md`,
+          `./examples/${profileName}.md`,
+          `./examples/${profileName}`,
+          `./${profileName}.md`,
+          `./${profileName}`,
+          `${profileName}-behavior.md`,
+          `./examples/${profileName}-behavior.md`
+        ];
+        
+        for (const possiblePath of possiblePaths) {
+          try {
+            await this.claudeConfigManager.loadClaudeConfig(possiblePath);
+            filePath = possiblePath;
+            break;
+          } catch {
+            // Continue to next path
+          }
+        }
+      }
+    }
+    
     if (!filePath) {
       return {
         content: [

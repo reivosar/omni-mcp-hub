@@ -117,6 +117,56 @@ describe('ToolHandlers', () => {
       expect(result.content[0].text).toContain('Applied configuration');
       expect(result.content[0].text).toContain('test');
     });
+
+    it('should handle apply_claude_config with profileName only (existing profile)', async () => {
+      // Mock existing profile in activeProfiles
+      const mockConfig = { title: 'Zoro Config', _filePath: './examples/zoro-behavior.md' };
+      activeProfiles.set('zoro', mockConfig as any);
+      
+      // Mock loadClaudeConfig
+      claudeConfigManager.loadClaudeConfig = vi.fn().mockResolvedValue(mockConfig);
+      
+      const result = await (toolHandlers as any).handleApplyClaudeConfig({ profileName: 'zoro' });
+      
+      expect(result.content[0].text).toContain('Successfully loaded CLAUDE.md configuration');
+      expect(result.content[0].text).toContain('./examples/zoro-behavior.md');
+      expect(claudeConfigManager.loadClaudeConfig).toHaveBeenCalledWith('./examples/zoro-behavior.md');
+    });
+
+    it('should handle apply_claude_config with profileName only (path discovery)', async () => {
+      // Mock loadClaudeConfig - fail for most paths, succeed for one
+      const mockConfig = { 
+        title: 'Test Config', 
+        instructions: 'Test instructions',
+        customInstructions: [],
+        rules: [],
+        knowledge: [],
+        context: [],
+        tools: [],
+        memory: ''
+      };
+      
+      claudeConfigManager.loadClaudeConfig = vi.fn()
+        .mockRejectedValueOnce(new Error('Not found'))
+        .mockResolvedValueOnce(mockConfig)
+        .mockResolvedValueOnce(mockConfig);
+      
+      const result = await (toolHandlers as any).handleApplyClaudeConfig({ profileName: 'test' });
+      
+      expect(result.content[0].text).toContain('Successfully loaded CLAUDE.md configuration');
+      expect(claudeConfigManager.loadClaudeConfig).toHaveBeenCalledWith('test.md');
+      expect(claudeConfigManager.loadClaudeConfig).toHaveBeenCalledWith('./examples/test.md');
+    });
+
+    it('should handle apply_claude_config with profileName only (not found)', async () => {
+      // Mock loadClaudeConfig to always fail
+      claudeConfigManager.loadClaudeConfig = vi.fn().mockRejectedValue(new Error('Not found'));
+      
+      const result = await (toolHandlers as any).handleApplyClaudeConfig({ profileName: 'nonexistent' });
+      
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('File path is required');
+    });
   });
 
   describe('Handler Direct Calls', () => {

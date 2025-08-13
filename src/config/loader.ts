@@ -89,8 +89,13 @@ export class ConfigLoader {
 
         const profileName = this.yamlConfigManager.generateProfileName(fileInfo.path);
         
-        // Skip already loaded profiles
-        if (activeProfiles.has(profileName)) {
+        // Skip already loaded profiles (check both name and file path)
+        const isAlreadyLoaded = activeProfiles.has(profileName) || 
+          Array.from(activeProfiles.values()).some(config => 
+            (config as any)._filePath === fileInfo.path
+          );
+        
+        if (isAlreadyLoaded) {
           const allowDuplicates = config.profileManagement?.allowDuplicateNames ?? false;
           if (!allowDuplicates) continue;
         }

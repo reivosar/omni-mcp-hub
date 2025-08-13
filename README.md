@@ -61,18 +61,54 @@ This automatically runs:
 - **config://files/scannable**: Scannable configuration files
 - **config://profiles/active**: Active configuration profiles
 
+## Examples Directory
+
+The `examples/` directory contains pre-configured anime character behaviors and configuration templates:
+
+### Available Character Behaviors
+
+- **`lum-behavior.md`**: Lum from Urusei Yatsura (auto-applied on startup)
+- **`zoro-behavior.md`**: Roronoa Zoro from One Piece  
+- **`tsundere-behavior.md`**: Classic tsundere anime character
+- **`naruto-behavior.md`**: Naruto Uzumaki from Naruto
+- **`unloaded-behavior.md`**: Test file (excluded from auto-loading)
+
+### Configuration Files
+
+- **`omni-config.yaml`**: Main configuration with auto-load settings
+- **`start.sh`**: Quick setup script
+
+### Using Character Behaviors
+
+Apply any character behavior with short names:
+
+```bash
+# Apply different anime character personalities
+/use apply_claude_config profileName:"lum"      # Lum (already auto-loaded)
+/use apply_claude_config profileName:"zoro"     # Zoro personality
+/use apply_claude_config profileName:"tsundere" # Tsundere character
+/use apply_claude_config profileName:"naruto"   # Naruto personality
+
+# Or use full file paths
+/use apply_claude_config filePath:"./examples/zoro-behavior.md"
+```
+
 ## CLAUDE.md Configuration
 
 ### Character Configuration Examples
 
 ```bash
-# Apply character configurations
-/use apply_claude_config filePath:"./examples/lum-behavior.md" profileName:"lum"
-/use apply_claude_config filePath:"./examples/pirate-behavior.md" profileName:"pirate"
-/use apply_claude_config filePath:"./examples/special-behavior.md" profileName:"kansai"
+# Apply character configurations using profile names
+/use apply_claude_config profileName:"lum"      # Lum personality
+/use apply_claude_config profileName:"zoro"     # Zoro personality  
+/use apply_claude_config profileName:"tsundere" # Tsundere character
+/use apply_claude_config profileName:"naruto"   # Naruto personality
+
+# Or use file paths directly
+/use apply_claude_config filePath:"./examples/zoro-behavior.md"
 
 # Or use short form (auto-resolves paths)
-/use apply_claude_config lum-behavior
+/use apply_claude_config zoro-behavior
 
 # List all configs (loaded and available)
 /use list_claude_configs
@@ -164,7 +200,7 @@ logging:
   verboseFileLoading: true
 ```
 
-See `omni-config.yaml.example` and files in `examples/` for more configuration options.
+See the `examples/` directory for ready-to-use character behaviors and `omni-config.yaml` for advanced configuration options.
 
 ### Auto-Apply Limitations
 

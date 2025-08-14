@@ -6,6 +6,15 @@ import { minimatch } from 'minimatch';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// External server configuration interface
+export interface ExternalServerConfig {
+  name: string;
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+  description?: string;
+}
+
 // YAML configuration file type definitions
 export interface YamlConfig {
   autoLoad?: {
@@ -41,6 +50,15 @@ export interface YamlConfig {
     verboseFileLoading?: boolean;
     verboseProfileSwitching?: boolean;
   };
+  externalServers?: {
+    enabled?: boolean;
+    servers?: ExternalServerConfig[];
+    autoConnect?: boolean;
+    retry?: {
+      maxAttempts?: number;
+      delayMs?: number;
+    };
+  };
 }
 
 // Default configuration
@@ -54,7 +72,7 @@ const DEFAULT_CONFIG: YamlConfig = {
       behavior: "*-behavior.md",
       custom: "*-config.md"
     },
-    includePaths: ["./examples/", "./configs/", "./profiles/"],
+    includePaths: ["./configs/", "./profiles/"],
     excludePatterns: ["*.tmp", "*.backup", "*~", ".git/**", "node_modules/**", "dist/**"],
     allowedExtensions: [".md", ".markdown", ".txt"]
   },
@@ -73,6 +91,15 @@ const DEFAULT_CONFIG: YamlConfig = {
     level: "info",
     verboseFileLoading: true,
     verboseProfileSwitching: false
+  },
+  externalServers: {
+    enabled: false,
+    servers: [],
+    autoConnect: true,
+    retry: {
+      maxAttempts: 3,
+      delayMs: 1000
+    }
   }
 };
 
@@ -120,10 +147,10 @@ export class YamlConfigManager {
     const possiblePaths = [
       // Look in current working directory first
       path.join(process.cwd(), 'omni-config.yaml'),
-      // Look in examples directory (for development/testing)
-      path.join(process.cwd(), 'examples', 'omni-config.yaml'),
-      // Look in parent directory's examples folder
-      path.join(process.cwd(), '..', 'examples', 'omni-config.yaml')
+      // Look in configs directory
+      path.join(process.cwd(), 'configs', 'omni-config.yaml'),
+      // Look in parent directory
+      path.join(process.cwd(), '..', 'omni-config.yaml')
     ];
     
     for (const configPath of possiblePaths) {
@@ -171,6 +198,10 @@ export class YamlConfigManager {
 
     if (userConfig.logging) {
       merged.logging = { ...defaultConfig.logging, ...userConfig.logging };
+    }
+
+    if (userConfig.externalServers) {
+      merged.externalServers = { ...defaultConfig.externalServers, ...userConfig.externalServers };
     }
 
     return merged;

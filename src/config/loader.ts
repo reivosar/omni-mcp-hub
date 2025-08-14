@@ -3,6 +3,7 @@ import * as path from 'path';
 import { ClaudeConfigManager, ClaudeConfig } from '../utils/claude-config.js';
 import { YamlConfigManager, YamlConfig } from './yaml-config.js';
 import { FileScanner } from '../utils/file-scanner.js';
+import { PathResolver } from '../utils/path-resolver.js';
 
 export interface InitialProfile {
   name: string;
@@ -21,7 +22,9 @@ export class ConfigLoader {
 
   constructor(claudeConfigManager: ClaudeConfigManager, yamlConfigManager?: YamlConfigManager) {
     this.claudeConfigManager = claudeConfigManager;
-    this.yamlConfigManager = yamlConfigManager || YamlConfigManager.createWithPath('./examples/omni-config.yaml');
+    const pathResolver = PathResolver.getInstance();
+    const defaultConfigPath = pathResolver.getYamlConfigPath();
+    this.yamlConfigManager = yamlConfigManager || YamlConfigManager.createWithPath(defaultConfigPath);
     this.fileScanner = new FileScanner(this.yamlConfigManager);
   }
 

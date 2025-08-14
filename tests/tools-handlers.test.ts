@@ -155,7 +155,7 @@ describe('ToolHandlers', () => {
       
       expect(result.content[0].text).toContain('Successfully loaded CLAUDE.md configuration');
       expect(claudeConfigManager.loadClaudeConfig).toHaveBeenCalledWith('test.md');
-      expect(claudeConfigManager.loadClaudeConfig).toHaveBeenCalledWith('./examples/test.md');
+      expect(claudeConfigManager.loadClaudeConfig).toHaveBeenCalledWith('./test.md');
     });
 
     it('should handle apply_claude_config with profileName only (not found)', async () => {

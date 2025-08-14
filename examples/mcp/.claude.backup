@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "omni-mcp-hub": {
+      "command": "node",
+      "args": [
+        "/Users/mac/workspace/omni-mcp-hub/dist/index.js"
+      ],
+      "description": "Omni MCP Hub - External MCP Integration",
+      "env": {
+        "OMNI_CONFIG_PATH": "./omni-config.yaml"
+      }
+    }
+  }
+}

@@ -8,6 +8,9 @@ import { ToolHandlers } from "./tools/handlers.js";
 import { ResourceHandlers } from "./resources/handlers.js";
 import { BehaviorGenerator } from "./utils/behavior-generator.js";
 import { YamlConfigManager } from "./config/yaml-config.js";
+import { MCPProxyManager } from "./mcp-proxy/manager.js";
+import { PathResolver } from "./utils/path-resolver.js";
+import * as path from "path";
 
 export class OmniMCPServer {
   private server: Server;
@@ -16,6 +19,8 @@ export class OmniMCPServer {
   private configLoader: ConfigLoader;
   private toolHandlers: ToolHandlers;
   private resourceHandlers: ResourceHandlers;
+  private proxyManager: MCPProxyManager;
+  private yamlConfigManager: YamlConfigManager;
 
   constructor() {
     this.server = new Server(
@@ -32,24 +37,60 @@ export class OmniMCPServer {
     );
 
     this.claudeConfigManager = new ClaudeConfigManager();
-    // Determine correct path based on working directory
-    const isInExamplesDir = process.cwd().endsWith('/examples');
-    const yamlConfigPath = isInExamplesDir ? './omni-config.yaml' : './examples/omni-config.yaml';
-    const yamlConfigManager = YamlConfigManager.createWithPath(yamlConfigPath);
-    this.configLoader = new ConfigLoader(this.claudeConfigManager, yamlConfigManager);
-    this.toolHandlers = new ToolHandlers(this.server, this.claudeConfigManager, this.activeProfiles);
-    this.resourceHandlers = new ResourceHandlers(this.server, this.activeProfiles);
+    const pathResolver = PathResolver.getInstance();
+    const yamlConfigPath = pathResolver.getAbsoluteYamlConfigPath();
+    console.error(`Resolved YAML config path: ${yamlConfigPath}`);
 
-    this.initialize();
+    this.yamlConfigManager = YamlConfigManager.createWithPath(yamlConfigPath);
+    this.configLoader = new ConfigLoader(
+      this.claudeConfigManager,
+      this.yamlConfigManager
+    );
+    this.proxyManager = new MCPProxyManager(this.yamlConfigManager);
+    this.toolHandlers = new ToolHandlers(
+      this.server,
+      this.claudeConfigManager,
+      this.activeProfiles,
+      this.proxyManager
+    );
+    this.resourceHandlers = new ResourceHandlers(
+      this.server,
+      this.activeProfiles,
+      this.proxyManager
+    );
+
+    // Don't call initialize here - call it in run() to ensure proper async handling
   }
 
   /**
    * Initialize the server with handlers and configuration
    */
   private async initialize(): Promise<void> {
-    this.toolHandlers.setupHandlers();
-    this.resourceHandlers.setupHandlers();
+    console.error("[INIT] Starting server initialization...");
+
+    // Load YAML configuration first
+    console.error("[INIT] Loading YAML configuration...");
+    await this.yamlConfigManager.loadYamlConfig();
+    console.error("[INIT] YAML configuration loaded");
+
+    console.error("[INIT] Loading initial configuration...");
     await this.loadInitialConfiguration();
+    console.error("[INIT] Initial configuration loaded");
+
+    console.error("[INIT] Initializing external servers...");
+    await this.initializeExternalServers();
+    console.error("[INIT] External servers initialized");
+
+    // Setup handlers AFTER external servers are connected
+    console.error("[INIT] Setting up tool handlers...");
+    this.toolHandlers.setupHandlers();
+    console.error("[INIT] Tool handlers set up");
+
+    console.error("[INIT] Setting up resource handlers...");
+    this.resourceHandlers.setupHandlers();
+    console.error("[INIT] Resource handlers set up");
+
+    console.error("[INIT] Server initialization complete");
   }
 
   /**
@@ -67,12 +108,49 @@ export class OmniMCPServer {
   }
 
   /**
+   * Initialize external MCP servers from configuration
+   */
+  private async initializeExternalServers(): Promise<void> {
+    try {
+      console.error("[EXT-INIT] Delegating external server initialization to MCPProxyManager...");
+      await this.proxyManager.initializeFromYamlConfig();
+
+      const connectedServers = this.proxyManager.getConnectedServers();
+      console.error(
+        `[EXT-INIT] Successfully connected to ${connectedServers.length} external MCP servers`
+      );
+      console.error(`[EXT-INIT] Connected servers:`, connectedServers);
+
+      // Log aggregated tools
+      const aggregatedTools = this.proxyManager.getAggregatedTools();
+      console.error(
+        `[EXT-INIT] Aggregated tools count: ${aggregatedTools.length}`
+      );
+      aggregatedTools.forEach((tool, i) => {
+        console.error(
+          `[EXT-INIT] Tool ${i + 1}: ${tool.name} - ${tool.description}`
+        );
+      });
+    } catch (error) {
+      console.error(
+        "[EXT-INIT] Failed to initialize external MCP servers:",
+        error
+      );
+    }
+  }
+
+  /**
    * Start the MCP server
    */
   async run(): Promise<void> {
+    // Initialize everything before starting the server
+    await this.initialize();
+
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error("Omni MCP Hub server with CLAUDE.md support running on stdio");
+    console.error(
+      "Omni MCP Hub server with CLAUDE.md support running on stdio"
+    );
   }
 
   // Public methods for testing

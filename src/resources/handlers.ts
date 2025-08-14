@@ -6,18 +6,22 @@ import {
 import { ClaudeConfig } from "../utils/claude-config.js";
 import { FileScanner } from "../utils/file-scanner.js";
 import { YamlConfigManager } from "../config/yaml-config.js";
+import { PathResolver } from "../utils/path-resolver.js";
+import { MCPProxyManager } from "../mcp-proxy/manager.js";
 
 export class ResourceHandlers {
   private server: Server;
   private activeProfiles: Map<string, ClaudeConfig>;
   private fileScanner: FileScanner;
+  private proxyManager?: MCPProxyManager;
 
-  constructor(server: Server, activeProfiles: Map<string, ClaudeConfig>) {
+  constructor(server: Server, activeProfiles: Map<string, ClaudeConfig>, proxyManager?: MCPProxyManager) {
     this.server = server;
     this.activeProfiles = activeProfiles;
-    // Determine correct path based on working directory
-    const isInExamplesDir = process.cwd().endsWith('/examples');
-    const yamlConfigPath = isInExamplesDir ? './omni-config.yaml' : './examples/omni-config.yaml';
+    this.proxyManager = proxyManager;
+    // Use PathResolver for consistent config path resolution
+    const pathResolver = PathResolver.getInstance();
+    const yamlConfigPath = pathResolver.getYamlConfigPath();
     this.fileScanner = new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath));
   }
 
@@ -70,8 +74,22 @@ export class ResourceHandlers {
         mimeType: "application/json",
       }));
 
+      // Add proxied resources from external MCP servers
+      let aggregatedResources = [...baseResources, ...profileResources];
+      if (this.proxyManager) {
+        const externalResources = this.proxyManager.getAggregatedResources();
+        // Convert external resources to match our expected format
+        const formattedExternalResources = externalResources.map(resource => ({
+          uri: resource.uri,
+          name: resource.name,
+          description: resource.description || "External MCP resource",
+          mimeType: resource.mimeType || "text/plain",
+        }));
+        aggregatedResources = [...aggregatedResources, ...formattedExternalResources];
+      }
+
       return {
-        resources: [...baseResources, ...profileResources],
+        resources: aggregatedResources,
       };
     });
   }
@@ -186,6 +204,17 @@ export class ResourceHandlers {
                   },
                 ],
               };
+            }
+          }
+          
+          // Check if it's a proxied resource from external MCP server
+          if (this.proxyManager) {
+            try {
+              const result = await this.proxyManager.readResource(uri);
+              return result;
+            } catch (error) {
+              console.error(`Error reading proxied resource ${uri}:`, error);
+              // Fall through to throw error
             }
           }
           

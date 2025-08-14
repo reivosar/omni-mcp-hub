@@ -8,6 +8,8 @@ import { ClaudeConfigManager, ClaudeConfig } from "../utils/claude-config.js";
 import { BehaviorGenerator } from "../utils/behavior-generator.js";
 import { FileScanner } from "../utils/file-scanner.js";
 import { YamlConfigManager } from "../config/yaml-config.js";
+import { PathResolver } from "../utils/path-resolver.js";
+import { MCPProxyManager } from "../mcp-proxy/manager.js";
 
 export class ToolHandlers {
   private server: Server;
@@ -16,21 +18,32 @@ export class ToolHandlers {
   private fileScanner: FileScanner;
   private lastAppliedProfile: string | null = null;
   private lastAppliedTime: string | null = null;
+  private proxyManager?: MCPProxyManager;
 
   constructor(
     server: Server,
     claudeConfigManager: ClaudeConfigManager,
     activeProfiles: Map<string, ClaudeConfig>,
-    fileScanner?: FileScanner
+    proxyManagerOrFileScanner?: MCPProxyManager | FileScanner
   ) {
     this.server = server;
     this.claudeConfigManager = claudeConfigManager;
     this.activeProfiles = activeProfiles;
-    // Determine correct path based on working directory
-    const isInExamplesDir = process.cwd().endsWith('/examples');
-    const yamlConfigPath = isInExamplesDir ? './omni-config.yaml' : './examples/omni-config.yaml';
-    this.fileScanner = fileScanner || new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath));
+    
+    const pathResolver = PathResolver.getInstance();
+    const yamlConfigPath = pathResolver.getYamlConfigPath();
+    
+    // Handle both old and new constructor signatures
+    if (proxyManagerOrFileScanner && 'addServer' in proxyManagerOrFileScanner) {
+      // New signature with MCPProxyManager
+      this.proxyManager = proxyManagerOrFileScanner;
+      this.fileScanner = new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath));
+    } else {
+      // Old signature with FileScanner
+      this.fileScanner = proxyManagerOrFileScanner || new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath));
+    }
   }
+
 
   /**
    * Setup all tool handlers
@@ -45,9 +58,11 @@ export class ToolHandlers {
    */
   private setupListToolsHandler(): void {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      return {
-        tools: [
-          // CLAUDE.md management tools
+      console.error("[TOOL-HANDLER] Processing tools/list request");
+      
+      // Get base tools
+      const baseTools = [
+        // CLAUDE.md management tools
           {
             name: "apply_claude_config",
             description: "Load and activate a CLAUDE.md configuration file",
@@ -88,7 +103,46 @@ export class ToolHandlers {
               required: [],
             },
           },
-        ],
+        ];
+
+      console.error(`[TOOL-HANDLER] Base tools count: ${baseTools.length}`);
+      baseTools.forEach((tool, i) => {
+        console.error(`[TOOL-HANDLER] Base tool ${i+1}: ${tool.name}`);
+      });
+
+      // Add proxied tools from external MCP servers
+      let aggregatedTools: any[] = [...baseTools];
+      console.error(`[TOOL-HANDLER] Checking proxy manager: ${this.proxyManager ? 'exists' : 'null'}`);
+      
+      if (this.proxyManager) {
+        console.error(`[TOOL-HANDLER] Getting external tools from proxy manager...`);
+        console.error(`[TOOL-HANDLER] Proxy manager connected servers:`, this.proxyManager.getConnectedServers());
+        
+        const externalTools = this.proxyManager.getAggregatedTools();
+        console.error(`[TOOL-HANDLER] External tools count: ${externalTools.length}`);
+        
+        if (externalTools.length === 0) {
+          console.error(`[TOOL-HANDLER] WARNING: No external tools found - checking proxy manager state...`);
+          console.error(`[TOOL-HANDLER] Proxy manager has ${this.proxyManager.getConnectedServers().length} connected servers`);
+        }
+        
+        externalTools.forEach((tool, i) => {
+          console.error(`[TOOL-HANDLER] External tool ${i+1}: ${tool.name} - ${tool.description}`);
+        });
+        
+        aggregatedTools = [...aggregatedTools, ...externalTools];
+        console.error(`[TOOL-HANDLER] Total aggregated tools count: ${aggregatedTools.length}`);
+      } else {
+        console.error(`[TOOL-HANDLER] No proxy manager available - returning base tools only`);
+      }
+
+      console.error(`[TOOL-HANDLER] Final tools being returned:`);
+      aggregatedTools.forEach((tool, i) => {
+        console.error(`[TOOL-HANDLER] Final tool ${i+1}: ${tool.name}`);
+      });
+
+      return {
+        tools: aggregatedTools,
       };
     });
   }
@@ -112,6 +166,16 @@ export class ToolHandlers {
           return this.handleGetAppliedConfig(args);
 
         default:
+          // Check if it's a proxied tool from external MCP server
+          if (this.proxyManager) {
+            try {
+              const result = await this.proxyManager.callTool(name, args);
+              return result;
+            } catch (error) {
+              console.error(`Error calling proxied tool ${name}:`, error);
+              throw error;
+            }
+          }
           throw new Error(`Unknown tool: ${name}`);
       }
     });
@@ -161,15 +225,8 @@ export class ToolHandlers {
       
       // If still no filePath, try common paths
       if (!filePath) {
-        const possiblePaths = [
-          `${profileName}.md`,
-          `./examples/${profileName}.md`,
-          `./examples/${profileName}`,
-          `./${profileName}.md`,
-          `./${profileName}`,
-          `${profileName}-behavior.md`,
-          `./examples/${profileName}-behavior.md`
-        ];
+        const pathResolver = PathResolver.getInstance();
+        const possiblePaths = pathResolver.generateProfilePaths(profileName);
         
         for (const possiblePath of possiblePaths) {
           try {
@@ -200,13 +257,8 @@ export class ToolHandlers {
       let resolvedFilePath = filePath;
       if (!path.extname(filePath) && !filePath.includes('/')) {
         // Try common patterns for profile names
-        const possiblePaths = [
-          `${filePath}.md`,
-          `./examples/${filePath}.md`,
-          `./examples/${filePath}`,
-          `./${filePath}.md`,
-          `./${filePath}`
-        ];
+        const pathResolver = PathResolver.getInstance();
+        const possiblePaths = pathResolver.generateFilePaths(filePath);
         
         for (const possiblePath of possiblePaths) {
           try {

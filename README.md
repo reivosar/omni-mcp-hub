@@ -19,25 +19,28 @@ A universal MCP (Model Context Protocol) server for Claude Code integration with
 
 ## Quick Start
 
-**Start with a single command:**
+**Quick Start Options:**
+
+Choose your focus and run the appropriate setup script:
 
 ```bash
-./examples/start.sh
+# For local CLAUDE.md resources and character behaviors
+./examples/local-resources/start.sh
+
+# For external MCP server integration
+./examples/mcp/start.sh
 ```
 
-This automatically runs:
-1. Install dependencies (you need to run `npm install` once initially)
-2. Build project
-3. Configure Claude Code MCP settings
-4. Start MCP server
+Each script automatically:
+1. Builds the project
+2. Configures Claude Code MCP settings
+3. Starts Claude Code with the appropriate configuration
 
 **Using Claude Code:**
-1. Run `claude` in a new terminal
+1. The script automatically starts `claude`
 2. Execute test commands:
    ```
-   /use add a:5 b:3
-   /use echo message:"Hello MCP!"
-   /use apply_claude_config lum-behavior
+   /use apply_claude_config profileName:"lum"
    /use list_claude_configs
    /use get_applied_config
    ```
@@ -63,15 +66,27 @@ This automatically runs:
 
 ## Examples Directory
 
-The `examples/` directory contains pre-configured anime character behaviors and configuration templates:
+The `examples/` directory is organized into two main categories:
 
-### Available Character Behaviors
+### Local Resources (`examples/local-resources/`)
+
+Character behaviors and CLAUDE.md configuration files:
 
 - **`lum-behavior.md`**: Lum from Urusei Yatsura (auto-applied on startup)
 - **`zoro-behavior.md`**: Roronoa Zoro from One Piece  
 - **`tsundere-behavior.md`**: Classic tsundere anime character
 - **`naruto-behavior.md`**: Naruto Uzumaki from Naruto
 - **`unloaded-behavior.md`**: Test file (excluded from auto-loading)
+- **`README.md`**: Detailed guide for character behaviors
+
+### MCP Integration (`examples/mcp/`)
+
+External MCP server integration examples:
+
+- **`external-servers-config.yaml`**: Complete external MCP server configuration
+- **`test-proxy.yaml`**: Simple test configuration for development
+- **`test-server.js`**: Test MCP server for proxy functionality
+- **`README.md`**: MCP integration documentation
 
 ### Configuration Files
 
@@ -90,7 +105,16 @@ Apply any character behavior with short names:
 /use apply_claude_config profileName:"naruto"   # Naruto personality
 
 # Or use full file paths
-/use apply_claude_config filePath:"./examples/zoro-behavior.md"
+/use apply_claude_config filePath:"./examples/local-resources/zoro-behavior.md"
+```
+
+### Using External MCP Servers
+
+Enable external MCP server integration:
+
+```bash
+# Run with external MCP servers enabled
+OMNI_CONFIG_PATH=./examples/mcp/external-servers-config.yaml node dist/index.js
 ```
 
 ## CLAUDE.md Configuration

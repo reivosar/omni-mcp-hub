@@ -10,7 +10,7 @@ export interface ClaudeConfig {
   context?: string[];
   tools?: string[];
   memory?: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 export class ClaudeConfigManager {
@@ -256,7 +256,7 @@ export class ClaudeConfigManager {
         .filter((file): file is string => typeof file === 'string')
         .filter(file => file.toLowerCase().includes('claude.md'))
         .map(file => path.join(directory, file));
-    } catch (_error) {
+    } catch (error) {
       return [];
     }
   }

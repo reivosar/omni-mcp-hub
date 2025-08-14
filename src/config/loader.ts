@@ -4,6 +4,7 @@ import { ClaudeConfigManager, ClaudeConfig } from '../utils/claude-config.js';
 import { YamlConfigManager } from './yaml-config.js';
 import { FileScanner } from '../utils/file-scanner.js';
 import { PathResolver } from '../utils/path-resolver.js';
+import { ILogger, SilentLogger } from '../utils/logger.js';
 
 export interface InitialProfile {
   name: string;
@@ -19,13 +20,15 @@ export class ConfigLoader {
   private claudeConfigManager: ClaudeConfigManager;
   private yamlConfigManager: YamlConfigManager;
   private fileScanner: FileScanner;
+  private logger: ILogger;
 
-  constructor(claudeConfigManager: ClaudeConfigManager, yamlConfigManager?: YamlConfigManager) {
+  constructor(claudeConfigManager: ClaudeConfigManager, yamlConfigManager?: YamlConfigManager, logger?: ILogger) {
     this.claudeConfigManager = claudeConfigManager;
+    this.logger = logger || new SilentLogger();
     const pathResolver = PathResolver.getInstance();
     const defaultConfigPath = pathResolver.getYamlConfigPath();
-    this.yamlConfigManager = yamlConfigManager || YamlConfigManager.createWithPath(defaultConfigPath);
-    this.fileScanner = new FileScanner(this.yamlConfigManager);
+    this.yamlConfigManager = yamlConfigManager || YamlConfigManager.createWithPath(defaultConfigPath, this.logger);
+    this.fileScanner = new FileScanner(this.yamlConfigManager, this.logger);
   }
 
   /**
@@ -51,7 +54,7 @@ export class ConfigLoader {
       await this.autoScanProfiles(activeProfiles);
 
     } catch (error) {
-      console.error("Initial config loading error:", error);
+      this.logger.debug("Initial config loading error:", error);
     }
 
     return activeProfiles;
@@ -94,10 +97,9 @@ export class ConfigLoader {
         
         // Skip already loaded profiles (check both name and file path)
         const isAlreadyLoaded = activeProfiles.has(profileName) || 
-          Array.from(activeProfiles.values()).some(config => {
-            const configWithMeta = config as ClaudeConfig & { _filePath?: string };
-            return configWithMeta._filePath === fileInfo.path;
-          });
+          Array.from(activeProfiles.values()).some(config => 
+            (config as { _filePath?: string })._filePath === fileInfo.path
+          );
         
         if (isAlreadyLoaded) {
           const allowDuplicates = config.profileManagement?.allowDuplicateNames ?? false;
@@ -107,9 +109,8 @@ export class ConfigLoader {
         try {
           const loadedConfig = await this.claudeConfigManager.loadClaudeConfig(fileInfo.path);
           // Mark as auto-scanned (not explicitly auto-apply)
-          const configWithMeta = loadedConfig as ClaudeConfig & { _autoScanned?: boolean; _filePath?: string };
-          configWithMeta._autoScanned = true;
-          configWithMeta._filePath = fileInfo.path;
+          (loadedConfig as { _autoScanned?: boolean; _filePath?: string })._autoScanned = true;
+          (loadedConfig as { _autoScanned?: boolean; _filePath?: string })._filePath = fileInfo.path;
           activeProfiles.set(profileName, loadedConfig);
           
           if (this.yamlConfigManager.isVerboseProfileSwitching()) {
@@ -117,13 +118,13 @@ export class ConfigLoader {
           }
         } catch (error) {
           if (config.logging?.verboseFileLoading) {
-            console.error(`Auto-scan profile '${profileName}' failed: ${error}`);
+            this.logger.debug(`Auto-scan profile '${profileName}' failed: ${error}`);
           }
         }
       }
     } catch (error) {
       if (yamlConfig.logging?.verboseFileLoading) {
-        console.error("Auto-scan error:", error);
+        this.logger.debug("Auto-scan error:", error);
       }
     }
   }
@@ -154,18 +155,17 @@ export class ConfigLoader {
           
           const loadedConfig = await this.claudeConfigManager.loadClaudeConfig(fullPath);
           // Mark config with autoApply flag for later use
-          const configWithMeta = loadedConfig as ClaudeConfig & { _autoApply?: boolean; _filePath?: string };
-          configWithMeta._autoApply = profile.autoApply === true;
-          configWithMeta._filePath = fullPath;
+          (loadedConfig as { _autoApply?: boolean; _filePath?: string })._autoApply = profile.autoApply === true;
+          (loadedConfig as { _autoApply?: boolean; _filePath?: string })._filePath = fullPath;
           activeProfiles.set(profile.name, loadedConfig);
           
           // If autoApply is true, apply the behavior immediately
           if (profile.autoApply === true) {
             const { BehaviorGenerator } = await import('../utils/behavior-generator.js');
             const behaviorInstructions = BehaviorGenerator.generateInstructions(loadedConfig);
-            console.error(`\n=== APPLYING PROFILE '${profile.name}' ===`);
-            console.error(behaviorInstructions);
-            console.error(`=== END PROFILE APPLICATION ===\n`);
+            this.logger.debug(`\n=== APPLYING PROFILE '${profile.name}' ===`);
+            this.logger.debug(behaviorInstructions);
+            this.logger.debug(`=== END PROFILE APPLICATION ===\n`);
           }
           
           if (this.yamlConfigManager.isVerboseProfileSwitching()) {
@@ -174,7 +174,7 @@ export class ConfigLoader {
           }
         } catch (error) {
           if (config.logging?.verboseFileLoading) {
-            console.error(`Profile '${profile.name}' loading failed: ${error}`);
+            this.logger.debug(`Profile '${profile.name}' loading failed: ${error}`);
           }
         }
       }
@@ -197,9 +197,9 @@ export class ConfigLoader {
           
           const loadedConfig = await this.claudeConfigManager.loadClaudeConfig(fullPath);
           activeProfiles.set(profile.name, loadedConfig);
-          console.error(`Auto-loaded profile '${profile.name}': ${profile.path}`);
+          this.logger.debug(`Auto-loaded profile '${profile.name}': ${profile.path}`);
         } catch (error) {
-          console.error(`Failed to load profile '${profile.name}': ${error}`);
+          this.logger.debug(`Failed to load profile '${profile.name}': ${error}`);
         }
       }
     }

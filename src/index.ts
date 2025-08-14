@@ -10,6 +10,7 @@ import { BehaviorGenerator } from "./utils/behavior-generator.js";
 import { YamlConfigManager } from "./config/yaml-config.js";
 import { MCPProxyManager } from "./mcp-proxy/manager.js";
 import { PathResolver } from "./utils/path-resolver.js";
+import { Logger, ILogger } from "./utils/logger.js";
 
 export class OmniMCPServer {
   private server: Server;
@@ -20,8 +21,11 @@ export class OmniMCPServer {
   private resourceHandlers: ResourceHandlers;
   private proxyManager: MCPProxyManager;
   private yamlConfigManager: YamlConfigManager;
+  private logger: ILogger;
 
-  constructor() {
+  constructor(logger?: ILogger) {
+    this.logger = logger || Logger.getInstance();
+    
     this.server = new Server(
       {
         name: "omni-mcp-hub",
@@ -38,24 +42,27 @@ export class OmniMCPServer {
     this.claudeConfigManager = new ClaudeConfigManager();
     const pathResolver = PathResolver.getInstance();
     const yamlConfigPath = pathResolver.getAbsoluteYamlConfigPath();
-    console.error(`Resolved YAML config path: ${yamlConfigPath}`);
+    this.logger.debug(`Resolved YAML config path: ${yamlConfigPath}`);
 
-    this.yamlConfigManager = YamlConfigManager.createWithPath(yamlConfigPath);
+    this.yamlConfigManager = YamlConfigManager.createWithPath(yamlConfigPath, this.logger);
     this.configLoader = new ConfigLoader(
       this.claudeConfigManager,
-      this.yamlConfigManager
+      this.yamlConfigManager,
+      this.logger
     );
-    this.proxyManager = new MCPProxyManager(this.yamlConfigManager);
+    this.proxyManager = new MCPProxyManager(this.yamlConfigManager, this.logger);
     this.toolHandlers = new ToolHandlers(
       this.server,
       this.claudeConfigManager,
       this.activeProfiles,
-      this.proxyManager
+      this.proxyManager,
+      this.logger
     );
     this.resourceHandlers = new ResourceHandlers(
       this.server,
       this.activeProfiles,
-      this.proxyManager
+      this.proxyManager,
+      this.logger
     );
 
     // Don't call initialize here - call it in run() to ensure proper async handling
@@ -65,31 +72,31 @@ export class OmniMCPServer {
    * Initialize the server with handlers and configuration
    */
   private async initialize(): Promise<void> {
-    console.error("[INIT] Starting server initialization...");
+    this.logger.info("[INIT] Starting server initialization...");
 
     // Load YAML configuration first
-    console.error("[INIT] Loading YAML configuration...");
+    this.logger.debug("[INIT] Loading YAML configuration...");
     await this.yamlConfigManager.loadYamlConfig();
-    console.error("[INIT] YAML configuration loaded");
+    this.logger.debug("[INIT] YAML configuration loaded");
 
-    console.error("[INIT] Loading initial configuration...");
+    this.logger.debug("[INIT] Loading initial configuration...");
     await this.loadInitialConfiguration();
-    console.error("[INIT] Initial configuration loaded");
+    this.logger.debug("[INIT] Initial configuration loaded");
 
-    console.error("[INIT] Initializing external servers...");
+    this.logger.debug("[INIT] Initializing external servers...");
     await this.initializeExternalServers();
-    console.error("[INIT] External servers initialized");
+    this.logger.debug("[INIT] External servers initialized");
 
     // Setup handlers AFTER external servers are connected
-    console.error("[INIT] Setting up tool handlers...");
+    this.logger.debug("[INIT] Setting up tool handlers...");
     this.toolHandlers.setupHandlers();
-    console.error("[INIT] Tool handlers set up");
+    this.logger.debug("[INIT] Tool handlers set up");
 
-    console.error("[INIT] Setting up resource handlers...");
+    this.logger.debug("[INIT] Setting up resource handlers...");
     this.resourceHandlers.setupHandlers();
-    console.error("[INIT] Resource handlers set up");
+    this.logger.debug("[INIT] Resource handlers set up");
 
-    console.error("[INIT] Server initialization complete");
+    this.logger.info("[INIT] Server initialization complete");
   }
 
   /**
@@ -102,7 +109,7 @@ export class OmniMCPServer {
         this.activeProfiles.set(name, config);
       }
     } catch (error) {
-      console.error("Failed to load initial configuration:", error);
+      this.logger.error("Failed to load initial configuration:", error);
     }
   }
 
@@ -111,27 +118,27 @@ export class OmniMCPServer {
    */
   private async initializeExternalServers(): Promise<void> {
     try {
-      console.error("[EXT-INIT] Delegating external server initialization to MCPProxyManager...");
+      this.logger.debug("[EXT-INIT] Delegating external server initialization to MCPProxyManager...");
       await this.proxyManager.initializeFromYamlConfig();
 
       const connectedServers = this.proxyManager.getConnectedServers();
-      console.error(
+      this.logger.info(
         `[EXT-INIT] Successfully connected to ${connectedServers.length} external MCP servers`
       );
-      console.error(`[EXT-INIT] Connected servers:`, connectedServers);
+      this.logger.debug(`[EXT-INIT] Connected servers:`, connectedServers);
 
       // Log aggregated tools
       const aggregatedTools = this.proxyManager.getAggregatedTools();
-      console.error(
+      this.logger.info(
         `[EXT-INIT] Aggregated tools count: ${aggregatedTools.length}`
       );
       aggregatedTools.forEach((tool, i) => {
-        console.error(
+        this.logger.debug(
           `[EXT-INIT] Tool ${i + 1}: ${tool.name} - ${tool.description}`
         );
       });
     } catch (error) {
-      console.error(
+      this.logger.error(
         "[EXT-INIT] Failed to initialize external MCP servers:",
         error
       );
@@ -147,7 +154,7 @@ export class OmniMCPServer {
 
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error(
+    this.logger.info(
       "Omni MCP Hub server with CLAUDE.md support running on stdio"
     );
   }
@@ -169,6 +176,6 @@ export class OmniMCPServer {
 // Start the server
 const server = new OmniMCPServer();
 server.run().catch((error) => {
-  console.error("Server error:", error);
+  Logger.getInstance().error("Server error:", error);
   process.exit(1);
 });

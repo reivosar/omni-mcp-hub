@@ -10,6 +10,7 @@ import { FileScanner } from "../utils/file-scanner.js";
 import { YamlConfigManager } from "../config/yaml-config.js";
 import { PathResolver } from "../utils/path-resolver.js";
 import { MCPProxyManager } from "../mcp-proxy/manager.js";
+import { ILogger, SilentLogger } from "../utils/logger.js";
 
 export class ToolHandlers {
   private server: Server;
@@ -19,16 +20,19 @@ export class ToolHandlers {
   private lastAppliedProfile: string | null = null;
   private lastAppliedTime: string | null = null;
   private proxyManager?: MCPProxyManager;
+  private logger: ILogger;
 
   constructor(
     server: Server,
     claudeConfigManager: ClaudeConfigManager,
     activeProfiles: Map<string, ClaudeConfig>,
-    proxyManagerOrFileScanner?: MCPProxyManager | FileScanner
+    proxyManagerOrFileScanner?: MCPProxyManager | FileScanner,
+    logger?: ILogger
   ) {
     this.server = server;
     this.claudeConfigManager = claudeConfigManager;
     this.activeProfiles = activeProfiles;
+    this.logger = logger || new SilentLogger();
     
     const pathResolver = PathResolver.getInstance();
     const yamlConfigPath = pathResolver.getYamlConfigPath();
@@ -37,10 +41,10 @@ export class ToolHandlers {
     if (proxyManagerOrFileScanner && 'addServer' in proxyManagerOrFileScanner) {
       // New signature with MCPProxyManager
       this.proxyManager = proxyManagerOrFileScanner;
-      this.fileScanner = new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath));
+      this.fileScanner = new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath, this.logger), this.logger);
     } else {
       // Old signature with FileScanner
-      this.fileScanner = proxyManagerOrFileScanner || new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath));
+      this.fileScanner = proxyManagerOrFileScanner || new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath, this.logger), this.logger);
     }
   }
 
@@ -58,7 +62,7 @@ export class ToolHandlers {
    */
   private setupListToolsHandler(): void {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      console.error("[TOOL-HANDLER] Processing tools/list request");
+      this.logger.debug("[TOOL-HANDLER] Processing tools/list request");
       
       // Get base tools
       const baseTools = [
@@ -105,57 +109,40 @@ export class ToolHandlers {
           },
         ];
 
-      console.error(`[TOOL-HANDLER] Base tools count: ${baseTools.length}`);
+      this.logger.debug(`[TOOL-HANDLER] Base tools count: ${baseTools.length}`);
       baseTools.forEach((tool, i) => {
-        console.error(`[TOOL-HANDLER] Base tool ${i+1}: ${tool.name}`);
+        this.logger.debug(`[TOOL-HANDLER] Base tool ${i+1}: ${tool.name}`);
       });
 
       // Add proxied tools from external MCP servers
-      let aggregatedTools: Array<{
-        name: string;
-        description?: string;
-        inputSchema: {
-          type: string;
-          properties?: Record<string, unknown>;
-          required?: string[];
-        };
-      }> = [...baseTools];
-      console.error(`[TOOL-HANDLER] Checking proxy manager: ${this.proxyManager ? 'exists' : 'null'}`);
+      let aggregatedTools: any[] = [...baseTools];
+      this.logger.debug(`[TOOL-HANDLER] Checking proxy manager: ${this.proxyManager ? 'exists' : 'null'}`);
       
       if (this.proxyManager) {
-        console.error(`[TOOL-HANDLER] Getting external tools from proxy manager...`);
-        console.error(`[TOOL-HANDLER] Proxy manager connected servers:`, this.proxyManager.getConnectedServers());
+        this.logger.debug(`[TOOL-HANDLER] Getting external tools from proxy manager...`);
+        this.logger.debug(`[TOOL-HANDLER] Proxy manager connected servers:`, this.proxyManager.getConnectedServers());
         
         const externalTools = this.proxyManager.getAggregatedTools();
-        console.error(`[TOOL-HANDLER] External tools count: ${externalTools.length}`);
+        this.logger.debug(`[TOOL-HANDLER] External tools count: ${externalTools.length}`);
         
         if (externalTools.length === 0) {
-          console.error(`[TOOL-HANDLER] WARNING: No external tools found - checking proxy manager state...`);
-          console.error(`[TOOL-HANDLER] Proxy manager has ${this.proxyManager.getConnectedServers().length} connected servers`);
+          this.logger.debug(`[TOOL-HANDLER] WARNING: No external tools found - checking proxy manager state...`);
+          this.logger.debug(`[TOOL-HANDLER] Proxy manager has ${this.proxyManager.getConnectedServers().length} connected servers`);
         }
         
         externalTools.forEach((tool, i) => {
-          console.error(`[TOOL-HANDLER] External tool ${i+1}: ${tool.name} - ${tool.description}`);
+          this.logger.debug(`[TOOL-HANDLER] External tool ${i+1}: ${tool.name} - ${tool.description}`);
         });
         
-        const mappedExternalTools = externalTools.map(tool => ({
-          name: tool.name,
-          description: tool.description,
-          inputSchema: tool.inputSchema as {
-            type: string;
-            properties?: Record<string, unknown>;
-            required?: string[];
-          }
-        }));
-        aggregatedTools = [...aggregatedTools, ...mappedExternalTools];
-        console.error(`[TOOL-HANDLER] Total aggregated tools count: ${aggregatedTools.length}`);
+        aggregatedTools = [...aggregatedTools, ...externalTools];
+        this.logger.debug(`[TOOL-HANDLER] Total aggregated tools count: ${aggregatedTools.length}`);
       } else {
-        console.error(`[TOOL-HANDLER] No proxy manager available - returning base tools only`);
+        this.logger.debug(`[TOOL-HANDLER] No proxy manager available - returning base tools only`);
       }
 
-      console.error(`[TOOL-HANDLER] Final tools being returned:`);
+      this.logger.debug(`[TOOL-HANDLER] Final tools being returned:`);
       aggregatedTools.forEach((tool, i) => {
-        console.error(`[TOOL-HANDLER] Final tool ${i+1}: ${tool.name}`);
+        this.logger.debug(`[TOOL-HANDLER] Final tool ${i+1}: ${tool.name}`);
       });
 
       return {
@@ -189,7 +176,7 @@ export class ToolHandlers {
               const result = await this.proxyManager.callTool(name, args);
               return result;
             } catch (error) {
-              console.error(`Error calling proxied tool ${name}:`, error);
+              this.logger.debug(`Error calling proxied tool ${name}:`, error);
               throw error;
             }
           }
@@ -201,7 +188,7 @@ export class ToolHandlers {
   /**
    * Handle apply_claude_config tool call
    */
-  private async handleApplyClaudeConfig(args: unknown) {
+  private async handleApplyClaudeConfig(args: any) {
     // Support single string argument or normal object argument
     let filePath: string = '';
     let profileName: string | undefined;
@@ -224,7 +211,7 @@ export class ToolHandlers {
       if (!filePath) {
         const keys = Object.keys(args);
         if (keys.length > 0 && keys[0] !== 'profileName' && keys[0] !== 'autoApply') {
-          filePath = (args as Record<string, unknown>)[keys[0]] as string || '';
+          filePath = (args as any)[keys[0]] || '';
         }
       }
     }
@@ -234,8 +221,7 @@ export class ToolHandlers {
       // First check if profile is already loaded
       if (this.activeProfiles.has(profileName)) {
         const config = this.activeProfiles.get(profileName);
-        const configWithMeta = config as ClaudeConfig & { _filePath?: string };
-        const existingPath = configWithMeta._filePath;
+        const existingPath = (config as any)?._filePath;
         if (existingPath) {
           filePath = existingPath;
         }
@@ -347,17 +333,16 @@ export class ToolHandlers {
   /**
    * Handle list_claude_configs tool call
    */
-  private async handleListClaudeConfigs(_args: unknown) {
+  private async handleListClaudeConfigs(args: any) {
     try {
       // Get loaded configs
       const loadedConfigNames = Array.from(this.activeProfiles.keys());
       
       // Get all available files
       const availableFiles = await this.fileScanner.scanForClaudeFiles();
-      const loadedPaths = Array.from(this.activeProfiles.values()).map(config => {
-        const configWithMeta = config as ClaudeConfig & { _filePath?: string };
-        return configWithMeta._filePath;
-      }).filter(Boolean);
+      const loadedPaths = Array.from(this.activeProfiles.values()).map(config => 
+        (config as any)._filePath
+      ).filter(Boolean);
       
       // Separate loaded and unloaded
       const unloadedFiles = availableFiles.filter(file => 
@@ -372,14 +357,7 @@ export class ToolHandlers {
         loaded: loadedConfigNames.map(name => ({
           name,
           status: "loaded",
-          path: (() => {
-            const config = this.activeProfiles.get(name);
-            if (config) {
-              const configWithMeta = config as ClaudeConfig & { _filePath?: string };
-              return configWithMeta._filePath || "unknown";
-            }
-            return "unknown";
-          })()
+          path: (this.activeProfiles.get(name) as any)?._filePath || "unknown"
         })),
         available: unloadedFiles.map(file => ({
           path: file.path,
@@ -417,7 +395,7 @@ export class ToolHandlers {
   /**
    * Handle get_active_profile tool call - returns currently applied profile info
    */
-  private async handleGetAppliedConfig(_args: unknown) {
+  private async handleGetAppliedConfig(args: any) {
     // Track the last applied profile (we'll need to store this when apply_claude_config is called)
     const lastAppliedProfile = this.lastAppliedProfile;
     
@@ -448,10 +426,7 @@ export class ToolHandlers {
       name: lastAppliedProfile,
       title: config.title || "Untitled",
       description: config.description || "No description",
-      path: (() => {
-        const configWithMeta = config as ClaudeConfig & { _filePath?: string };
-        return configWithMeta._filePath || "unknown";
-      })(),
+      path: (config as any)._filePath || "unknown",
       appliedAt: this.lastAppliedTime || "unknown",
       sections: Object.keys(config).filter(k => !k.startsWith('_')),
     };

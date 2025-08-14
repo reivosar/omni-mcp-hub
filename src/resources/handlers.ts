@@ -8,21 +8,24 @@ import { FileScanner } from "../utils/file-scanner.js";
 import { YamlConfigManager } from "../config/yaml-config.js";
 import { PathResolver } from "../utils/path-resolver.js";
 import { MCPProxyManager } from "../mcp-proxy/manager.js";
+import { ILogger, SilentLogger } from "../utils/logger.js";
 
 export class ResourceHandlers {
   private server: Server;
   private activeProfiles: Map<string, ClaudeConfig>;
   private fileScanner: FileScanner;
   private proxyManager?: MCPProxyManager;
+  private logger: ILogger;
 
-  constructor(server: Server, activeProfiles: Map<string, ClaudeConfig>, proxyManager?: MCPProxyManager) {
+  constructor(server: Server, activeProfiles: Map<string, ClaudeConfig>, proxyManager?: MCPProxyManager, logger?: ILogger) {
     this.server = server;
     this.activeProfiles = activeProfiles;
     this.proxyManager = proxyManager;
+    this.logger = logger || new SilentLogger();
     // Use PathResolver for consistent config path resolution
     const pathResolver = PathResolver.getInstance();
     const yamlConfigPath = pathResolver.getYamlConfigPath();
-    this.fileScanner = new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath));
+    this.fileScanner = new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath, this.logger), this.logger);
   }
 
   /**
@@ -55,10 +58,7 @@ export class ResourceHandlers {
 
       // Check for auto-apply profiles
       const autoApplyProfiles = Array.from(this.activeProfiles.entries())
-        .filter(([_name, config]) => {
-          const configWithMeta = config as ClaudeConfig & { _autoApply?: boolean };
-          return configWithMeta._autoApply === true;
-        });
+        .filter(([name, config]) => (config as any)._autoApply === true);
       
       if (autoApplyProfiles.length > 0) {
         baseResources.unshift({
@@ -138,12 +138,9 @@ export class ResourceHandlers {
             };
           }
 
-        case "config://auto-apply": {
+        case "config://auto-apply":
           const autoApplyProfiles = Array.from(this.activeProfiles.entries())
-            .filter(([_name, config]) => {
-              const configWithMeta = config as ClaudeConfig & { _autoApply?: boolean };
-              return configWithMeta._autoApply === true;
-            });
+            .filter(([name, config]) => (config as any)._autoApply === true);
           
           if (autoApplyProfiles.length === 0) {
             return {
@@ -177,7 +174,6 @@ export class ResourceHandlers {
               },
             ],
           };
-        }
 
         case "config://profiles/active":
           const activeProfileNames = Array.from(this.activeProfiles.keys());
@@ -220,7 +216,7 @@ export class ResourceHandlers {
               const result = await this.proxyManager.readResource(uri);
               return result;
             } catch (error) {
-              console.error(`Error reading proxied resource ${uri}:`, error);
+              this.logger.debug(`Error reading proxied resource ${uri}:`, error);
               // Fall through to throw error
             }
           }

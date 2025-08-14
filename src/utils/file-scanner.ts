@@ -1,6 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { YamlConfig, YamlConfigManager } from '../config/yaml-config.js';
+import { ILogger, SilentLogger } from './logger.js';
 
 export interface FileInfo {
   path: string;
@@ -21,9 +22,11 @@ export interface ScanOptions {
 
 export class FileScanner {
   private yamlConfig: YamlConfigManager;
+  private logger: ILogger;
 
-  constructor(yamlConfig: YamlConfigManager) {
+  constructor(yamlConfig: YamlConfigManager, logger?: ILogger) {
     this.yamlConfig = yamlConfig;
+    this.logger = logger || new SilentLogger();
   }
 
   /**
@@ -51,10 +54,10 @@ export class FileScanner {
           if (stat.isDirectory()) {
             await this.scanDirectory(absolutePath, files, scanOptions, 0);
           }
-        } catch (_error) {
+        } catch (error) {
           // Directory doesn't exist, skip it
           if (config.logging?.verboseFileLoading) {
-            console.error(`Directory not found: ${absolutePath}`);
+            this.logger.debug(`Directory not found: ${absolutePath}`);
           }
         }
       }
@@ -62,9 +65,9 @@ export class FileScanner {
       // No includePaths configured, scan targetPath
       try {
         await this.scanDirectory(targetPath, files, scanOptions, 0);
-      } catch (_error) {
+      } catch (error) {
         if (config.logging?.verboseFileLoading) {
-          console.error(`Directory scan error: ${targetPath}`, _error);
+          this.logger.debug(`Directory scan error: ${targetPath}`, error);
         }
       }
     }
@@ -124,10 +127,10 @@ export class FileScanner {
           }
         }
       }
-    } catch (_error) {
+    } catch (error) {
       const config = this.yamlConfig.getConfig();
       if (config.logging?.verboseFileLoading) {
-        console.warn(`⚠️ Directory access error: ${dirPath}`, _error);
+        this.logger.debug(`⚠️ Directory access error: ${dirPath}`, error);
       }
     }
   }
@@ -140,7 +143,7 @@ export class FileScanner {
       const stats = await fs.stat(filePath);
       if (!stats.isFile()) return null;
 
-      // const config = this.yamlConfig.getConfig();
+      const config = this.yamlConfig.getConfig();
       const name = path.basename(filePath);
       const extension = path.extname(filePath);
       const directory = path.dirname(filePath);
@@ -161,7 +164,7 @@ export class FileScanner {
         isClaudeConfig,
         matchedPattern
       };
-    } catch (_error) {
+    } catch (error) {
       return null;
     }
   }
@@ -249,7 +252,7 @@ export class FileScanner {
         allFiles.push(...files);
       } catch (error) {
         if (config.logging?.verboseFileLoading) {
-          console.warn(`⚠️ Pattern search error: ${searchPath}`, error);
+          this.logger.debug(`⚠️ Pattern search error: ${searchPath}`, error);
         }
       }
     }

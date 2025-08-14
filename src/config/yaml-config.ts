@@ -1,10 +1,11 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-// import { fileURLToPath } from 'url';
+import { fileURLToPath } from 'url';
 import { minimatch } from 'minimatch';
+import { ILogger, SilentLogger } from '../utils/logger.js';
 
-// const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // External server configuration interface
 export interface ExternalServerConfig {
@@ -106,11 +107,13 @@ const DEFAULT_CONFIG: YamlConfig = {
 export class YamlConfigManager {
   private config: YamlConfig = DEFAULT_CONFIG;
   private configPath: string = '';
+  private logger: ILogger;
 
-  constructor(configPath?: string) {
+  constructor(configPath?: string, logger?: ILogger) {
     if (configPath) {
       this.configPath = configPath;
     }
+    this.logger = logger || new SilentLogger();
   }
 
   /**
@@ -128,13 +131,13 @@ export class YamlConfigManager {
       this.configPath = yamlPath;
       
       if (this.config.logging?.verboseFileLoading) {
-        console.log(`Loaded YAML config: ${yamlPath}`);
+        this.logger.debug(`Loaded YAML config: ${yamlPath}`);
       }
       
       return this.config;
-    } catch (error) {
+    } catch (_error) {
       if (this.config.logging?.verboseFileLoading) {
-        console.log(`YAML config not found, using defaults: ${yamlPath}`);
+        this.logger.debug(`YAML config not found, using defaults: ${yamlPath}`);
       }
       return this.config;
     }
@@ -228,7 +231,7 @@ export class YamlConfigManager {
    */
   log(level: 'debug' | 'info' | 'warn' | 'error', message: string): void {
     if (this.shouldLog(level)) {
-      console.error(`[${level.toUpperCase()}] ${message}`);
+      this.logger.debug(`[${level.toUpperCase()}] ${message}`);
     }
   }
 
@@ -258,8 +261,8 @@ export class YamlConfigManager {
   /**
    * Create a YamlConfigManager for specific config file path
    */
-  static createWithPath(configPath: string): YamlConfigManager {
-    return new YamlConfigManager(configPath);
+  static createWithPath(configPath: string, logger?: ILogger): YamlConfigManager {
+    return new YamlConfigManager(configPath, logger);
   }
 
   /**
@@ -348,7 +351,7 @@ export class YamlConfigManager {
     await fs.writeFile(savePath, yamlContent, 'utf-8');
     
     if (this.config.logging?.verboseFileLoading) {
-      console.log(`Saved YAML config: ${savePath}`);
+      this.logger.debug(`Saved YAML config: ${savePath}`);
     }
   }
 

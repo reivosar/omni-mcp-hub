@@ -8,6 +8,7 @@ import {
   CallToolResult,
   ReadResourceResult,
 } from "@modelcontextprotocol/sdk/types.js";
+import { ILogger, SilentLogger } from "../utils/logger.js";
 
 export interface ExternalServerConfig {
   name: string;
@@ -25,9 +26,11 @@ export class MCPProxyClient {
   private connected: boolean = false;
   private tools: Tool[] = [];
   private resources: Resource[] = [];
+  private logger: ILogger;
 
-  constructor(config: ExternalServerConfig) {
+  constructor(config: ExternalServerConfig, logger?: ILogger) {
     this.config = config;
+    this.logger = logger || new SilentLogger();
     this.client = new Client(
       {
         name: `omni-proxy-${config.name}`,
@@ -49,7 +52,7 @@ export class MCPProxyClient {
     const resolvedArgs = (config.args || []).map(arg => {
       if (arg.endsWith('.js') && !arg.startsWith('/')) {
         const resolved = path.resolve(process.cwd(), arg);
-        console.error(`Resolved external server arg: ${arg} -> ${resolved}`);
+        this.logger.debug(`Resolved external server arg: ${arg} -> ${resolved}`);
         return resolved;
       }
       return arg;
@@ -70,12 +73,12 @@ export class MCPProxyClient {
     try {
       await this.client.connect(this.transport);
       this.connected = true;
-      console.error(`Connected to external MCP server: ${this.config.name}`);
+      this.logger.debug(`Connected to external MCP server: ${this.config.name}`);
       
       // Fetch available tools and resources
       await this.fetchCapabilities();
     } catch (error) {
-      console.error(`Failed to connect to ${this.config.name}:`, error);
+      this.logger.debug(`Failed to connect to ${this.config.name}:`, error);
       throw error;
     }
   }
@@ -87,9 +90,9 @@ export class MCPProxyClient {
 
     try {
       await this.client.close();
-      console.error(`Disconnected from external MCP server: ${this.config.name}`);
+      this.logger.debug(`Disconnected from external MCP server: ${this.config.name}`);
     } catch (error) {
-      console.error(`Error disconnecting from ${this.config.name}:`, error);
+      this.logger.debug(`Error disconnecting from ${this.config.name}:`, error);
     } finally {
       this.connected = false;
     }
@@ -111,9 +114,9 @@ export class MCPProxyClient {
         uri: `${this.config.name}://${resource.uri}`, // Prefix URI with server name
       }));
 
-      console.error(`Loaded ${this.tools.length} tools and ${this.resources.length} resources from ${this.config.name}`);
+      this.logger.debug(`Loaded ${this.tools.length} tools and ${this.resources.length} resources from ${this.config.name}`);
     } catch (error) {
-      console.error(`Error fetching capabilities from ${this.config.name}:`, error);
+      this.logger.debug(`Error fetching capabilities from ${this.config.name}:`, error);
     }
   }
 
@@ -134,10 +137,10 @@ export class MCPProxyClient {
     const originalName = name.replace(`${this.config.name}__`, "");
     
     try {
-      const result = await this.client.callTool({ name: originalName, arguments: args as Record<string, unknown> });
+      const result = await this.client.callTool({ name: originalName, arguments: args as { [x: string]: unknown } });
       return result as CallToolResult;
     } catch (error) {
-      console.error(`Error calling tool ${originalName} on ${this.config.name}:`, error);
+      this.logger.debug(`Error calling tool ${originalName} on ${this.config.name}:`, error);
       throw error;
     }
   }
@@ -154,7 +157,7 @@ export class MCPProxyClient {
       const result = await this.client.readResource({ uri: originalUri });
       return result;
     } catch (error) {
-      console.error(`Error reading resource ${originalUri} from ${this.config.name}:`, error);
+      this.logger.debug(`Error reading resource ${originalUri} from ${this.config.name}:`, error);
       throw error;
     }
   }

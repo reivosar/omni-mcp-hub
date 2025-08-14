@@ -19,9 +19,10 @@ A universal MCP (Model Context Protocol) server for Claude Code integration with
 
 ## Quick Start
 
-**Start with a single command:**
+**Choose your setup:**
 
 ```bash
+# Run the example setup
 ./examples/start.sh
 ```
 
@@ -63,28 +64,24 @@ This automatically runs:
 
 ## Examples Directory
 
-The `examples/` directory contains pre-configured anime character behaviors and configuration templates:
+The `examples/` directory contains character behavior configurations and setup:
 
-### Available Character Behaviors
-
+**Character Behaviors:**
 - **`lum-behavior.md`**: Lum from Urusei Yatsura (auto-applied on startup)
 - **`zoro-behavior.md`**: Roronoa Zoro from One Piece  
 - **`tsundere-behavior.md`**: Classic tsundere anime character
 - **`naruto-behavior.md`**: Naruto Uzumaki from Naruto
 - **`unloaded-behavior.md`**: Test file (excluded from auto-loading)
 
-### Configuration Files
-
-- **`omni-config.yaml`**: Main configuration with auto-load settings
-- **`start.sh`**: Quick setup script
+**Configuration:**
+- **`omni-config.yaml`**: Main configuration file
+- **`start.sh`**: Setup script
 
 ### Using Character Behaviors
 
-Apply any character behavior with short names:
-
 ```bash
 # Apply different anime character personalities
-/use apply_claude_config profileName:"lum"      # Lum (already auto-loaded)
+/use apply_claude_config profileName:"lum"      # Lum (auto-loaded)
 /use apply_claude_config profileName:"zoro"     # Zoro personality
 /use apply_claude_config profileName:"tsundere" # Tsundere character
 /use apply_claude_config profileName:"naruto"   # Naruto personality

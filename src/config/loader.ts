@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ClaudeConfigManager, ClaudeConfig } from '../utils/claude-config.js';
-import { YamlConfigManager, YamlConfig } from './yaml-config.js';
+import { YamlConfigManager } from './yaml-config.js';
 import { FileScanner } from '../utils/file-scanner.js';
 import { PathResolver } from '../utils/path-resolver.js';
 
@@ -69,7 +69,7 @@ export class ConfigLoader {
       if (config.initialProfiles && Array.isArray(config.initialProfiles)) {
         await this.loadProfiles(config.initialProfiles, activeProfiles);
       }
-    } catch (error) {
+    } catch (_error) {
       // If .mcp-config.json doesn't exist, do nothing (normal operation)
     }
   }
@@ -94,9 +94,10 @@ export class ConfigLoader {
         
         // Skip already loaded profiles (check both name and file path)
         const isAlreadyLoaded = activeProfiles.has(profileName) || 
-          Array.from(activeProfiles.values()).some(config => 
-            (config as any)._filePath === fileInfo.path
-          );
+          Array.from(activeProfiles.values()).some(config => {
+            const configWithMeta = config as ClaudeConfig & { _filePath?: string };
+            return configWithMeta._filePath === fileInfo.path;
+          });
         
         if (isAlreadyLoaded) {
           const allowDuplicates = config.profileManagement?.allowDuplicateNames ?? false;
@@ -106,8 +107,9 @@ export class ConfigLoader {
         try {
           const loadedConfig = await this.claudeConfigManager.loadClaudeConfig(fileInfo.path);
           // Mark as auto-scanned (not explicitly auto-apply)
-          (loadedConfig as any)._autoScanned = true;
-          (loadedConfig as any)._filePath = fileInfo.path;
+          const configWithMeta = loadedConfig as ClaudeConfig & { _autoScanned?: boolean; _filePath?: string };
+          configWithMeta._autoScanned = true;
+          configWithMeta._filePath = fileInfo.path;
           activeProfiles.set(profileName, loadedConfig);
           
           if (this.yamlConfigManager.isVerboseProfileSwitching()) {
@@ -152,8 +154,9 @@ export class ConfigLoader {
           
           const loadedConfig = await this.claudeConfigManager.loadClaudeConfig(fullPath);
           // Mark config with autoApply flag for later use
-          (loadedConfig as any)._autoApply = profile.autoApply === true;
-          (loadedConfig as any)._filePath = fullPath;
+          const configWithMeta = loadedConfig as ClaudeConfig & { _autoApply?: boolean; _filePath?: string };
+          configWithMeta._autoApply = profile.autoApply === true;
+          configWithMeta._filePath = fullPath;
           activeProfiles.set(profile.name, loadedConfig);
           
           // If autoApply is true, apply the behavior immediately

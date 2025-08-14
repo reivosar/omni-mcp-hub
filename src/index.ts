@@ -10,7 +10,6 @@ import { BehaviorGenerator } from "./utils/behavior-generator.js";
 import { YamlConfigManager } from "./config/yaml-config.js";
 import { MCPProxyManager } from "./mcp-proxy/manager.js";
 import { PathResolver } from "./utils/path-resolver.js";
-import * as path from "path";
 
 export class OmniMCPServer {
   private server: Server;

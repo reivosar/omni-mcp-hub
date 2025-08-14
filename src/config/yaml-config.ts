@@ -1,10 +1,10 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import { fileURLToPath } from 'url';
+// import { fileURLToPath } from 'url';
 import { minimatch } from 'minimatch';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // External server configuration interface
 export interface ExternalServerConfig {
@@ -158,7 +158,7 @@ export class YamlConfigManager {
         // Check if file exists synchronously
         require('fs').accessSync(configPath);
         return configPath;
-      } catch (error) {
+      } catch (_error) {
         // File doesn't exist, continue to next path
       }
     }
@@ -290,7 +290,7 @@ export class YamlConfigManager {
         
         const regex = new RegExp(regexPattern, 'i');
         return regex.test(filePath);
-      } catch (error) {
+      } catch (_error) {
         // Fallback to simple string comparison on regex error
         return filePath.toLowerCase().includes(pattern.toLowerCase());
       }

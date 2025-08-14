@@ -55,7 +55,10 @@ export class ResourceHandlers {
 
       // Check for auto-apply profiles
       const autoApplyProfiles = Array.from(this.activeProfiles.entries())
-        .filter(([name, config]) => (config as any)._autoApply === true);
+        .filter(([_name, config]) => {
+          const configWithMeta = config as ClaudeConfig & { _autoApply?: boolean };
+          return configWithMeta._autoApply === true;
+        });
       
       if (autoApplyProfiles.length > 0) {
         baseResources.unshift({
@@ -135,9 +138,12 @@ export class ResourceHandlers {
             };
           }
 
-        case "config://auto-apply":
+        case "config://auto-apply": {
           const autoApplyProfiles = Array.from(this.activeProfiles.entries())
-            .filter(([name, config]) => (config as any)._autoApply === true);
+            .filter(([_name, config]) => {
+              const configWithMeta = config as ClaudeConfig & { _autoApply?: boolean };
+              return configWithMeta._autoApply === true;
+            });
           
           if (autoApplyProfiles.length === 0) {
             return {
@@ -171,6 +177,7 @@ export class ResourceHandlers {
               },
             ],
           };
+        }
 
         case "config://profiles/active":
           const activeProfileNames = Array.from(this.activeProfiles.keys());

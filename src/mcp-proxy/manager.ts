@@ -115,7 +115,7 @@ export class MCPProxyManager {
     return Array.from(this.aggregatedResources.values()).map(entry => entry.resource);
   }
 
-  async callTool(name: string, args: any): Promise<CallToolResult> {
+  async callTool(name: string, args: unknown): Promise<CallToolResult> {
     const entry = this.aggregatedTools.get(name);
     if (!entry) {
       throw new Error(`Tool ${name} not found in any connected MCP server`);

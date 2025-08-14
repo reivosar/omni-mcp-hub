@@ -1,6 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { spawn, ChildProcess } from "child_process";
+import { ChildProcess } from "child_process";
 import * as path from 'path';
 import {
   Tool,
@@ -125,7 +125,7 @@ export class MCPProxyClient {
     return this.resources;
   }
 
-  async callTool(name: string, args: any): Promise<CallToolResult> {
+  async callTool(name: string, args: unknown): Promise<CallToolResult> {
     if (!this.connected) {
       throw new Error(`Not connected to ${this.config.name}`);
     }
@@ -134,7 +134,7 @@ export class MCPProxyClient {
     const originalName = name.replace(`${this.config.name}__`, "");
     
     try {
-      const result = await this.client.callTool({ name: originalName, arguments: args });
+      const result = await this.client.callTool({ name: originalName, arguments: args as Record<string, unknown> });
       return result as CallToolResult;
     } catch (error) {
       console.error(`Error calling tool ${originalName} on ${this.config.name}:`, error);

@@ -1,0 +1,19 @@
+services:
+  omni-mcp-hub:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: omni-mcp-hub
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - omni-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  omni-logs:

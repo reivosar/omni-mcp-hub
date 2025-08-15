@@ -128,9 +128,10 @@ describe('ToolHandlers', () => {
       
       const result = await (toolHandlers as any).handleApplyClaudeConfig({ profileName: 'zoro' });
       
-      expect(result.content[0].text).toContain('Successfully loaded CLAUDE.md configuration');
-      expect(result.content[0].text).toContain('./examples/zoro-behavior.md');
-      expect(claudeConfigManager.loadClaudeConfig).toHaveBeenCalledWith('./examples/zoro-behavior.md');
+      // Updated expectation - profile is already loaded so it should show this message
+      expect(result.content[0].text).toContain('Profile \'zoro\' is already loaded and available');
+      // loadClaudeConfig should NOT be called since profile is already loaded
+      expect(claudeConfigManager.loadClaudeConfig).not.toHaveBeenCalled();
     });
 
     it('should handle apply_claude_config with profileName only (path discovery)', async () => {

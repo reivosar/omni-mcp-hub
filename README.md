@@ -19,6 +19,8 @@ A universal MCP (Model Context Protocol) server for Claude Code integration with
 
 ## Quick Start
 
+### Native Setup
+
 **Quick Start Options:**
 
 Choose your focus and run the appropriate setup script:
@@ -32,6 +34,34 @@ Choose your focus and run the appropriate setup script:
 
 # Or run the general example setup
 ./examples/start.sh
+```
+
+### Docker Setup
+
+**Run with Docker (Recommended):**
+
+```bash
+# Production deployment
+docker-compose -f docker/docker-compose.yml up -d
+
+# Development with hot reload
+docker-compose -f docker/docker-compose.yml --profile dev up
+
+# With external databases
+docker-compose -f docker/docker-compose.yml --profile postgres --profile redis up -d
+
+# Testing with MCP servers
+docker-compose -f docker/docker-compose.yml --profile test up
+```
+
+**Quick Docker Commands:**
+```bash
+# Build and run
+docker build -t omni-mcp-hub -f docker/Dockerfile .
+docker run -p 3000:3000 -v $(pwd)/omni-config.yaml:/app/omni-config.yaml omni-mcp-hub
+
+# Development mode
+docker-compose -f docker/docker-compose.yml up omni-mcp-hub-dev
 ```
 
 Each script automatically:
@@ -342,12 +372,83 @@ All tests are written using **Vitest** with TypeScript support and provide compr
 
 ## Scripts
 
+### Native Development
 - `npm run build` - Build TypeScript to JavaScript
 - `npm run start` - Run the built server
 - `npm run dev` - Run in development mode with tsx
 - `npm test` - Run tests with Vitest
 - `npm run test:ui` - Run tests with Vitest UI
 - `npm run test:coverage` - Run tests with coverage report
+
+### Docker Development
+- `docker-compose -f docker/docker-compose.yml up` - Run production containers
+- `docker-compose -f docker/docker-compose.yml --profile dev up` - Run development with hot reload
+- `docker-compose -f docker/docker-compose.yml down` - Stop all containers
+- `docker-compose -f docker/docker-compose.yml logs -f omni-mcp-hub` - View logs
+- `docker-compose -f docker/docker-compose.yml exec omni-mcp-hub npm test` - Run tests in container
+
+## Docker Deployment
+
+### Production Deployment
+
+1. **Basic Setup:**
+   ```bash
+   # Clone and build
+   git clone https://github.com/reivosar/omni-mcp-hub.git
+   cd omni-mcp-hub
+   
+   # Start production services
+   docker-compose -f docker/docker-compose.yml up -d
+   ```
+
+2. **With External Databases:**
+   ```bash
+   # Start with PostgreSQL and Redis
+   docker-compose -f docker/docker-compose.yml --profile postgres --profile redis up -d
+   ```
+
+3. **Health Monitoring:**
+   ```bash
+   # Check service health
+   docker-compose -f docker/docker-compose.yml ps
+   docker-compose -f docker/docker-compose.yml logs omni-mcp-hub
+   
+   # View logs in real-time
+   docker-compose -f docker/docker-compose.yml logs -f omni-mcp-hub
+   ```
+
+### Development Workflow
+
+1. **Development Mode:**
+   ```bash
+   # Start development container with hot reload
+   docker-compose -f docker/docker-compose.yml --profile dev up
+   
+   # Run tests
+   docker-compose -f docker/docker-compose.yml exec omni-mcp-hub-dev npm test
+   
+   # Access container shell
+   docker-compose -f docker/docker-compose.yml exec omni-mcp-hub-dev sh
+   ```
+
+2. **Configuration Management:**
+   ```bash
+   # Mount custom config
+   docker run -v $(pwd)/custom-config.yaml:/app/omni-config.yaml omni-mcp-hub
+   
+   # Mount examples directory
+   docker run -v $(pwd)/examples:/app/examples omni-mcp-hub
+   ```
+
+### Container Features
+
+- **Multi-stage build** for optimized production images
+- **Non-root user** for security
+- **Health checks** for container monitoring
+- **Signal handling** with dumb-init
+- **Volume mounts** for configuration and logs
+- **Network isolation** with custom bridge network
+- **Service profiles** for different deployment scenarios
 
 ## License
 

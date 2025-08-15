@@ -209,8 +209,8 @@ export class ToolHandlers {
     let autoApply: boolean = true; // Auto-apply by default
     
     if (typeof args === 'string') {
-      // Treat as filePath if string
-      filePath = args;
+      // Treat as profileName if string (common usage pattern)
+      profileName = args;
     } else if (args && typeof args === 'object') {
       const argsObj = args as { 
         filePath?: string; 
@@ -221,11 +221,17 @@ export class ToolHandlers {
       profileName = argsObj.profileName;
       autoApply = argsObj.autoApply !== undefined ? argsObj.autoApply : true;
       
-      // If filePath is empty, look for first argument
-      if (!filePath) {
+      // If filePath is empty, look for first argument value (could be profileName)
+      if (!filePath && !profileName) {
         const keys = Object.keys(args);
-        if (keys.length > 0 && keys[0] !== 'profileName' && keys[0] !== 'autoApply') {
-          filePath = (args as Record<string, unknown>)[keys[0]] as string || '';
+        if (keys.length > 0) {
+          const firstValue = (args as Record<string, unknown>)[keys[0]] as string || '';
+          if (keys[0] === 'filePath') {
+            filePath = firstValue;
+          } else {
+            // Treat first argument as profileName
+            profileName = firstValue;
+          }
         }
       }
     }
@@ -235,10 +241,48 @@ export class ToolHandlers {
       // First check if profile is already loaded
       if (this.activeProfiles.has(profileName)) {
         const config = this.activeProfiles.get(profileName);
-        const existingPath = (config as Record<string, unknown>)?._filePath as string;
-        if (existingPath) {
-          filePath = existingPath;
+        
+        // If profile is already loaded, apply it directly
+        this.lastAppliedProfile = profileName;
+        this.lastAppliedTime = new Date().toISOString();
+        
+        let responseMessages = [
+          {
+            type: "text" as const,
+            text: `Profile '${profileName}' is already loaded and available`,
+          },
+        ];
+        
+        // If auto-apply is enabled
+        if (autoApply) {
+          const behaviorInstructions = BehaviorGenerator.generateInstructions(config!);
+          responseMessages.push(
+            {
+              type: "text" as const,
+              text: `\nApplying profile '${profileName}'...`,
+            },
+            {
+              type: "text" as const,
+              text: behaviorInstructions,
+            }
+          );
+        } else {
+          responseMessages.push({
+            type: "text" as const,
+            text: `Configuration includes: ${Object.keys(config!).filter(k => !k.startsWith('_')).join(', ')}`,
+          });
         }
+        
+        return {
+          content: responseMessages,
+        };
+      }
+      
+      // If not loaded, try to find the file path
+      const existingConfig = this.activeProfiles.get(profileName);
+      const existingPath = (existingConfig as Record<string, unknown>)?._filePath as string;
+      if (existingPath) {
+        filePath = existingPath;
       }
       
       // If still no filePath, try common paths

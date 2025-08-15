@@ -29,6 +29,9 @@ Choose your focus and run the appropriate setup script:
 
 # For external MCP server integration
 ./examples/mcp/start.sh
+
+# Or run the general example setup
+./examples/start.sh
 ```
 
 Each script automatically:
@@ -72,6 +75,7 @@ The `examples/` directory is organized into two main categories:
 
 Character behaviors and CLAUDE.md configuration files:
 
+**Character Behaviors:**
 - **`lum-behavior.md`**: Lum from Urusei Yatsura (auto-applied on startup)
 - **`zoro-behavior.md`**: Roronoa Zoro from One Piece  
 - **`tsundere-behavior.md`**: Classic tsundere anime character
@@ -88,18 +92,15 @@ External MCP server integration examples:
 - **`test-server.js`**: Test MCP server for proxy functionality
 - **`README.md`**: MCP integration documentation
 
-### Configuration Files
-
-- **`omni-config.yaml`**: Main configuration with auto-load settings
-- **`start.sh`**: Quick setup script
+**Configuration:**
+- **`omni-config.yaml`**: Main configuration file
+- **`start.sh`**: Setup script
 
 ### Using Character Behaviors
 
-Apply any character behavior with short names:
-
 ```bash
 # Apply different anime character personalities
-/use apply_claude_config profileName:"lum"      # Lum (already auto-loaded)
+/use apply_claude_config profileName:"lum"      # Lum (auto-loaded)
 /use apply_claude_config profileName:"zoro"     # Zoro personality
 /use apply_claude_config profileName:"tsundere" # Tsundere character
 /use apply_claude_config profileName:"naruto"   # Naruto personality

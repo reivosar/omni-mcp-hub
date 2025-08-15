@@ -7,6 +7,7 @@ import {
 import { ToolHandlers } from "../src/tools/handlers.js";
 import { ClaudeConfigManager, ClaudeConfig } from "../src/utils/claude-config.js";
 import { FileScanner } from "../src/utils/file-scanner.js";
+import { SilentLogger } from "../src/utils/logger.js";
 
 // Mock FileScanner
 vi.mock('../src/utils/file-scanner.js');
@@ -17,12 +18,14 @@ describe('ToolHandlers', () => {
   let claudeConfigManager: ClaudeConfigManager;
   let activeProfiles: Map<string, ClaudeConfig>;
   let toolHandlers: ToolHandlers;
+  let mockLogger: SilentLogger;
 
   beforeEach(() => {
     server = new Server({ name: 'test', version: '1.0.0' }, { capabilities: { resources: {}, tools: {} } });
     claudeConfigManager = new ClaudeConfigManager();
     activeProfiles = new Map();
-    toolHandlers = new ToolHandlers(server, claudeConfigManager, activeProfiles);
+    mockLogger = new SilentLogger();
+    toolHandlers = new ToolHandlers(server, claudeConfigManager, activeProfiles, undefined, mockLogger);
   });
 
   describe('New Tool Handlers', () => {
@@ -92,10 +95,7 @@ describe('ToolHandlers', () => {
       const mockFileScanner = vi.mocked((toolHandlers as any).fileScanner);
       mockFileScanner.scanForClaudeFiles = vi.fn().mockRejectedValue(new Error('Scan failed'));
 
-      const result = await (toolHandlers as any).handleListClaudeConfigs({});
-      
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Failed to list configs');
+      await expect((toolHandlers as any).handleListClaudeConfigs({})).rejects.toThrow('Scan failed');
     });
 
     it('should handle get_applied_config with no active profile', async () => {
@@ -155,7 +155,7 @@ describe('ToolHandlers', () => {
       
       expect(result.content[0].text).toContain('Successfully loaded CLAUDE.md configuration');
       expect(claudeConfigManager.loadClaudeConfig).toHaveBeenCalledWith('test.md');
-      expect(claudeConfigManager.loadClaudeConfig).toHaveBeenCalledWith('./examples/test.md');
+      expect(claudeConfigManager.loadClaudeConfig).toHaveBeenCalledWith('./test.md');
     });
 
     it('should handle apply_claude_config with profileName only (not found)', async () => {
@@ -193,7 +193,7 @@ describe('ToolHandlers', () => {
       });
       
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Failed to load CLAUDE.md');
+      expect(result.content[0].text).toContain('An internal error occurred');
     });
 
     it('should call apply_claude_config handler with string argument', async () => {
@@ -239,9 +239,11 @@ describe('ToolHandlers', () => {
       await callToolHandler({ params: { name: 'apply_claude_config', arguments: { filePath: '/test.md' } } });
       
       // Test unknown tool
-      await expect(callToolHandler({ 
+      const result = await callToolHandler({ 
         params: { name: 'unknown_tool', arguments: {} }
-      })).rejects.toThrow('Unknown tool: unknown_tool');
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Unknown tool: unknown_tool');
       
       setRequestHandlerSpy.mockRestore();
     });

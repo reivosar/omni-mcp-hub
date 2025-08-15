@@ -1,0 +1,56 @@
+# Omni MCP Hub Configuration - Local Resources Only
+# This configuration focuses ONLY on local CLAUDE.md files and character behaviors
+
+autoLoad:
+  profiles:
+    - name: "lum"
+      path: "./lum-behavior.md"
+      autoApply: true
+    - name: "zoro"
+      path: "./zoro-behavior.md"
+      autoApply: false
+    - name: "tsundere"
+      path: "./tsundere-behavior.md"
+      autoApply: false
+    - name: "naruto"
+      path: "./naruto-behavior.md"
+      autoApply: false
+
+fileSettings:
+  configFiles:
+    claude: "CLAUDE.md"
+    behavior: "*-behavior.md"
+    custom: "*-config.md"
+  
+  includePaths:
+    - "./"
+  
+  excludePatterns:
+    - "*.tmp"
+    - "*.backup" 
+    - "*~"
+    - ".git/**"
+    - "node_modules/**"
+    - "dist/**"
+    - "unloaded-behavior.md"
+  
+  allowedExtensions:
+    - ".md"
+    - ".markdown"
+    - ".txt"
+
+directoryScanning:
+  recursive: true
+  maxDepth: 2
+  includeHidden: false
+  followSymlinks: false
+
+profileManagement:
+  allowDuplicateNames: false
+  autoNamePattern: "%filename%"
+  defaultProfile: "default"
+
+logging:
+  level: "info"
+  verboseFileLoading: true
+  verboseProfileSwitching: true

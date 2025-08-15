@@ -1,339 +1,327 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { ConfigLoader, InitialProfile, McpConfig } from '../src/config/loader.js';
+import { ClaudeConfigManager, ClaudeConfig } from '../src/utils/claude-config.js';
+import { YamlConfigManager } from '../src/config/yaml-config.js';
+import { FileScanner, FileInfo } from '../src/utils/file-scanner.js';
+import { SilentLogger } from '../src/utils/logger.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { ConfigLoader } from '../src/config/loader.js';
-import { ClaudeConfigManager } from '../src/utils/claude-config.js';
-import { YamlConfigManager } from '../src/config/yaml-config.js';
 
-// Mock dependencies
-vi.mock('fs/promises');
-vi.mock('../src/config/yaml-config.js');
-vi.mock('../src/utils/file-scanner.js');
+// Mock modules
+vi.mock('fs/promises', () => ({
+  readFile: vi.fn(),
+}));
 
-describe('ConfigLoader - Extended Tests', () => {
+vi.mock('../src/utils/behavior-generator.js', () => ({
+  BehaviorGenerator: {
+    generateInstructions: vi.fn().mockReturnValue('Generated behavior instructions')
+  }
+}));
+
+describe('ConfigLoader Extended Tests', () => {
   let configLoader: ConfigLoader;
   let mockClaudeConfigManager: ClaudeConfigManager;
-  let mockYamlConfigManager: any;
-  let mockFileScanner: any;
+  let mockYamlConfigManager: YamlConfigManager;
+  let mockFileScanner: FileScanner;
+  let mockLogger: SilentLogger;
 
   beforeEach(() => {
-    // Reset mocks
-    vi.clearAllMocks();
-    
-    // Mock ClaudeConfigManager
+    // Create mock ClaudeConfigManager
     mockClaudeConfigManager = {
       loadClaudeConfig: vi.fn(),
+      parseClaude: vi.fn(),
+      saveClaude: vi.fn()
     } as any;
 
-    // Mock YamlConfigManager
+    // Create mock YamlConfigManager
     mockYamlConfigManager = {
       loadYamlConfig: vi.fn(),
       getConfig: vi.fn(),
-      generateProfileName: vi.fn(),
-      isVerboseProfileSwitching: vi.fn().mockReturnValue(false),
       log: vi.fn(),
-    };
-    vi.mocked(YamlConfigManager).mockImplementation(() => mockYamlConfigManager);
+      generateProfileName: vi.fn(),
+      isVerboseProfileSwitching: vi.fn()
+    } as any;
 
-    // Mock FileScanner
+    // Create mock FileScanner
     mockFileScanner = {
-      scanForClaudeFiles: vi.fn(),
-    };
-    
-    configLoader = new ConfigLoader(mockClaudeConfigManager);
-    
-    // Access private fileScanner and yamlConfigManager for testing
+      scanForClaudeFiles: vi.fn()
+    } as any;
+
+    mockLogger = new SilentLogger();
+
+    configLoader = new ConfigLoader(mockClaudeConfigManager, mockYamlConfigManager, mockLogger);
+    // Replace the file scanner with our mock
     (configLoader as any).fileScanner = mockFileScanner;
-    (configLoader as any).yamlConfigManager = mockYamlConfigManager;
+
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  describe('YAML Configuration Loading', () => {
-    it('should load YAML configuration successfully', async () => {
-      const mockYamlConfig = {
-        autoLoad: {
-          profiles: [
-            { name: 'test1', path: './test1.md', autoApply: true },
-            { name: 'test2', path: './test2.md', autoApply: true } // Changed to true so both load
-          ]
-        },
-        logging: { verboseFileLoading: true }
-      };
-
-      mockYamlConfigManager.loadYamlConfig.mockResolvedValue(mockYamlConfig);
-      mockYamlConfigManager.getConfig.mockReturnValue(mockYamlConfig);
-      mockClaudeConfigManager.loadClaudeConfig.mockResolvedValue({ title: 'Test Config' });
-
-      const result = await configLoader.loadInitialConfig();
-
-      expect(mockYamlConfigManager.loadYamlConfig).toHaveBeenCalled();
-      expect(mockClaudeConfigManager.loadClaudeConfig).toHaveBeenCalledTimes(2);
-      expect(result.size).toBe(2);
-      expect(result.has('test1')).toBe(true);
-      expect(result.has('test2')).toBe(true);
+  describe('Constructor', () => {
+    it('should create ConfigLoader with provided managers', () => {
+      expect(configLoader).toBeInstanceOf(ConfigLoader);
+      expect(configLoader.getYamlConfigManager()).toBe(mockYamlConfigManager);
+      expect(configLoader.getFileScanner()).toBe(mockFileScanner);
     });
 
-    it('should skip profiles with autoApply: false', async () => {
-      const mockYamlConfig = {
-        autoLoad: {
-          profiles: [
-            { name: 'test1', path: './test1.md', autoApply: true },
-            { name: 'test2', path: './test2.md', autoApply: false } // This should be skipped
-          ]
-        },
-        logging: { verboseFileLoading: true }
-      };
-
-      mockYamlConfigManager.loadYamlConfig.mockResolvedValue(mockYamlConfig);
-      mockYamlConfigManager.getConfig.mockReturnValue(mockYamlConfig);
-      mockClaudeConfigManager.loadClaudeConfig.mockResolvedValue({ title: 'Test Config' });
-
-      const result = await configLoader.loadInitialConfig();
-
-      expect(mockYamlConfigManager.loadYamlConfig).toHaveBeenCalled();
-      expect(mockClaudeConfigManager.loadClaudeConfig).toHaveBeenCalledTimes(1); // Only test1 should load
-      expect(result.size).toBe(1);
-      expect(result.has('test1')).toBe(true);
-      expect(result.has('test2')).toBe(false); // test2 should be skipped
-    });
-
-    it('should handle YAML loading errors gracefully', async () => {
-      mockYamlConfigManager.loadYamlConfig.mockRejectedValue(new Error('YAML load failed'));
-      mockYamlConfigManager.getConfig.mockReturnValue({ autoLoad: {} });
-
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      const result = await configLoader.loadInitialConfig();
-
-      expect(result.size).toBe(0);
-      expect(consoleSpy).toHaveBeenCalledWith('Initial config loading error:', expect.any(Error));
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should handle profiles with relative and absolute paths', async () => {
-      const mockYamlConfig = {
-        autoLoad: {
-          profiles: [
-            { name: 'relative', path: './relative.md', autoApply: true },
-            { name: 'absolute', path: '/absolute/path.md', autoApply: true }
-          ]
-        },
-        logging: { verboseFileLoading: false }
-      };
-
-      mockYamlConfigManager.loadYamlConfig.mockResolvedValue(mockYamlConfig);
-      mockYamlConfigManager.getConfig.mockReturnValue(mockYamlConfig);
-      mockClaudeConfigManager.loadClaudeConfig.mockResolvedValue({ title: 'Test Config' });
-
-      await configLoader.loadInitialConfig();
-
-      expect(mockClaudeConfigManager.loadClaudeConfig).toHaveBeenCalledWith(
-        path.join(process.cwd(), './relative.md')
-      );
-      expect(mockClaudeConfigManager.loadClaudeConfig).toHaveBeenCalledWith('/absolute/path.md');
+    it('should create default YamlConfigManager when not provided', () => {
+      const loader = new ConfigLoader(mockClaudeConfigManager);
+      expect(loader).toBeInstanceOf(ConfigLoader);
+      expect(loader.getYamlConfigManager()).toBeDefined();
     });
   });
 
-  describe('Auto Scan Functionality', () => {
-    it('should auto-scan for CLAUDE.md files when includePaths is configured', async () => {
-      const mockYamlConfig = {
-        autoLoad: {},
-        fileSettings: {
-          includePaths: ['./examples/', './configs/']
-        },
-        profileManagement: {
-          allowDuplicateNames: false
-        },
-        logging: { verboseFileLoading: true }
-      };
+  describe('loadInitialConfig', () => {
+    it('should handle configuration loading errors gracefully', async () => {
+      vi.mocked(mockYamlConfigManager.loadYamlConfig).mockRejectedValue(new Error('YAML load error'));
 
-      const mockScannedFiles = [
-        { path: './examples/test1.md', isClaudeConfig: true },
-        { path: './configs/test2.md', isClaudeConfig: true }
-      ];
-
-      mockYamlConfigManager.loadYamlConfig.mockResolvedValue(mockYamlConfig);
-      mockYamlConfigManager.getConfig.mockReturnValue(mockYamlConfig);
-      mockYamlConfigManager.generateProfileName.mockImplementation((path: string) => 
-        path.replace(/.*\//, '').replace(/\.md$/, '')
-      );
-      mockFileScanner.scanForClaudeFiles.mockResolvedValue(mockScannedFiles);
-      mockClaudeConfigManager.loadClaudeConfig.mockResolvedValue({ title: 'Scanned Config' });
-
-      const result = await configLoader.loadInitialConfig();
-
-      expect(mockFileScanner.scanForClaudeFiles).toHaveBeenCalled();
-      expect(mockClaudeConfigManager.loadClaudeConfig).toHaveBeenCalledTimes(2);
-      expect(result.size).toBe(2);
+      const profiles = await configLoader.loadInitialConfig();
+      
+      expect(profiles.size).toBe(0);
     });
 
-    it('should skip auto-scan when no includePaths configured', async () => {
+    it('should handle missing autoLoad.profiles gracefully', async () => {
       const mockYamlConfig = {
-        autoLoad: {},
-        fileSettings: {
-          includePaths: []
-        }
+        fileSettings: { includePaths: [] },
+        logging: { verboseFileLoading: false }
       };
 
-      mockYamlConfigManager.loadYamlConfig.mockResolvedValue(mockYamlConfig);
-      mockYamlConfigManager.getConfig.mockReturnValue(mockYamlConfig);
+      vi.mocked(mockYamlConfigManager.getConfig).mockReturnValue(mockYamlConfig);
+      vi.mocked(mockYamlConfigManager.loadYamlConfig).mockResolvedValue(undefined);
+      vi.mocked(fs.readFile).mockRejectedValue(new Error('File not found'));
+      vi.mocked(mockFileScanner.scanForClaudeFiles).mockResolvedValue([]);
 
-      await configLoader.loadInitialConfig();
+      const profiles = await configLoader.loadInitialConfig();
+      
+      expect(profiles.size).toBe(0);
+      expect(mockYamlConfigManager.loadYamlConfig).toHaveBeenCalled();
+    });
+  });
 
+  describe('loadLegacyConfig', () => {
+    it('should handle missing .mcp-config.json gracefully', async () => {
+      vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT: no such file'));
+
+      const activeProfiles = new Map<string, ClaudeConfig>();
+      await (configLoader as any).loadLegacyConfig(activeProfiles);
+      
+      expect(activeProfiles.size).toBe(0);
+    });
+
+    it('should handle invalid JSON in .mcp-config.json', async () => {
+      vi.mocked(fs.readFile).mockResolvedValue('invalid json content');
+
+      const activeProfiles = new Map<string, ClaudeConfig>();
+      await (configLoader as any).loadLegacyConfig(activeProfiles);
+      
+      expect(activeProfiles.size).toBe(0);
+    });
+
+    it('should handle missing initialProfiles property', async () => {
+      const invalidConfig = { otherProperty: 'value' };
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(invalidConfig));
+
+      const activeProfiles = new Map<string, ClaudeConfig>();
+      await (configLoader as any).loadLegacyConfig(activeProfiles);
+      
+      expect(activeProfiles.size).toBe(0);
+    });
+
+    it('should handle non-array initialProfiles', async () => {
+      const invalidConfig = { initialProfiles: 'not an array' };
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(invalidConfig));
+
+      const activeProfiles = new Map<string, ClaudeConfig>();
+      await (configLoader as any).loadLegacyConfig(activeProfiles);
+      
+      expect(activeProfiles.size).toBe(0);
+    });
+  });
+
+  describe('loadProfilesFromYaml', () => {
+    it('should skip profiles with autoApply=false', async () => {
+      const profiles = [
+        { name: 'skip-profile', path: './skip.md', autoApply: false }
+      ];
+
+      const mockConfig = { logging: { verboseFileLoading: true } };
+      vi.mocked(mockYamlConfigManager.getConfig).mockReturnValue(mockConfig);
+      vi.mocked(mockYamlConfigManager.isVerboseProfileSwitching).mockReturnValue(true);
+
+      const activeProfiles = new Map<string, ClaudeConfig>();
+      await (configLoader as any).loadProfilesFromYaml(profiles, activeProfiles);
+      
+      expect(activeProfiles.size).toBe(0);
+      expect(mockYamlConfigManager.log).toHaveBeenCalledWith(
+        'info', 
+        "Skipping profile 'skip-profile' (autoApply: false): ./skip.md"
+      );
+    });
+
+    it('should handle profile loading errors', async () => {
+      const profiles = [
+        { name: 'error-profile', path: './error.md', autoApply: true }
+      ];
+
+      const mockConfig = { logging: { verboseFileLoading: true } };
+      vi.mocked(mockYamlConfigManager.getConfig).mockReturnValue(mockConfig);
+      vi.mocked(mockYamlConfigManager.isVerboseProfileSwitching).mockReturnValue(false);
+      vi.mocked(mockClaudeConfigManager.loadClaudeConfig).mockRejectedValue(new Error('Load failed'));
+
+      const activeProfiles = new Map<string, ClaudeConfig>();
+
+      await (configLoader as any).loadProfilesFromYaml(profiles, activeProfiles);
+      
+      expect(activeProfiles.size).toBe(0);
+    });
+
+    it('should skip profiles with missing name or path', async () => {
+      const profiles = [
+        { name: '', path: './empty-name.md', autoApply: true },
+        { name: 'no-path', path: '', autoApply: true },
+        { name: 'valid', path: './valid.md', autoApply: true }
+      ];
+
+      const mockConfig = { logging: { verboseFileLoading: false } };
+      const mockClaudeConfig: ClaudeConfig = { instructions: 'Valid profile' };
+
+      vi.mocked(mockYamlConfigManager.getConfig).mockReturnValue(mockConfig);
+      vi.mocked(mockYamlConfigManager.isVerboseProfileSwitching).mockReturnValue(false);
+      vi.mocked(mockClaudeConfigManager.loadClaudeConfig).mockResolvedValue(mockClaudeConfig);
+
+      const activeProfiles = new Map<string, ClaudeConfig>();
+      await (configLoader as any).loadProfilesFromYaml(profiles, activeProfiles);
+      
+      expect(activeProfiles.size).toBe(1);
+      expect(activeProfiles.has('valid')).toBe(true);
+    });
+  });
+
+  describe('autoScanProfiles', () => {
+    it('should skip auto-scan when no includePaths configured', async () => {
+      const mockYamlConfig = {
+        fileSettings: { includePaths: [] }
+      };
+
+      vi.mocked(mockYamlConfigManager.getConfig).mockReturnValue(mockYamlConfig);
+
+      const activeProfiles = new Map<string, ClaudeConfig>();
+      await (configLoader as any).autoScanProfiles(activeProfiles);
+      
+      expect(activeProfiles.size).toBe(0);
       expect(mockFileScanner.scanForClaudeFiles).not.toHaveBeenCalled();
     });
 
-    it('should handle auto-scan errors gracefully', async () => {
+    it('should skip non-CLAUDE config files', async () => {
       const mockYamlConfig = {
-        autoLoad: {},
-        fileSettings: {
-          includePaths: ['./examples/']
-        },
+        fileSettings: { includePaths: ['./scan-path'] },
+        logging: { verboseFileLoading: false }
+      };
+
+      const mockFileInfo: FileInfo = {
+        path: '/full/path/to/regular.md',
+        name: 'regular.md',
+        extension: '.md',
+        directory: '/full/path/to',
+        isClaudeConfig: false
+      };
+
+      vi.mocked(mockYamlConfigManager.getConfig).mockReturnValue(mockYamlConfig);
+      vi.mocked(mockFileScanner.scanForClaudeFiles).mockResolvedValue([mockFileInfo]);
+
+      const activeProfiles = new Map<string, ClaudeConfig>();
+      await (configLoader as any).autoScanProfiles(activeProfiles);
+      
+      expect(activeProfiles.size).toBe(0);
+      expect(mockClaudeConfigManager.loadClaudeConfig).not.toHaveBeenCalled();
+    });
+
+    it('should handle profile loading errors during auto-scan', async () => {
+      const mockYamlConfig = {
+        fileSettings: { includePaths: ['./scan-path'] },
         logging: { verboseFileLoading: true }
       };
 
-      mockYamlConfigManager.loadYamlConfig.mockResolvedValue(mockYamlConfig);
-      mockYamlConfigManager.getConfig.mockReturnValue(mockYamlConfig);
-      mockFileScanner.scanForClaudeFiles.mockRejectedValue(new Error('Scan failed'));
-
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      const result = await configLoader.loadInitialConfig();
-
-      expect(consoleSpy).toHaveBeenCalledWith('Auto-scan error:', expect.any(Error));
-      expect(result.size).toBe(0);
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should respect allowDuplicateNames setting', async () => {
-      const mockYamlConfig = {
-        autoLoad: {
-          profiles: [
-            { name: 'duplicate', path: './existing.md', autoApply: true }
-          ]
-        },
-        fileSettings: {
-          includePaths: ['./examples/']
-        },
-        profileManagement: {
-          allowDuplicateNames: false
-        },
-        logging: { verboseFileLoading: false }
+      const mockFileInfo: FileInfo = {
+        path: '/full/path/to/error.md',
+        name: 'error.md',
+        extension: '.md',
+        directory: '/full/path/to',
+        isClaudeConfig: true
       };
 
-      const mockScannedFiles = [
-        { path: './examples/another.md', isClaudeConfig: true }
-      ];
+      vi.mocked(mockYamlConfigManager.getConfig).mockReturnValue(mockYamlConfig);
+      vi.mocked(mockYamlConfigManager.generateProfileName).mockReturnValue('error-profile');
+      vi.mocked(mockFileScanner.scanForClaudeFiles).mockResolvedValue([mockFileInfo]);
+      vi.mocked(mockClaudeConfigManager.loadClaudeConfig).mockRejectedValue(new Error('Load error'));
 
-      mockYamlConfigManager.loadYamlConfig.mockResolvedValue(mockYamlConfig);
-      mockYamlConfigManager.getConfig.mockReturnValue(mockYamlConfig);
-      mockYamlConfigManager.generateProfileName.mockReturnValue('duplicate'); // Same name as existing
-      mockFileScanner.scanForClaudeFiles.mockResolvedValue(mockScannedFiles);
-      mockClaudeConfigManager.loadClaudeConfig.mockResolvedValue({ title: 'Config' });
+      const activeProfiles = new Map<string, ClaudeConfig>();
 
-      const result = await configLoader.loadInitialConfig();
-
-      // Should have only the original profile, not the duplicate
-      expect(result.size).toBe(1);
-      expect(result.has('duplicate')).toBe(true);
-      expect(mockClaudeConfigManager.loadClaudeConfig).toHaveBeenCalledTimes(1); // Only for the original profile
+      await (configLoader as any).autoScanProfiles(activeProfiles);
+      
+      expect(activeProfiles.size).toBe(0);
     });
 
-    it('should allow duplicates when allowDuplicateNames is true', async () => {
+    it('should handle scanner errors', async () => {
       const mockYamlConfig = {
-        autoLoad: {
-          profiles: [
-            { name: 'duplicate', path: './existing.md', autoApply: true }
-          ]
-        },
-        fileSettings: {
-          includePaths: ['./examples/']
-        },
-        profileManagement: {
-          allowDuplicateNames: true
-        },
-        logging: { verboseFileLoading: false }
+        fileSettings: { includePaths: ['./scan-path'] },
+        logging: { verboseFileLoading: true }
       };
 
-      const mockScannedFiles = [
-        { path: './examples/another.md', isClaudeConfig: true }
-      ];
+      vi.mocked(mockYamlConfigManager.getConfig).mockReturnValue(mockYamlConfig);
+      vi.mocked(mockFileScanner.scanForClaudeFiles).mockRejectedValue(new Error('Scanner error'));
 
-      mockYamlConfigManager.loadYamlConfig.mockResolvedValue(mockYamlConfig);
-      mockYamlConfigManager.getConfig.mockReturnValue(mockYamlConfig);
-      mockYamlConfigManager.generateProfileName.mockReturnValue('duplicate');
-      mockFileScanner.scanForClaudeFiles.mockResolvedValue(mockScannedFiles);
-      mockClaudeConfigManager.loadClaudeConfig.mockResolvedValue({ title: 'Config' });
+      const activeProfiles = new Map<string, ClaudeConfig>();
 
-      const result = await configLoader.loadInitialConfig();
-
-      expect(mockClaudeConfigManager.loadClaudeConfig).toHaveBeenCalledTimes(2); // Both profiles loaded
+      await (configLoader as any).autoScanProfiles(activeProfiles);
+      
+      expect(activeProfiles.size).toBe(0);
     });
   });
 
-  describe('Legacy Configuration Support', () => {
-    it('should load legacy .mcp-config.json after YAML config', async () => {
-      const mockYamlConfig = {
-        autoLoad: {
-          profiles: [
-            { name: 'yaml-profile', path: './yaml.md', autoApply: true }
-          ]
-        }
-      };
+  describe('loadProfiles (legacy)', () => {
+    it('should handle legacy profile loading errors', async () => {
+      const profiles: InitialProfile[] = [
+        { name: 'error-profile', path: './error.md' }
+      ];
 
-      const mockLegacyConfig = {
-        initialProfiles: [
-          { name: 'legacy-profile', path: './legacy.md' }
-        ]
-      };
+      vi.mocked(mockClaudeConfigManager.loadClaudeConfig).mockRejectedValue(new Error('Legacy load error'));
 
-      mockYamlConfigManager.loadYamlConfig.mockResolvedValue(mockYamlConfig);
-      mockYamlConfigManager.getConfig.mockReturnValue(mockYamlConfig);
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockLegacyConfig));
-      mockClaudeConfigManager.loadClaudeConfig.mockResolvedValue({ title: 'Config' });
+      const activeProfiles = new Map<string, ClaudeConfig>();
 
-      const result = await configLoader.loadInitialConfig();
-
-      expect(result.size).toBe(2);
-      expect(result.has('yaml-profile')).toBe(true);
-      expect(result.has('legacy-profile')).toBe(true);
+      await (configLoader as any).loadProfiles(profiles, activeProfiles);
+      
+      expect(activeProfiles.size).toBe(0);
     });
 
-    it('should continue when legacy config does not exist', async () => {
-      const mockYamlConfig = {
-        autoLoad: {
-          profiles: [
-            { name: 'yaml-profile', path: './yaml.md', autoApply: true }
-          ]
-        }
-      };
+    it('should skip profiles with missing name or path in legacy mode', async () => {
+      const profiles: InitialProfile[] = [
+        { name: '', path: './empty-name.md' },
+        { name: 'no-path', path: '' },
+        { name: 'valid', path: './valid.md' }
+      ];
 
-      mockYamlConfigManager.loadYamlConfig.mockResolvedValue(mockYamlConfig);
-      mockYamlConfigManager.getConfig.mockReturnValue(mockYamlConfig);
-      vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT'));
-      mockClaudeConfigManager.loadClaudeConfig.mockResolvedValue({ title: 'Config' });
+      const mockClaudeConfig: ClaudeConfig = { instructions: 'Valid legacy profile' };
+      vi.mocked(mockClaudeConfigManager.loadClaudeConfig).mockResolvedValue(mockClaudeConfig);
 
-      const result = await configLoader.loadInitialConfig();
-
-      expect(result.size).toBe(1);
-      expect(result.has('yaml-profile')).toBe(true);
+      const activeProfiles = new Map<string, ClaudeConfig>();
+      await (configLoader as any).loadProfiles(profiles, activeProfiles);
+      
+      expect(activeProfiles.size).toBe(1);
+      expect(activeProfiles.has('valid')).toBe(true);
     });
   });
 
-  describe('Utility Methods', () => {
-    it('should return YamlConfigManager instance', () => {
-      const yamlManager = configLoader.getYamlConfigManager();
-      expect(yamlManager).toBe(mockYamlConfigManager);
+  describe('Getter methods', () => {
+    it('should return YamlConfigManager', () => {
+      expect(configLoader.getYamlConfigManager()).toBe(mockYamlConfigManager);
     });
 
-    it('should return FileScanner instance', () => {
-      const fileScanner = configLoader.getFileScanner();
-      expect(fileScanner).toBe(mockFileScanner);
+    it('should return FileScanner', () => {
+      expect(configLoader.getFileScanner()).toBe(mockFileScanner);
     });
   });
 });

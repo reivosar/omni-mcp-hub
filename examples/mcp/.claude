@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "omni-mcp-hub": {
+      "command": "node",
+      "args": [
+        "../../dist/index.js"
+      ],
+      "description": "Omni MCP Hub - External MCP Integration"
+    }
+  }
+}

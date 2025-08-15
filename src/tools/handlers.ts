@@ -8,6 +8,10 @@ import { ClaudeConfigManager, ClaudeConfig } from "../utils/claude-config.js";
 import { BehaviorGenerator } from "../utils/behavior-generator.js";
 import { FileScanner } from "../utils/file-scanner.js";
 import { YamlConfigManager } from "../config/yaml-config.js";
+import { PathResolver } from "../utils/path-resolver.js";
+import { MCPProxyManager } from "../mcp-proxy/manager.js";
+import { ILogger, SilentLogger } from "../utils/logger.js";
+import { ErrorHandler, createStandardErrorResponse } from "../utils/error-handler.js";
 
 export class ToolHandlers {
   private server: Server;
@@ -16,21 +20,37 @@ export class ToolHandlers {
   private fileScanner: FileScanner;
   private lastAppliedProfile: string | null = null;
   private lastAppliedTime: string | null = null;
+  private proxyManager?: MCPProxyManager;
+  private logger: ILogger;
+  private errorHandler: ErrorHandler;
 
   constructor(
     server: Server,
     claudeConfigManager: ClaudeConfigManager,
     activeProfiles: Map<string, ClaudeConfig>,
-    fileScanner?: FileScanner
+    proxyManagerOrFileScanner?: MCPProxyManager | FileScanner,
+    logger?: ILogger
   ) {
     this.server = server;
     this.claudeConfigManager = claudeConfigManager;
     this.activeProfiles = activeProfiles;
-    // Determine correct path based on working directory
-    const isInExamplesDir = process.cwd().endsWith('/examples');
-    const yamlConfigPath = isInExamplesDir ? './omni-config.yaml' : './examples/omni-config.yaml';
-    this.fileScanner = fileScanner || new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath));
+    this.logger = logger || new SilentLogger();
+    this.errorHandler = ErrorHandler.getInstance(this.logger);
+    
+    const pathResolver = PathResolver.getInstance();
+    const yamlConfigPath = pathResolver.getYamlConfigPath();
+    
+    // Handle both old and new constructor signatures
+    if (proxyManagerOrFileScanner && 'addServer' in proxyManagerOrFileScanner) {
+      // New signature with MCPProxyManager
+      this.proxyManager = proxyManagerOrFileScanner;
+      this.fileScanner = new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath, this.logger), this.logger);
+    } else {
+      // Old signature with FileScanner
+      this.fileScanner = proxyManagerOrFileScanner || new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath, this.logger), this.logger);
+    }
   }
+
 
   /**
    * Setup all tool handlers
@@ -45,9 +65,11 @@ export class ToolHandlers {
    */
   private setupListToolsHandler(): void {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      return {
-        tools: [
-          // CLAUDE.md management tools
+      this.logger.debug("[TOOL-HANDLER] Processing tools/list request");
+      
+      // Get base tools
+      const baseTools = [
+        // CLAUDE.md management tools
           {
             name: "apply_claude_config",
             description: "Load and activate a CLAUDE.md configuration file",
@@ -88,7 +110,46 @@ export class ToolHandlers {
               required: [],
             },
           },
-        ],
+        ];
+
+      this.logger.debug(`[TOOL-HANDLER] Base tools count: ${baseTools.length}`);
+      baseTools.forEach((tool, i) => {
+        this.logger.debug(`[TOOL-HANDLER] Base tool ${i+1}: ${tool.name}`);
+      });
+
+      // Add proxied tools from external MCP servers
+      let aggregatedTools: unknown[] = [...baseTools];
+      this.logger.debug(`[TOOL-HANDLER] Checking proxy manager: ${this.proxyManager ? 'exists' : 'null'}`);
+      
+      if (this.proxyManager) {
+        this.logger.debug(`[TOOL-HANDLER] Getting external tools from proxy manager...`);
+        this.logger.debug(`[TOOL-HANDLER] Proxy manager connected servers:`, this.proxyManager.getConnectedServers());
+        
+        const externalTools = this.proxyManager.getAggregatedTools();
+        this.logger.debug(`[TOOL-HANDLER] External tools count: ${externalTools.length}`);
+        
+        if (externalTools.length === 0) {
+          this.logger.debug(`[TOOL-HANDLER] WARNING: No external tools found - checking proxy manager state...`);
+          this.logger.debug(`[TOOL-HANDLER] Proxy manager has ${this.proxyManager.getConnectedServers().length} connected servers`);
+        }
+        
+        externalTools.forEach((tool, i) => {
+          this.logger.debug(`[TOOL-HANDLER] External tool ${i+1}: ${tool.name} - ${tool.description}`);
+        });
+        
+        aggregatedTools = [...aggregatedTools, ...externalTools];
+        this.logger.debug(`[TOOL-HANDLER] Total aggregated tools count: ${aggregatedTools.length}`);
+      } else {
+        this.logger.debug(`[TOOL-HANDLER] No proxy manager available - returning base tools only`);
+      }
+
+      this.logger.debug(`[TOOL-HANDLER] Final tools being returned:`);
+      aggregatedTools.forEach((tool, i) => {
+        this.logger.debug(`[TOOL-HANDLER] Final tool ${i+1}: ${(tool as Record<string, unknown>).name}`);
+      });
+
+      return {
+        tools: aggregatedTools,
       };
     });
   }
@@ -112,7 +173,18 @@ export class ToolHandlers {
           return this.handleGetAppliedConfig(args);
 
         default:
-          throw new Error(`Unknown tool: ${name}`);
+          // Check if it's a proxied tool from external MCP server
+          if (this.proxyManager) {
+            return this.errorHandler.wrapToolCall(
+              () => this.proxyManager!.callTool(name, args),
+              {
+                operation: 'proxy_tool_call',
+                toolName: name,
+                args,
+              }
+            );
+          }
+          return createStandardErrorResponse(`Unknown tool: ${name}`);
       }
     });
   }
@@ -120,7 +192,17 @@ export class ToolHandlers {
   /**
    * Handle apply_claude_config tool call
    */
-  private async handleApplyClaudeConfig(args: any) {
+  private async handleApplyClaudeConfig(args: unknown) {
+    return this.errorHandler.wrapToolCall(
+      () => this.doHandleApplyClaudeConfig(args),
+      {
+        operation: 'apply_claude_config',
+        args,
+      }
+    );
+  }
+
+  private async doHandleApplyClaudeConfig(args: unknown) {
     // Support single string argument or normal object argument
     let filePath: string = '';
     let profileName: string | undefined;
@@ -143,7 +225,7 @@ export class ToolHandlers {
       if (!filePath) {
         const keys = Object.keys(args);
         if (keys.length > 0 && keys[0] !== 'profileName' && keys[0] !== 'autoApply') {
-          filePath = (args as any)[keys[0]] || '';
+          filePath = (args as Record<string, unknown>)[keys[0]] as string || '';
         }
       }
     }
@@ -153,7 +235,7 @@ export class ToolHandlers {
       // First check if profile is already loaded
       if (this.activeProfiles.has(profileName)) {
         const config = this.activeProfiles.get(profileName);
-        const existingPath = (config as any)?._filePath;
+        const existingPath = (config as Record<string, unknown>)?._filePath as string;
         if (existingPath) {
           filePath = existingPath;
         }
@@ -161,15 +243,8 @@ export class ToolHandlers {
       
       // If still no filePath, try common paths
       if (!filePath) {
-        const possiblePaths = [
-          `${profileName}.md`,
-          `./examples/${profileName}.md`,
-          `./examples/${profileName}`,
-          `./${profileName}.md`,
-          `./${profileName}`,
-          `${profileName}-behavior.md`,
-          `./examples/${profileName}-behavior.md`
-        ];
+        const pathResolver = PathResolver.getInstance();
+        const possiblePaths = pathResolver.generateProfilePaths(profileName);
         
         for (const possiblePath of possiblePaths) {
           try {
@@ -184,92 +259,67 @@ export class ToolHandlers {
     }
     
     if (!filePath) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `File path is required`,
-          },
-        ],
-        isError: true,
-      };
+      return createStandardErrorResponse('File path is required');
     }
     
-    try {
-      // Try to resolve file path if it's just a name without extension
-      let resolvedFilePath = filePath;
-      if (!path.extname(filePath) && !filePath.includes('/')) {
-        // Try common patterns for profile names
-        const possiblePaths = [
-          `${filePath}.md`,
-          `./examples/${filePath}.md`,
-          `./examples/${filePath}`,
-          `./${filePath}.md`,
-          `./${filePath}`
-        ];
-        
-        for (const possiblePath of possiblePaths) {
-          try {
-            await this.claudeConfigManager.loadClaudeConfig(possiblePath);
-            resolvedFilePath = possiblePath;
-            break;
-          } catch {
-            // Continue to next path
-          }
+    // Try to resolve file path if it's just a name without extension
+    let resolvedFilePath = filePath;
+    if (!path.extname(filePath) && !filePath.includes('/')) {
+      // Try common patterns for profile names
+      const pathResolver = PathResolver.getInstance();
+      const possiblePaths = pathResolver.generateFilePaths(filePath);
+      
+      for (const possiblePath of possiblePaths) {
+        try {
+          await this.claudeConfigManager.loadClaudeConfig(possiblePath);
+          resolvedFilePath = possiblePath;
+          break;
+        } catch {
+          // Continue to next path
         }
       }
-      
-      const config = await this.claudeConfigManager.loadClaudeConfig(resolvedFilePath);
-      // Auto-generate profile name from filename (without extension) or use default
-      const yamlConfigManager = new YamlConfigManager();
-      const autoProfileName = profileName || path.basename(resolvedFilePath, path.extname(resolvedFilePath)) || yamlConfigManager.getDefaultProfile();
-      this.activeProfiles.set(autoProfileName, config);
-      
-      // Track the last applied profile
-      this.lastAppliedProfile = autoProfileName;
-      this.lastAppliedTime = new Date().toISOString();
-      
-      let responseMessages = [
+    }
+    
+    const config = await this.claudeConfigManager.loadClaudeConfig(resolvedFilePath);
+    // Auto-generate profile name from filename (without extension) or use default
+    const yamlConfigManager = new YamlConfigManager();
+    const autoProfileName = profileName || path.basename(resolvedFilePath, path.extname(resolvedFilePath)) || yamlConfigManager.getDefaultProfile();
+    this.activeProfiles.set(autoProfileName, config);
+    
+    // Track the last applied profile
+    this.lastAppliedProfile = autoProfileName;
+    this.lastAppliedTime = new Date().toISOString();
+    
+    let responseMessages = [
+      {
+        type: "text" as const,
+        text: `Successfully loaded CLAUDE.md configuration from ${resolvedFilePath} as profile '${autoProfileName}'`,
+      },
+    ];
+    
+    // If auto-apply is enabled
+    if (autoApply) {
+      const behaviorInstructions = BehaviorGenerator.generateInstructions(config);
+      responseMessages.push(
         {
           type: "text" as const,
-          text: `Successfully loaded CLAUDE.md configuration from ${resolvedFilePath} as profile '${autoProfileName}'`,
+          text: `\nAutomatically applying profile '${autoProfileName}'...`,
         },
-      ];
-      
-      // If auto-apply is enabled
-      if (autoApply) {
-        const behaviorInstructions = BehaviorGenerator.generateInstructions(config);
-        responseMessages.push(
-          {
-            type: "text" as const,
-            text: `\nAutomatically applying profile '${autoProfileName}'...`,
-          },
-          {
-            type: "text" as const,
-            text: behaviorInstructions,
-          }
-        );
-      } else {
-        responseMessages.push({
+        {
           type: "text" as const,
-          text: `Configuration includes: ${Object.keys(config).filter(k => !k.startsWith('_')).join(', ')}`,
-        });
-      }
-      
-      return {
-        content: responseMessages,
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Failed to load CLAUDE.md: ${error}`,
-          },
-        ],
-        isError: true,
-      };
+          text: behaviorInstructions,
+        }
+      );
+    } else {
+      responseMessages.push({
+        type: "text" as const,
+        text: `Configuration includes: ${Object.keys(config).filter(k => !k.startsWith('_')).join(', ')}`,
+      });
     }
+    
+    return {
+      content: responseMessages,
+    };
   }
 
 
@@ -277,15 +327,18 @@ export class ToolHandlers {
   /**
    * Handle list_claude_configs tool call
    */
-  private async handleListClaudeConfigs(args: any) {
-    try {
+  private async handleListClaudeConfigs(args: unknown) {
+    return this.doHandleListClaudeConfigs(args);
+  }
+
+  private async doHandleListClaudeConfigs(_args: unknown) {
       // Get loaded configs
       const loadedConfigNames = Array.from(this.activeProfiles.keys());
       
       // Get all available files
       const availableFiles = await this.fileScanner.scanForClaudeFiles();
       const loadedPaths = Array.from(this.activeProfiles.values()).map(config => 
-        (config as any)._filePath
+        (config as Record<string, unknown>)._filePath as string
       ).filter(Boolean);
       
       // Separate loaded and unloaded
@@ -301,7 +354,7 @@ export class ToolHandlers {
         loaded: loadedConfigNames.map(name => ({
           name,
           status: "loaded",
-          path: (this.activeProfiles.get(name) as any)?._filePath || "unknown"
+          path: (this.activeProfiles.get(name) as Record<string, unknown>)?._filePath as string || "unknown"
         })),
         available: unloadedFiles.map(file => ({
           path: file.path,
@@ -315,31 +368,24 @@ export class ToolHandlers {
         }
       };
       
-      return {
-        content: [
-          {
-            type: "text",
-            text: `CLAUDE.md configs:\n\n${JSON.stringify(result, null, 2)}`,
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Failed to list configs: ${error}`,
-          },
-        ],
-        isError: true,
-      };
-    }
+    return {
+      content: [
+        {
+          type: "text",
+          text: `CLAUDE.md configs:\n\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+    };
   }
   
   /**
    * Handle get_active_profile tool call - returns currently applied profile info
    */
-  private async handleGetAppliedConfig(args: any) {
+  private async handleGetAppliedConfig(args: unknown) {
+    return this.doHandleGetAppliedConfig(args);
+  }
+
+  private async doHandleGetAppliedConfig(_args: unknown) {
     // Track the last applied profile (we'll need to store this when apply_claude_config is called)
     const lastAppliedProfile = this.lastAppliedProfile;
     
@@ -370,7 +416,7 @@ export class ToolHandlers {
       name: lastAppliedProfile,
       title: config.title || "Untitled",
       description: config.description || "No description",
-      path: (config as any)._filePath || "unknown",
+      path: (config as Record<string, unknown>)._filePath as string || "unknown",
       appliedAt: this.lastAppliedTime || "unknown",
       sections: Object.keys(config).filter(k => !k.startsWith('_')),
     };

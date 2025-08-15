@@ -33,8 +33,8 @@ describe('Integration Tests', () => {
         'tsconfig.json',
         'src/index.ts',
         'src/utils/claude-config.ts',
-        'examples/start.sh',
-        'examples/lum-behavior.md'
+        'examples/local-resources/start.sh',
+        'examples/local-resources/lum-behavior.md'
       ];
 
       for (const file of requiredFiles) {
@@ -81,8 +81,8 @@ describe('Integration Tests', () => {
       expect(tsconfig.compilerOptions.module).toBeTruthy();
     });
 
-    it('should have valid omni-config.yaml in examples', async () => {
-      const yamlConfigPath = path.join(rootDir, 'examples/omni-config.yaml');
+    it('should have valid omni-config.yaml in local-resources', async () => {
+      const yamlConfigPath = path.join(rootDir, 'examples/local-resources/omni-config.yaml');
       const content = await fs.readFile(yamlConfigPath, 'utf-8');
       
       // Should be valid YAML and have expected structure
@@ -94,15 +94,15 @@ describe('Integration Tests', () => {
 
   describe('Example Files', () => {
     it('should have valid example configuration files', async () => {
-      const examplesDir = path.join(rootDir, 'examples');
-      const files = await fs.readdir(examplesDir);
+      const localResourcesDir = path.join(rootDir, 'examples/local-resources');
+      const files = await fs.readdir(localResourcesDir);
       
-      const mdFiles = files.filter(file => file.endsWith('.md') && file !== 'README-MCP-SETUP.md');
+      const mdFiles = files.filter(file => file.endsWith('.md') && file !== 'README.md');
       expect(mdFiles.length).toBeGreaterThan(0);
 
       // Check if each .md file is in valid CLAUDE.md format
       for (const file of mdFiles) {
-        const filePath = path.join(examplesDir, file);
+        const filePath = path.join(localResourcesDir, file);
         const content = await fs.readFile(filePath, 'utf-8');
 
         expect(content).toContain('# Instructions');
@@ -114,7 +114,7 @@ describe('Integration Tests', () => {
     });
 
     it('should have executable start script', async () => {
-      const startScript = path.join(rootDir, 'examples/start.sh');
+      const startScript = path.join(rootDir, 'examples/local-resources/start.sh');
       const stats = await fs.stat(startScript);
       
       // Verify executable permissions (Unix systems only)

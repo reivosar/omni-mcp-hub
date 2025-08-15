@@ -3,8 +3,18 @@ import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { fileURLToPath } from 'url';
 import { minimatch } from 'minimatch';
+import { ILogger, SilentLogger } from '../utils/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// External server configuration interface
+export interface ExternalServerConfig {
+  name: string;
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+  description?: string;
+}
 
 // YAML configuration file type definitions
 export interface YamlConfig {
@@ -41,6 +51,15 @@ export interface YamlConfig {
     verboseFileLoading?: boolean;
     verboseProfileSwitching?: boolean;
   };
+  externalServers?: {
+    enabled?: boolean;
+    servers?: ExternalServerConfig[];
+    autoConnect?: boolean;
+    retry?: {
+      maxAttempts?: number;
+      delayMs?: number;
+    };
+  };
 }
 
 // Default configuration
@@ -54,7 +73,7 @@ const DEFAULT_CONFIG: YamlConfig = {
       behavior: "*-behavior.md",
       custom: "*-config.md"
     },
-    includePaths: ["./examples/", "./configs/", "./profiles/"],
+    includePaths: ["./configs/", "./profiles/"],
     excludePatterns: ["*.tmp", "*.backup", "*~", ".git/**", "node_modules/**", "dist/**"],
     allowedExtensions: [".md", ".markdown", ".txt"]
   },
@@ -73,17 +92,28 @@ const DEFAULT_CONFIG: YamlConfig = {
     level: "info",
     verboseFileLoading: true,
     verboseProfileSwitching: false
+  },
+  externalServers: {
+    enabled: true,
+    servers: [],
+    autoConnect: true,
+    retry: {
+      maxAttempts: 3,
+      delayMs: 1000
+    }
   }
 };
 
 export class YamlConfigManager {
   private config: YamlConfig = DEFAULT_CONFIG;
   private configPath: string = '';
+  private logger: ILogger;
 
-  constructor(configPath?: string) {
+  constructor(configPath?: string, logger?: ILogger) {
     if (configPath) {
       this.configPath = configPath;
     }
+    this.logger = logger || new SilentLogger();
   }
 
   /**
@@ -101,13 +131,13 @@ export class YamlConfigManager {
       this.configPath = yamlPath;
       
       if (this.config.logging?.verboseFileLoading) {
-        console.log(`Loaded YAML config: ${yamlPath}`);
+        this.logger.debug(`Loaded YAML config: ${yamlPath}`);
       }
       
       return this.config;
-    } catch (error) {
+    } catch (_error) {
       if (this.config.logging?.verboseFileLoading) {
-        console.log(`YAML config not found, using defaults: ${yamlPath}`);
+        this.logger.debug(`YAML config not found, using defaults: ${yamlPath}`);
       }
       return this.config;
     }
@@ -117,26 +147,7 @@ export class YamlConfigManager {
    * Auto-detect configuration file path
    */
   private findYamlConfigFile(): string {
-    const possiblePaths = [
-      // Look in current working directory first
-      path.join(process.cwd(), 'omni-config.yaml'),
-      // Look in examples directory (for development/testing)
-      path.join(process.cwd(), 'examples', 'omni-config.yaml'),
-      // Look in parent directory's examples folder
-      path.join(process.cwd(), '..', 'examples', 'omni-config.yaml')
-    ];
-    
-    for (const configPath of possiblePaths) {
-      try {
-        // Check if file exists synchronously
-        require('fs').accessSync(configPath);
-        return configPath;
-      } catch (error) {
-        // File doesn't exist, continue to next path
-      }
-    }
-    
-    // Return default path if no config file found
+    // Always use examples/mcp directory
     return path.join(process.cwd(), 'omni-config.yaml');
   }
 
@@ -173,6 +184,10 @@ export class YamlConfigManager {
       merged.logging = { ...defaultConfig.logging, ...userConfig.logging };
     }
 
+    if (userConfig.externalServers) {
+      merged.externalServers = { ...defaultConfig.externalServers, ...userConfig.externalServers };
+    }
+
     return merged;
   }
 
@@ -197,7 +212,7 @@ export class YamlConfigManager {
    */
   log(level: 'debug' | 'info' | 'warn' | 'error', message: string): void {
     if (this.shouldLog(level)) {
-      console.error(`[${level.toUpperCase()}] ${message}`);
+      this.logger.debug(`[${level.toUpperCase()}] ${message}`);
     }
   }
 
@@ -227,8 +242,8 @@ export class YamlConfigManager {
   /**
    * Create a YamlConfigManager for specific config file path
    */
-  static createWithPath(configPath: string): YamlConfigManager {
-    return new YamlConfigManager(configPath);
+  static createWithPath(configPath: string, logger?: ILogger): YamlConfigManager {
+    return new YamlConfigManager(configPath, logger);
   }
 
   /**
@@ -259,7 +274,7 @@ export class YamlConfigManager {
         
         const regex = new RegExp(regexPattern, 'i');
         return regex.test(filePath);
-      } catch (error) {
+      } catch (_error) {
         // Fallback to simple string comparison on regex error
         return filePath.toLowerCase().includes(pattern.toLowerCase());
       }
@@ -317,7 +332,7 @@ export class YamlConfigManager {
     await fs.writeFile(savePath, yamlContent, 'utf-8');
     
     if (this.config.logging?.verboseFileLoading) {
-      console.log(`Saved YAML config: ${savePath}`);
+      this.logger.debug(`Saved YAML config: ${savePath}`);
     }
   }
 

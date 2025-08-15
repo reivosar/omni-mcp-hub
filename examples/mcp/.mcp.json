@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "omni-mcp-hub": {
+      "command": "node",
+      "args": ["../../dist/index.js", "--config", "omni-config.yaml"]
+    }
+  }
+}

@@ -1,0 +1,62 @@
+# Test configuration with external servers enabled
+autoLoad:
+  profiles:
+    - name: "lum"
+      path: "./examples/local-resources/lum-behavior.md"
+      autoApply: true
+
+fileSettings:
+  configFiles:
+    claude: "CLAUDE.md"
+    behavior: "*-behavior.md"
+    custom: "*-config.md"
+  
+  includePaths:
+    - "./"
+    - "./examples/"
+  
+  excludePatterns:
+    - "*.tmp"
+    - "*.backup"
+    - "*~"
+    - ".git/**"
+    - "node_modules/**"
+    - "dist/**"
+    - "unloaded-behavior.md"
+  
+  allowedExtensions:
+    - ".md"
+    - ".markdown"
+    - ".txt"
+
+directoryScanning:
+  recursive: true
+  maxDepth: 3
+  includeHidden: false
+  followSymlinks: false
+
+profileManagement:
+  allowDuplicateNames: false
+  autoNamePattern: "%filename%"
+  defaultProfile: "default"
+
+logging:
+  level: "info"
+  verboseFileLoading: true
+  verboseProfileSwitching: true
+
+# External MCP Servers Configuration - ENABLED FOR TESTING
+externalServers:
+  enabled: true
+  autoConnect: true
+  
+  servers:
+    # Test server for proxy functionality
+    - name: "test-server"
+      command: "node"
+      args: ["./examples/mcp/test-server.js"]
+      description: "Test MCP server for proxy functionality testing"
+  
+  retry:
+    maxAttempts: 3
+    delayMs: 1000

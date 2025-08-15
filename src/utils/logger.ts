@@ -1,5 +1,4 @@
 import winston from 'winston';
-import DailyRotateFile from 'winston-daily-rotate-file';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -64,34 +63,40 @@ export class Logger implements ILogger {
 
     const transports: winston.transport[] = [];
 
-    // Daily rotate file transport for all logs
-    transports.push(new DailyRotateFile({
-      filename: path.join(logDir, 'omni-mcp-hub-%DATE%.log'),
-      datePattern: this.config.datePattern,
-      zippedArchive: this.config.zippedArchive,
-      maxSize: this.config.maxSize,
-      maxFiles: this.config.maxFiles,
-      auditFile: false as any,
+    // Simple file transport for all logs
+    transports.push(new winston.transports.File({
+      filename: path.join(logDir, 'omni-mcp-hub.log'),
+      maxsize: 20 * 1024 * 1024, // 20MB
+      maxFiles: 5,
       format: winston.format.combine(
-        winston.format.timestamp(),
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
         winston.format.errors({ stack: true }),
-        winston.format.json()
+        winston.format.printf(({ timestamp, level, message, ...meta }) => {
+          let log = `${timestamp} [${level.toUpperCase()}] ${message}`;
+          if (Object.keys(meta).length) {
+            log += ` ${JSON.stringify(meta)}`;
+          }
+          return log;
+        })
       )
     }));
 
     // Separate error log file
-    transports.push(new DailyRotateFile({
-      filename: path.join(logDir, 'error-%DATE%.log'),
-      datePattern: this.config.datePattern,
-      zippedArchive: this.config.zippedArchive,
-      maxSize: this.config.maxSize,
-      maxFiles: this.config.maxFiles,
+    transports.push(new winston.transports.File({
+      filename: path.join(logDir, 'error.log'),
       level: 'error',
-      auditFile: false as any,
+      maxsize: 20 * 1024 * 1024, // 20MB
+      maxFiles: 5,
       format: winston.format.combine(
-        winston.format.timestamp(),
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
         winston.format.errors({ stack: true }),
-        winston.format.json()
+        winston.format.printf(({ timestamp, level, message, ...meta }) => {
+          let log = `${timestamp} [${level.toUpperCase()}] ${message}`;
+          if (Object.keys(meta).length) {
+            log += ` ${JSON.stringify(meta)}`;
+          }
+          return log;
+        })
       )
     }));
 

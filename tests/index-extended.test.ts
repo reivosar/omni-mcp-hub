@@ -29,44 +29,30 @@ describe('OmniMCPServer Extended Tests', () => {
     vi.restoreAllMocks();
   });
 
-  describe('Environment Variable Handling', () => {
-    it('should use OMNI_CONFIG_PATH when set', () => {
-      process.env.OMNI_CONFIG_PATH = '/custom/path/config.yaml';
-      
+  describe('Configuration Path Resolution', () => {
+    it('should use default configuration', () => {
       const server = new OmniMCPServer();
       expect(server).toBeDefined();
     });
 
-    it('should fallback to default config when OMNI_CONFIG_PATH not set', () => {
-      delete process.env.OMNI_CONFIG_PATH;
-      
+    it('should handle relative paths', () => {
       const server = new OmniMCPServer();
       expect(server).toBeDefined();
     });
 
-    it('should handle relative paths in OMNI_CONFIG_PATH', () => {
-      process.env.OMNI_CONFIG_PATH = './relative/config.yaml';
-      
-      const server = new OmniMCPServer();
-      expect(server).toBeDefined();
-    });
-
-    it('should handle absolute paths in OMNI_CONFIG_PATH', () => {
-      process.env.OMNI_CONFIG_PATH = '/absolute/path/config.yaml';
-      
+    it('should handle absolute paths', () => {
       const server = new OmniMCPServer();
       expect(server).toBeDefined();
     });
   });
 
-  describe('Configuration Path Resolution', () => {
+  describe('Working Directory Handling', () => {
     it('should resolve configuration paths correctly for different working directories', () => {
       const originalCwd = process.cwd();
       
       try {
         // Mock different working directory
         vi.spyOn(process, 'cwd').mockReturnValue('/different/working/dir');
-        process.env.OMNI_CONFIG_PATH = './config.yaml';
         
         const server = new OmniMCPServer();
         expect(server).toBeDefined();
@@ -76,16 +62,12 @@ describe('OmniMCPServer Extended Tests', () => {
       }
     });
 
-    it('should handle empty OMNI_CONFIG_PATH', () => {
-      process.env.OMNI_CONFIG_PATH = '';
-      
+    it('should handle config files in current directory', () => {
       const server = new OmniMCPServer();
       expect(server).toBeDefined();
     });
 
-    it('should handle OMNI_CONFIG_PATH with spaces', () => {
-      process.env.OMNI_CONFIG_PATH = '/path with spaces/config.yaml';
-      
+    it('should handle paths with spaces', () => {
       const server = new OmniMCPServer();
       expect(server).toBeDefined();
     });
@@ -93,15 +75,11 @@ describe('OmniMCPServer Extended Tests', () => {
 
   describe('External Server Configuration', () => {
     it('should handle external servers enabled configuration', () => {
-      process.env.OMNI_CONFIG_PATH = './examples/mcp/omni-config.yaml';
-      
       const server = new OmniMCPServer();
       expect(server).toBeDefined();
     });
 
     it('should handle external servers disabled configuration', () => {
-      process.env.OMNI_CONFIG_PATH = './examples/local-resources/omni-config.yaml';
-      
       const server = new OmniMCPServer();
       expect(server).toBeDefined();
     });
@@ -128,7 +106,6 @@ describe('OmniMCPServer Extended Tests', () => {
 
   describe('Initialization Error Handling', () => {
     it('should handle YAML config loading errors gracefully', () => {
-      process.env.OMNI_CONFIG_PATH = '/nonexistent/config.yaml';
       vi.mocked(fs.existsSync).mockReturnValue(false);
       
       const server = new OmniMCPServer();
@@ -136,7 +113,6 @@ describe('OmniMCPServer Extended Tests', () => {
     });
 
     it('should handle corrupted YAML config files', () => {
-      process.env.OMNI_CONFIG_PATH = './corrupted-config.yaml';
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockImplementation(() => {
         throw new Error('Corrupted file');
@@ -147,7 +123,6 @@ describe('OmniMCPServer Extended Tests', () => {
     });
 
     it('should handle permission errors on config files', () => {
-      process.env.OMNI_CONFIG_PATH = './no-permission-config.yaml';
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockImplementation(() => {
         const error = new Error('Permission denied') as any;

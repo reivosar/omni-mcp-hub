@@ -3,8 +3,9 @@ import { Tool, Resource, CallToolResult, ReadResourceResult } from "@modelcontex
 import { YamlConfigManager } from "../config/yaml-config.js";
 import { ILogger, SilentLogger } from "../utils/logger.js";
 import { ErrorHandler } from "../utils/error-handler.js";
+import { EventEmitter } from "events";
 
-export class MCPProxyManager {
+export class MCPProxyManager extends EventEmitter {
   private clients: Map<string, MCPProxyClient> = new Map();
   private aggregatedTools: Map<string, { client: MCPProxyClient; tool: Tool }> = new Map();
   private aggregatedResources: Map<string, { client: MCPProxyClient; resource: Resource }> = new Map();
@@ -14,38 +15,39 @@ export class MCPProxyManager {
   private healthCheckInterval?: NodeJS.Timeout;
 
   constructor(yamlConfigManager?: YamlConfigManager, logger?: ILogger) {
+    super();
     this.yamlConfigManager = yamlConfigManager;
     this.logger = logger || new SilentLogger();
     this.errorHandler = ErrorHandler.getInstance(this.logger);
   }
 
   async addServer(config: ExternalServerConfig): Promise<void> {
-    this.logger.debug(`[PROXY-MGR] Adding server: ${config.name}`);
+    this.logger.info(`[PROXY-MGR] Adding server: ${config.name}`);
     
     if (this.clients.has(config.name)) {
-      this.logger.debug(`[PROXY-MGR] Server ${config.name} already exists`);
+      this.logger.info(`[PROXY-MGR] Server ${config.name} already exists`);
       return;
     }
 
-    this.logger.debug(`[PROXY-MGR] Creating MCPProxyClient for ${config.name}`);
+    this.logger.info(`[PROXY-MGR] Creating MCPProxyClient for ${config.name}`);
     const client = new MCPProxyClient(config, this.logger);
     
     try {
-      this.logger.debug(`[PROXY-MGR] Connecting client for ${config.name}...`);
+      this.logger.info(`[PROXY-MGR] Connecting client for ${config.name}...`);
       await client.connect();
-      this.logger.debug(`[PROXY-MGR] Client connected for ${config.name}`);
+      this.logger.info(`[PROXY-MGR] Client connected for ${config.name}`);
       
       this.clients.set(config.name, client);
-      this.logger.debug(`[PROXY-MGR] Client stored for ${config.name}`);
+      this.logger.info(`[PROXY-MGR] Client stored for ${config.name}`);
       
       // Update aggregated tools and resources
-      this.logger.debug(`[PROXY-MGR] Updating aggregated capabilities...`);
+      this.logger.info(`[PROXY-MGR] Updating aggregated capabilities...`);
       this.updateAggregatedCapabilities();
-      this.logger.debug(`[PROXY-MGR] Aggregated capabilities updated`);
+      this.logger.info(`[PROXY-MGR] Aggregated capabilities updated`);
       
-      this.logger.debug(`[PROXY-MGR] Successfully added MCP server: ${config.name}`);
+      this.logger.info(`[PROXY-MGR] Successfully added MCP server: ${config.name}`);
     } catch (error) {
-      this.logger.debug(`[PROXY-MGR] Failed to add MCP server ${config.name}:`, error);
+      this.logger.info(`[PROXY-MGR] Failed to add MCP server ${config.name}:`, error);
       throw error;
     }
   }
@@ -67,51 +69,55 @@ export class MCPProxyManager {
   }
 
   private updateAggregatedCapabilities(): void {
-    this.logger.debug(`[PROXY-MGR] Starting capability aggregation...`);
+    this.logger.info(`[PROXY-MGR] Starting capability aggregation...`);
     
     // Clear existing aggregations
     this.aggregatedTools.clear();
     this.aggregatedResources.clear();
-    this.logger.debug(`[PROXY-MGR] Cleared existing aggregations`);
+    this.logger.info(`[PROXY-MGR] Cleared existing aggregations`);
 
-    this.logger.debug(`[PROXY-MGR] Processing ${this.clients.size} clients`);
+    this.logger.info(`[PROXY-MGR] Processing ${this.clients.size} clients`);
 
     // Aggregate tools and resources from all connected clients
     for (const [serverName, client] of this.clients) {
-      this.logger.debug(`[PROXY-MGR] Processing server: ${serverName}`);
-      this.logger.debug(`[PROXY-MGR] Server ${serverName} connected: ${client.isConnected()}`);
+      this.logger.info(`[PROXY-MGR] Processing server: ${serverName}`);
+      this.logger.info(`[PROXY-MGR] Server ${serverName} connected: ${client.isConnected()}`);
       
       if (!client.isConnected()) {
-        this.logger.debug(`[PROXY-MGR] Skipping disconnected server: ${serverName}`);
+        this.logger.info(`[PROXY-MGR] Skipping disconnected server: ${serverName}`);
         continue;
       }
 
       // Aggregate tools
       const tools = client.getTools();
-      this.logger.debug(`[PROXY-MGR] Server ${serverName} has ${tools.length} tools`);
+      this.logger.info(`[PROXY-MGR] Server ${serverName} has ${tools.length} tools`);
       
       for (const tool of tools) {
-        this.logger.debug(`[PROXY-MGR] Adding tool: ${tool.name} from ${serverName}`);
+        this.logger.info(`[PROXY-MGR] Adding tool: ${tool.name} from ${serverName}`);
         this.aggregatedTools.set(tool.name, { client, tool });
       }
 
       // Aggregate resources
       const resources = client.getResources();
-      this.logger.debug(`[PROXY-MGR] Server ${serverName} has ${resources.length} resources`);
+      this.logger.info(`[PROXY-MGR] Server ${serverName} has ${resources.length} resources`);
       
       for (const resource of resources) {
-        this.logger.debug(`[PROXY-MGR] Adding resource: ${resource.uri} from ${serverName}`);
+        this.logger.info(`[PROXY-MGR] Adding resource: ${resource.uri} from ${serverName}`);
         this.aggregatedResources.set(resource.uri, { client, resource });
       }
     }
 
-    this.logger.debug(`[PROXY-MGR] Aggregated ${this.aggregatedTools.size} tools and ${this.aggregatedResources.size} resources from ${this.clients.size} servers`);
+    this.logger.info(`[PROXY-MGR] Aggregated ${this.aggregatedTools.size} tools and ${this.aggregatedResources.size} resources from ${this.clients.size} servers`);
     
     // Log all aggregated tools
-    this.logger.debug(`[PROXY-MGR] Final aggregated tools:`);
+    this.logger.info(`[PROXY-MGR] Final aggregated tools:`);
     for (const [name, entry] of this.aggregatedTools) {
-      this.logger.debug(`[PROXY-MGR] - ${name}: ${entry.tool.description}`);
+      this.logger.info(`[PROXY-MGR] - ${name}: ${entry.tool.description}`);
     }
+    
+    // Emit tools changed event for MCP notifications
+    this.emit('toolsChanged');
+    this.logger.info(`[PROXY-MGR] Emitted toolsChanged event`);
   }
 
   getAggregatedTools(): Tool[] {
@@ -205,42 +211,53 @@ export class MCPProxyManager {
 
   async initializeFromYamlConfig(): Promise<void> {
     if (!this.yamlConfigManager) {
-      this.logger.debug("[PROXY-MGR] No YAML config manager available");
+      this.logger.info("[PROXY-MGR] No YAML config manager available");
       return;
     }
 
     try {
+      this.logger.info("[PROXY-MGR] Loading YAML configuration...");
+      
+      await this.yamlConfigManager.loadYamlConfig();
       const config = this.yamlConfigManager.getConfig();
+      this.logger.info("[PROXY-MGR] Raw config object:", JSON.stringify(config, null, 2));
+      
       const externalServers = config?.externalServers;
+      this.logger.info("[PROXY-MGR] External servers section:", JSON.stringify(externalServers, null, 2));
 
-      if (!externalServers?.enabled) {
-        this.logger.debug("[PROXY-MGR] External MCP servers are disabled in configuration");
+      if (!externalServers) {
+        this.logger.error("[PROXY-MGR] No externalServers section found in config");
         return;
       }
 
-      if (!externalServers.servers || externalServers.servers.length === 0) {
-        this.logger.debug("[PROXY-MGR] No external MCP servers configured");
+      if (!externalServers.enabled) {
+        this.logger.info("[PROXY-MGR] External MCP servers are disabled in configuration");
         return;
       }
 
-      this.logger.debug(`[PROXY-MGR] Initializing ${externalServers.servers.length} external MCP servers...`);
+      if (!externalServers.servers) {
+        this.logger.error("[PROXY-MGR] No servers array found in externalServers");
+        return;
+      }
+
+      if (externalServers.servers.length === 0) {
+        this.logger.info("[PROXY-MGR] Empty servers array in configuration");
+        return;
+      }
+
+      this.logger.info(`[PROXY-MGR] Found ${externalServers.servers.length} external servers in config`);
 
       for (const serverConfig of externalServers.servers) {
         try {
-          this.logger.debug(`[PROXY-MGR] Adding external MCP server: ${serverConfig.name}`);
+          this.logger.info(`[PROXY-MGR] Processing server config:`, JSON.stringify(serverConfig, null, 2));
           await this.addServer(serverConfig);
+          this.logger.info(`[PROXY-MGR] Successfully added server: ${serverConfig.name}`);
         } catch (error) {
-          this.logger.debug(`[PROXY-MGR] Failed to add external MCP server ${serverConfig.name}:`, error);
-          if (!externalServers.autoConnect) {
-            // Continue with other servers instead of throwing
-            continue;
-          }
+          this.logger.error(`[PROXY-MGR] Failed to add external MCP server ${serverConfig.name}:`, error);
         }
       }
-
-      this.logger.debug("[PROXY-MGR] External MCP servers initialization complete");
     } catch (error) {
-      this.logger.debug("[PROXY-MGR] Error during external servers initialization:", error);
+      this.logger.error("[PROXY-MGR] Failed to initialize from YAML config:", error);
     }
   }
 

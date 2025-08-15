@@ -46,10 +46,7 @@ if 'mcpServers' not in config:
 config['mcpServers']['omni-mcp-hub'] = {
     'command': 'node',
     'args': ['$PROJECT_DIR/dist/index.js'],
-    'description': 'Omni MCP Hub - Local Resources focused configuration',
-    'env': {
-        'OMNI_CONFIG_PATH': './omni-config.yaml'
-    }
+    'description': 'Omni MCP Hub - Local Resources focused configuration'
 }
 
 with open(config_path, 'w') as f:
@@ -65,10 +62,7 @@ else
       "args": [
         "$PROJECT_DIR/dist/index.js"
       ],
-      "description": "Omni MCP Hub - Local Resources focused configuration",
-      "env": {
-        "OMNI_CONFIG_PATH": "./omni-config.yaml"
-      }
+      "description": "Omni MCP Hub - Local Resources focused configuration"
     }
   }
 }

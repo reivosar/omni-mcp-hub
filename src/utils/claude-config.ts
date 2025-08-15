@@ -10,7 +10,7 @@ export interface ClaudeConfig {
   context?: string[];
   tools?: string[];
   memory?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export class ClaudeConfigManager {
@@ -124,8 +124,8 @@ export class ClaudeConfigManager {
       this.configCache.set(absolutePath, config);
       
       return config;
-    } catch (error) {
-      throw new Error(`Failed to load CLAUDE.md from ${filePath}: ${error}`);
+    } catch (_error) {
+      throw new Error(`Failed to load CLAUDE.md from ${filePath}: ${_error}`);
     }
   }
 
@@ -256,7 +256,7 @@ export class ClaudeConfigManager {
         .filter((file): file is string => typeof file === 'string')
         .filter(file => file.toLowerCase().includes('claude.md'))
         .map(file => path.join(directory, file));
-    } catch (error) {
+    } catch (_error) {
       return [];
     }
   }

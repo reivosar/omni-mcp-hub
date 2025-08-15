@@ -118,7 +118,7 @@ export class ToolHandlers {
       });
 
       // Add proxied tools from external MCP servers
-      let aggregatedTools: any[] = [...baseTools];
+      let aggregatedTools: unknown[] = [...baseTools];
       this.logger.debug(`[TOOL-HANDLER] Checking proxy manager: ${this.proxyManager ? 'exists' : 'null'}`);
       
       if (this.proxyManager) {
@@ -145,7 +145,7 @@ export class ToolHandlers {
 
       this.logger.debug(`[TOOL-HANDLER] Final tools being returned:`);
       aggregatedTools.forEach((tool, i) => {
-        this.logger.debug(`[TOOL-HANDLER] Final tool ${i+1}: ${tool.name}`);
+        this.logger.debug(`[TOOL-HANDLER] Final tool ${i+1}: ${(tool as Record<string, unknown>).name}`);
       });
 
       return {
@@ -192,7 +192,7 @@ export class ToolHandlers {
   /**
    * Handle apply_claude_config tool call
    */
-  private async handleApplyClaudeConfig(args: any) {
+  private async handleApplyClaudeConfig(args: unknown) {
     return this.errorHandler.wrapToolCall(
       () => this.doHandleApplyClaudeConfig(args),
       {
@@ -202,7 +202,7 @@ export class ToolHandlers {
     );
   }
 
-  private async doHandleApplyClaudeConfig(args: any) {
+  private async doHandleApplyClaudeConfig(args: unknown) {
     // Support single string argument or normal object argument
     let filePath: string = '';
     let profileName: string | undefined;
@@ -225,7 +225,7 @@ export class ToolHandlers {
       if (!filePath) {
         const keys = Object.keys(args);
         if (keys.length > 0 && keys[0] !== 'profileName' && keys[0] !== 'autoApply') {
-          filePath = (args as any)[keys[0]] || '';
+          filePath = (args as Record<string, unknown>)[keys[0]] as string || '';
         }
       }
     }
@@ -235,7 +235,7 @@ export class ToolHandlers {
       // First check if profile is already loaded
       if (this.activeProfiles.has(profileName)) {
         const config = this.activeProfiles.get(profileName);
-        const existingPath = (config as any)?._filePath;
+        const existingPath = (config as Record<string, unknown>)?._filePath as string;
         if (existingPath) {
           filePath = existingPath;
         }
@@ -327,18 +327,18 @@ export class ToolHandlers {
   /**
    * Handle list_claude_configs tool call
    */
-  private async handleListClaudeConfigs(args: any) {
+  private async handleListClaudeConfigs(args: unknown) {
     return this.doHandleListClaudeConfigs(args);
   }
 
-  private async doHandleListClaudeConfigs(args: any) {
+  private async doHandleListClaudeConfigs(_args: unknown) {
       // Get loaded configs
       const loadedConfigNames = Array.from(this.activeProfiles.keys());
       
       // Get all available files
       const availableFiles = await this.fileScanner.scanForClaudeFiles();
       const loadedPaths = Array.from(this.activeProfiles.values()).map(config => 
-        (config as any)._filePath
+        (config as Record<string, unknown>)._filePath as string
       ).filter(Boolean);
       
       // Separate loaded and unloaded
@@ -354,7 +354,7 @@ export class ToolHandlers {
         loaded: loadedConfigNames.map(name => ({
           name,
           status: "loaded",
-          path: (this.activeProfiles.get(name) as any)?._filePath || "unknown"
+          path: (this.activeProfiles.get(name) as Record<string, unknown>)?._filePath as string || "unknown"
         })),
         available: unloadedFiles.map(file => ({
           path: file.path,
@@ -381,11 +381,11 @@ export class ToolHandlers {
   /**
    * Handle get_active_profile tool call - returns currently applied profile info
    */
-  private async handleGetAppliedConfig(args: any) {
+  private async handleGetAppliedConfig(args: unknown) {
     return this.doHandleGetAppliedConfig(args);
   }
 
-  private async doHandleGetAppliedConfig(args: any) {
+  private async doHandleGetAppliedConfig(_args: unknown) {
     // Track the last applied profile (we'll need to store this when apply_claude_config is called)
     const lastAppliedProfile = this.lastAppliedProfile;
     
@@ -416,7 +416,7 @@ export class ToolHandlers {
       name: lastAppliedProfile,
       title: config.title || "Untitled",
       description: config.description || "No description",
-      path: (config as any)._filePath || "unknown",
+      path: (config as Record<string, unknown>)._filePath as string || "unknown",
       appliedAt: this.lastAppliedTime || "unknown",
       sections: Object.keys(config).filter(k => !k.startsWith('_')),
     };

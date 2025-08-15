@@ -114,7 +114,7 @@ Enable external MCP server integration:
 
 ```bash
 # Run with external MCP servers enabled
-OMNI_CONFIG_PATH=./examples/mcp/external-servers-config.yaml node dist/index.js
+node dist/index.js
 ```
 
 ## CLAUDE.md Configuration

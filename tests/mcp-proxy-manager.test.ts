@@ -482,6 +482,36 @@ describe('MCPProxyManager', () => {
   describe('initializeFromYamlConfig', () => {
     it('should initialize servers from YAML config', async () => {
       const manager = new MCPProxyManager(yamlConfigManager);
+      
+      // Mock loadYamlConfig to return actual config
+      yamlConfigManager.loadYamlConfig = vi.fn().mockResolvedValue({
+        externalServers: {
+          enabled: true,
+          servers: [{
+            name: 'test-server',
+            command: 'node',
+            args: ['test-server.js'],
+            description: 'Test server'
+          }],
+          autoConnect: true,
+          retry: { maxAttempts: 3, delayMs: 1000 }
+        }
+      });
+      
+      yamlConfigManager.getConfig = vi.fn().mockReturnValue({
+        externalServers: {
+          enabled: true,
+          servers: [{
+            name: 'test-server',
+            command: 'node',
+            args: ['test-server.js'],
+            description: 'Test server'
+          }],
+          autoConnect: true,
+          retry: { maxAttempts: 3, delayMs: 1000 }
+        }
+      });
+
       mockClient.connect.mockResolvedValue(undefined);
 
       await manager.initializeFromYamlConfig();
@@ -509,6 +539,36 @@ describe('MCPProxyManager', () => {
 
     it('should handle initialization errors', async () => {
       const manager = new MCPProxyManager(yamlConfigManager);
+      
+      // Mock loadYamlConfig to return config with servers
+      yamlConfigManager.loadYamlConfig = vi.fn().mockResolvedValue({
+        externalServers: {
+          enabled: true,
+          servers: [{
+            name: 'test-server',
+            command: 'node',
+            args: ['test-server.js'],
+            description: 'Test server'
+          }],
+          autoConnect: true,
+          retry: { maxAttempts: 3, delayMs: 1000 }
+        }
+      });
+      
+      yamlConfigManager.getConfig = vi.fn().mockReturnValue({
+        externalServers: {
+          enabled: true,
+          servers: [{
+            name: 'test-server',
+            command: 'node',
+            args: ['test-server.js'],
+            description: 'Test server'
+          }],
+          autoConnect: true,
+          retry: { maxAttempts: 3, delayMs: 1000 }
+        }
+      });
+      
       mockClient.connect.mockRejectedValue(new Error('Connection failed'));
 
       await expect(manager.initializeFromYamlConfig()).resolves.toBeUndefined();

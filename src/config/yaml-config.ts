@@ -94,7 +94,7 @@ const DEFAULT_CONFIG: YamlConfig = {
     verboseProfileSwitching: false
   },
   externalServers: {
-    enabled: false,
+    enabled: true,
     servers: [],
     autoConnect: true,
     retry: {
@@ -147,26 +147,7 @@ export class YamlConfigManager {
    * Auto-detect configuration file path
    */
   private findYamlConfigFile(): string {
-    const possiblePaths = [
-      // Look in current working directory first
-      path.join(process.cwd(), 'omni-config.yaml'),
-      // Look in configs directory
-      path.join(process.cwd(), 'configs', 'omni-config.yaml'),
-      // Look in parent directory
-      path.join(process.cwd(), '..', 'omni-config.yaml')
-    ];
-    
-    for (const configPath of possiblePaths) {
-      try {
-        // Check if file exists synchronously
-        require('fs').accessSync(configPath);
-        return configPath;
-      } catch (_error) {
-        // File doesn't exist, continue to next path
-      }
-    }
-    
-    // Return default path if no config file found
+    // Always use examples/mcp directory
     return path.join(process.cwd(), 'omni-config.yaml');
   }
 

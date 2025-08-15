@@ -92,6 +92,14 @@ export class OmniMCPServer {
     this.proxyManager.startHealthChecks(30000);
     this.logger.debug("[INIT] Health checks started");
 
+    // Setup tools changed notification
+    this.logger.debug("[INIT] Setting up tools changed notification...");
+    this.proxyManager.on('toolsChanged', () => {
+      this.logger.info("[NOTIFY] Tools changed - would send notifications/tools/list_changed");
+      // TODO: Implement proper MCP notification when transport is available
+    });
+    this.logger.debug("[INIT] Tools changed notification set up");
+
     // Setup handlers AFTER external servers are connected
     this.logger.debug("[INIT] Setting up tool handlers...");
     this.toolHandlers.setupHandlers();

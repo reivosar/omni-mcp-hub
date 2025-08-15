@@ -38,8 +38,8 @@ export class ProcessErrorHandler {
       this.handleUncaughtException(error);
     });
 
-    process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
-      this.handleUnhandledRejection(reason, promise);
+    process.on('unhandledRejection', (reason: unknown, _promise: Promise<unknown>) => {
+      this.handleUnhandledRejection(reason, _promise);
     });
 
     process.on('SIGTERM', () => {
@@ -81,7 +81,7 @@ export class ProcessErrorHandler {
     this.performGracefulShutdown('uncaught_exception', 1);
   }
 
-  private handleUnhandledRejection(reason: any, promise: Promise<any>): void {
+  private handleUnhandledRejection(reason: unknown, _promise: Promise<unknown>): void {
     const errorInfo = {
       type: 'unhandled_rejection',
       reason: reason instanceof Error ? {
@@ -139,7 +139,7 @@ export class ProcessErrorHandler {
   private async performCleanup(): Promise<void> {
     try {
       // Emit shutdown event for components to clean up
-      process.emit('beforeExit' as any, 0);
+      process.emit('beforeExit' as never, 0);
       
       // Give time for cleanup
       await new Promise(resolve => setTimeout(resolve, 100));

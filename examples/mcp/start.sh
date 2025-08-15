@@ -45,11 +45,8 @@ if 'mcpServers' not in config:
 
 config['mcpServers']['omni-mcp-hub'] = {
     'command': 'node',
-    'args': ['$PROJECT_DIR/dist/index.js'],
-    'description': 'Omni MCP Hub - External MCP Integration',
-    'env': {
-        'OMNI_CONFIG_PATH': './omni-config.yaml'
-    }
+    'args': ['../../dist/index.js'],
+    'description': 'Omni MCP Hub - External MCP Integration'
 }
 
 with open(config_path, 'w') as f:
@@ -63,12 +60,9 @@ else
     "omni-mcp-hub": {
       "command": "node",
       "args": [
-        "$PROJECT_DIR/dist/index.js"
+        "../../dist/index.js"
       ],
-      "description": "Omni MCP Hub - External MCP Integration",
-      "env": {
-        "OMNI_CONFIG_PATH": "./omni-config.yaml"
-      }
+      "description": "Omni MCP Hub - External MCP Integration"
     }
   }
 }
@@ -110,6 +104,13 @@ echo "   - Test server is included for development/testing"
 echo "   - Check examples/mcp/README.md for more server configurations"
 echo ""
 
+# Kill any existing MCP hub processes
+echo -e "${YELLOW}Cleaning up existing MCP processes...${NC}"
+pkill -f "dist/index.js" 2>/dev/null || true
+pkill -f "test-server.js" 2>/dev/null || true
+sleep 1
+
 # Move to examples/mcp directory and launch Claude Code
 cd "$(dirname "$0")"
+echo -e "${GREEN}Launching Claude Code...${NC}"
 exec claude

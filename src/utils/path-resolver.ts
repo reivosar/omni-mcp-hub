@@ -1,13 +1,13 @@
-import * as path from 'path';
+import * as path from "path";
 
 /**
  * Centralized path resolution for configuration files and profiles
  */
 export class PathResolver {
   private static instance: PathResolver;
-  
+
   private constructor() {}
-  
+
   static getInstance(): PathResolver {
     if (!PathResolver.instance) {
       PathResolver.instance = new PathResolver();
@@ -16,10 +16,10 @@ export class PathResolver {
   }
 
   /**
-   * Get the YAML config path from environment variable or default
+   * Get the YAML config path - fixed to current working directory
    */
   getYamlConfigPath(): string {
-    return process.env.OMNI_CONFIG_PATH || './omni-config.yaml';
+    return "./omni-config.yaml";
   }
 
   /**
@@ -54,7 +54,7 @@ export class PathResolver {
       `./${profileName}.md`,
       `./${profileName}`,
       `${profileName}-behavior.md`,
-      `${searchDir}/${profileName}-behavior.md`
+      `${searchDir}/${profileName}-behavior.md`,
     ];
   }
 
@@ -68,7 +68,7 @@ export class PathResolver {
       `${searchDir}/${filePath}.md`,
       `${searchDir}/${filePath}`,
       `./${filePath}.md`,
-      `./${filePath}`
+      `./${filePath}`,
     ];
   }
 

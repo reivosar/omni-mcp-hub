@@ -15,13 +15,13 @@ This folder contains examples for integrating external MCP (Model Context Protoc
 1. **Basic External Server Integration**
    ```bash
    # Use the external servers configuration
-   OMNI_CONFIG_PATH=./examples/mcp/omni-config.yaml node dist/index.js
+   node dist/index.js
    ```
 
 2. **Test Proxy Functionality**
    ```bash
    # Run with test configuration
-   OMNI_CONFIG_PATH=./examples/mcp/test-proxy.yaml node dist/index.js
+   node dist/index.js
    ```
 
 ## Supported External MCP Servers

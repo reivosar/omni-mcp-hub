@@ -54,7 +54,7 @@ export class FileScanner {
           if (stat.isDirectory()) {
             await this.scanDirectory(absolutePath, files, scanOptions, 0);
           }
-        } catch (error) {
+        } catch (_error) {
           // Directory doesn't exist, skip it
           if (config.logging?.verboseFileLoading) {
             this.logger.debug(`Directory not found: ${absolutePath}`);
@@ -143,7 +143,7 @@ export class FileScanner {
       const stats = await fs.stat(filePath);
       if (!stats.isFile()) return null;
 
-      const config = this.yamlConfig.getConfig();
+      const _config = this.yamlConfig.getConfig();
       const name = path.basename(filePath);
       const extension = path.extname(filePath);
       const directory = path.dirname(filePath);
@@ -164,7 +164,7 @@ export class FileScanner {
         isClaudeConfig,
         matchedPattern
       };
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }

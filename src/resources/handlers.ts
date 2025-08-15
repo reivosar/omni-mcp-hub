@@ -9,6 +9,7 @@ import { YamlConfigManager } from "../config/yaml-config.js";
 import { PathResolver } from "../utils/path-resolver.js";
 import { MCPProxyManager } from "../mcp-proxy/manager.js";
 import { ILogger, SilentLogger } from "../utils/logger.js";
+import { ErrorHandler } from "../utils/error-handler.js";
 
 export class ResourceHandlers {
   private server: Server;
@@ -16,12 +17,14 @@ export class ResourceHandlers {
   private fileScanner: FileScanner;
   private proxyManager?: MCPProxyManager;
   private logger: ILogger;
+  private errorHandler: ErrorHandler;
 
   constructor(server: Server, activeProfiles: Map<string, ClaudeConfig>, proxyManager?: MCPProxyManager, logger?: ILogger) {
     this.server = server;
     this.activeProfiles = activeProfiles;
     this.proxyManager = proxyManager;
     this.logger = logger || new SilentLogger();
+    this.errorHandler = ErrorHandler.getInstance(this.logger);
     // Use PathResolver for consistent config path resolution
     const pathResolver = PathResolver.getInstance();
     const yamlConfigPath = pathResolver.getYamlConfigPath();
@@ -58,7 +61,7 @@ export class ResourceHandlers {
 
       // Check for auto-apply profiles
       const autoApplyProfiles = Array.from(this.activeProfiles.entries())
-        .filter(([name, config]) => (config as any)._autoApply === true);
+        .filter(([_name, config]) => (config as unknown as { _autoApply?: boolean })._autoApply === true);
       
       if (autoApplyProfiles.length > 0) {
         baseResources.unshift({
@@ -140,7 +143,7 @@ export class ResourceHandlers {
 
         case "config://auto-apply":
           const autoApplyProfiles = Array.from(this.activeProfiles.entries())
-            .filter(([name, config]) => (config as any)._autoApply === true);
+            .filter(([_name, config]) => (config as unknown as { _autoApply?: boolean })._autoApply === true);
           
           if (autoApplyProfiles.length === 0) {
             return {

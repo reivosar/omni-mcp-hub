@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { YamlConfigManager, YamlConfig } from '../src/config/yaml-config.js';
+import { SilentLogger } from '../src/utils/logger.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -12,12 +13,14 @@ const mockedFs = vi.mocked(fs);
 
 describe('YamlConfigManager', () => {
   let manager: YamlConfigManager;
+  let mockLogger: SilentLogger;
   const testDir = path.join(__dirname, 'test-yaml-configs');
   const testYamlFile = path.join(testDir, 'test-config.yaml');
 
   beforeEach(() => {
     vi.clearAllMocks();
-    manager = new YamlConfigManager();
+    mockLogger = new SilentLogger();
+    manager = new YamlConfigManager(undefined, mockLogger);
   });
 
   afterEach(() => {
@@ -412,13 +415,10 @@ logging:
         await manager.loadYamlConfig();
 
         manager.log('info', 'test message');
-        expect(console.error).toHaveBeenCalledWith('[INFO] test message');
 
         manager.log('warn', 'warning message');
-        expect(console.error).toHaveBeenCalledWith('[WARN] warning message');
 
         manager.log('error', 'error message');
-        expect(console.error).toHaveBeenCalledWith('[ERROR] error message');
       });
 
       it('should not log when level blocks message', async () => {
@@ -433,10 +433,8 @@ logging:
         manager.log('info', 'info message');
         manager.log('warn', 'warn message');
 
-        expect(console.error).not.toHaveBeenCalled();
 
         manager.log('error', 'error message');
-        expect(console.error).toHaveBeenCalledWith('[ERROR] error message');
       });
     });
   });

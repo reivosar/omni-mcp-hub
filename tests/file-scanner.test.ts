@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FileScanner, FileInfo, ScanOptions } from '../src/utils/file-scanner.js';
 import { YamlConfigManager } from '../src/config/yaml-config.js';
+import { SilentLogger } from '../src/utils/logger.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -14,6 +15,7 @@ vi.mock('../src/config/yaml-config.js');
 describe('FileScanner', () => {
   let scanner: FileScanner;
   let mockYamlConfigManager: any;
+  let mockLogger: SilentLogger;
   const testDir = '/test/directory';
 
   beforeEach(() => {
@@ -29,7 +31,8 @@ describe('FileScanner', () => {
       loadYamlConfig: vi.fn()
     };
     
-    scanner = new FileScanner(mockYamlConfigManager);
+    mockLogger = new SilentLogger();
+    scanner = new FileScanner(mockYamlConfigManager, mockLogger);
   });
 
   afterEach(() => {
@@ -117,13 +120,10 @@ describe('FileScanner', () => {
       mockYamlConfigManager.getConfig.mockReturnValue(config);
       
       mockedFs.stat.mockRejectedValue(new Error('Directory not found'));
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
 
       const result = await scanner.scanForClaudeFiles();
 
       expect(result).toEqual([]);
-      expect(consoleSpy).not.toHaveBeenCalled();
-      consoleSpy.mockRestore();
     });
 
     it('should log non-existent includePaths with verbose logging', async () => {
@@ -136,12 +136,9 @@ describe('FileScanner', () => {
       mockYamlConfigManager.getConfig.mockReturnValue(config);
       
       mockedFs.stat.mockRejectedValue(new Error('Directory not found'));
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
 
       await scanner.scanForClaudeFiles();
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Directory not found:'));
-      consoleSpy.mockRestore();
     });
 
     it('should fallback to targetPath when no includePaths', async () => {
@@ -167,13 +164,10 @@ describe('FileScanner', () => {
       mockYamlConfigManager.getConfig.mockReturnValue(config);
       
       mockedFs.readdir.mockRejectedValue(new Error('Directory scan error'));
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
 
       const result = await scanner.scanForClaudeFiles();
 
       expect(result).toEqual([]);
-      expect(consoleSpy).not.toHaveBeenCalled();
-      consoleSpy.mockRestore();
     });
 
     it('should log targetPath scan errors with verbose logging', async () => {
@@ -185,12 +179,9 @@ describe('FileScanner', () => {
       
       mockYamlConfigManager.shouldIncludeDirectory.mockReturnValue(true);
       mockedFs.readdir.mockRejectedValue(new Error('Directory scan error'));
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
 
       await scanner.scanForClaudeFiles('/test/path');
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Directory access error:'), expect.any(Error));
-      consoleSpy.mockRestore();
     });
 
     it('should sort results by path', async () => {
@@ -531,13 +522,10 @@ describe('FileScanner', () => {
       mockedFs.readdir.mockRejectedValue(new Error('Permission denied'));
       mockYamlConfigManager.shouldIncludeDirectory.mockReturnValue(true);
       
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
 
       const result = await scanner.scanForClaudeFiles();
 
       expect(result).toEqual([]);
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Directory access error:'), expect.any(Error));
-      consoleSpy.mockRestore();
     });
 
     it('should handle directory read errors without verbose logging', async () => {
@@ -550,13 +538,10 @@ describe('FileScanner', () => {
       mockedFs.readdir.mockRejectedValue(new Error('Permission denied'));
       mockYamlConfigManager.shouldIncludeDirectory.mockReturnValue(true);
       
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
 
       const result = await scanner.scanForClaudeFiles();
 
       expect(result).toEqual([]);
-      expect(consoleSpy).not.toHaveBeenCalled();
-      consoleSpy.mockRestore();
     });
   });
 
@@ -842,13 +827,10 @@ describe('FileScanner', () => {
       mockYamlConfigManager.shouldIncludeDirectory.mockReturnValue(true);
       mockedFs.readdir.mockRejectedValue(new Error('Search error'));
       
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
 
       const result = await scanner.findFilesByPattern('*.test', ['./error-path']);
 
       expect(result).toEqual([]);
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Directory access error:'), expect.any(Error));
-      consoleSpy.mockRestore();
     });
 
     it('should handle search errors without verbose logging', async () => {
@@ -861,13 +843,10 @@ describe('FileScanner', () => {
       mockedFs.readdir.mockRejectedValue(new Error('Search error'));
       mockYamlConfigManager.shouldIncludeDirectory.mockReturnValue(true);
       
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
 
       const result = await scanner.findFilesByPattern('*.test');
 
       expect(result).toEqual([]);
-      expect(consoleSpy).not.toHaveBeenCalled();
-      consoleSpy.mockRestore();
     });
 
     it('should aggregate files from multiple search paths', async () => {

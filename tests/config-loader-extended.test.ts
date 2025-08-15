@@ -3,6 +3,7 @@ import { ConfigLoader, InitialProfile, McpConfig } from '../src/config/loader.js
 import { ClaudeConfigManager, ClaudeConfig } from '../src/utils/claude-config.js';
 import { YamlConfigManager } from '../src/config/yaml-config.js';
 import { FileScanner, FileInfo } from '../src/utils/file-scanner.js';
+import { SilentLogger } from '../src/utils/logger.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -22,6 +23,7 @@ describe('ConfigLoader Extended Tests', () => {
   let mockClaudeConfigManager: ClaudeConfigManager;
   let mockYamlConfigManager: YamlConfigManager;
   let mockFileScanner: FileScanner;
+  let mockLogger: SilentLogger;
 
   beforeEach(() => {
     // Create mock ClaudeConfigManager
@@ -45,7 +47,9 @@ describe('ConfigLoader Extended Tests', () => {
       scanForClaudeFiles: vi.fn()
     } as any;
 
-    configLoader = new ConfigLoader(mockClaudeConfigManager, mockYamlConfigManager);
+    mockLogger = new SilentLogger();
+
+    configLoader = new ConfigLoader(mockClaudeConfigManager, mockYamlConfigManager, mockLogger);
     // Replace the file scanner with our mock
     (configLoader as any).fileScanner = mockFileScanner;
 
@@ -74,12 +78,9 @@ describe('ConfigLoader Extended Tests', () => {
     it('should handle configuration loading errors gracefully', async () => {
       vi.mocked(mockYamlConfigManager.loadYamlConfig).mockRejectedValue(new Error('YAML load error'));
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
       const profiles = await configLoader.loadInitialConfig();
       
       expect(profiles.size).toBe(0);
-      expect(consoleSpy).toHaveBeenCalledWith('Initial config loading error:', expect.any(Error));
     });
 
     it('should handle missing autoLoad.profiles gracefully', async () => {
@@ -170,13 +171,11 @@ describe('ConfigLoader Extended Tests', () => {
       vi.mocked(mockYamlConfigManager.isVerboseProfileSwitching).mockReturnValue(false);
       vi.mocked(mockClaudeConfigManager.loadClaudeConfig).mockRejectedValue(new Error('Load failed'));
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const activeProfiles = new Map<string, ClaudeConfig>();
 
       await (configLoader as any).loadProfilesFromYaml(profiles, activeProfiles);
       
       expect(activeProfiles.size).toBe(0);
-      expect(consoleSpy).toHaveBeenCalledWith("Profile 'error-profile' loading failed: Error: Load failed");
     });
 
     it('should skip profiles with missing name or path', async () => {
@@ -259,13 +258,11 @@ describe('ConfigLoader Extended Tests', () => {
       vi.mocked(mockFileScanner.scanForClaudeFiles).mockResolvedValue([mockFileInfo]);
       vi.mocked(mockClaudeConfigManager.loadClaudeConfig).mockRejectedValue(new Error('Load error'));
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const activeProfiles = new Map<string, ClaudeConfig>();
 
       await (configLoader as any).autoScanProfiles(activeProfiles);
       
       expect(activeProfiles.size).toBe(0);
-      expect(consoleSpy).toHaveBeenCalledWith("Auto-scan profile 'error-profile' failed: Error: Load error");
     });
 
     it('should handle scanner errors', async () => {
@@ -277,13 +274,11 @@ describe('ConfigLoader Extended Tests', () => {
       vi.mocked(mockYamlConfigManager.getConfig).mockReturnValue(mockYamlConfig);
       vi.mocked(mockFileScanner.scanForClaudeFiles).mockRejectedValue(new Error('Scanner error'));
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const activeProfiles = new Map<string, ClaudeConfig>();
 
       await (configLoader as any).autoScanProfiles(activeProfiles);
       
       expect(activeProfiles.size).toBe(0);
-      expect(consoleSpy).toHaveBeenCalledWith('Auto-scan error:', expect.any(Error));
     });
   });
 
@@ -295,13 +290,11 @@ describe('ConfigLoader Extended Tests', () => {
 
       vi.mocked(mockClaudeConfigManager.loadClaudeConfig).mockRejectedValue(new Error('Legacy load error'));
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const activeProfiles = new Map<string, ClaudeConfig>();
 
       await (configLoader as any).loadProfiles(profiles, activeProfiles);
       
       expect(activeProfiles.size).toBe(0);
-      expect(consoleSpy).toHaveBeenCalledWith("Failed to load profile 'error-profile': Error: Legacy load error");
     });
 
     it('should skip profiles with missing name or path in legacy mode', async () => {

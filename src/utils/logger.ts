@@ -71,6 +71,7 @@ export class Logger implements ILogger {
       zippedArchive: this.config.zippedArchive,
       maxSize: this.config.maxSize,
       maxFiles: this.config.maxFiles,
+      auditFile: false as any,
       format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.errors({ stack: true }),
@@ -86,6 +87,7 @@ export class Logger implements ILogger {
       maxSize: this.config.maxSize,
       maxFiles: this.config.maxFiles,
       level: 'error',
+      auditFile: false as any,
       format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.errors({ stack: true }),

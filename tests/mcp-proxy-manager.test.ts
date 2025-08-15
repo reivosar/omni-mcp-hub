@@ -2,10 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MCPProxyManager } from '../src/mcp-proxy/manager.js';
 import { MCPProxyClient } from '../src/mcp-proxy/client.js';
 import { YamlConfigManager } from '../src/config/yaml-config.js';
+import { SilentLogger } from '../src/utils/logger.js';
 
 // Mock MCPProxyClient
 vi.mock('../src/mcp-proxy/client.js', () => ({
-  MCPProxyClient: vi.fn().mockImplementation((config) => ({
+  MCPProxyClient: vi.fn().mockImplementation((config, logger) => ({
     config,
     connect: vi.fn().mockResolvedValue(undefined),
     disconnect: vi.fn().mockResolvedValue(undefined),
@@ -88,7 +89,7 @@ describe('MCPProxyManager', () => {
       };
 
       await manager.addServer(config);
-      expect(MCPProxyClient).toHaveBeenCalledWith(config);
+      expect(MCPProxyClient).toHaveBeenCalledWith(config, expect.any(SilentLogger));
     });
 
     it('should not add duplicate servers', async () => {
@@ -489,7 +490,7 @@ describe('MCPProxyManager', () => {
         command: 'node',
         args: ['test-server.js'],
         description: 'Test server'
-      });
+      }, expect.any(SilentLogger));
       expect(mockClient.connect).toHaveBeenCalled();
     });
 

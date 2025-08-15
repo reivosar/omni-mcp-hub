@@ -3,11 +3,18 @@ import { OmniMCPServer } from '../src/index.js';
 import * as fs from 'fs';
 
 // Mock environment for different test scenarios
-vi.mock('fs', () => ({
-  existsSync: vi.fn(),
-  readFileSync: vi.fn(),
-  writeFileSync: vi.fn()
-}));
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    existsSync: vi.fn(),
+    readFileSync: vi.fn(),
+    writeFileSync: vi.fn(),
+    mkdirSync: vi.fn(),
+    readdirSync: vi.fn(),
+    statSync: vi.fn(),
+  };
+});
 
 describe('OmniMCPServer Extended Tests', () => {
   let originalEnv: NodeJS.ProcessEnv;

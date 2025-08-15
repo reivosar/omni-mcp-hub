@@ -2,6 +2,7 @@ import { MCPProxyClient, ExternalServerConfig } from "./client.js";
 import { Tool, Resource, CallToolResult, ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 import { YamlConfigManager } from "../config/yaml-config.js";
 import { ILogger, SilentLogger } from "../utils/logger.js";
+import { ErrorHandler } from "../utils/error-handler.js";
 
 export class MCPProxyManager {
   private clients: Map<string, MCPProxyClient> = new Map();
@@ -9,10 +10,13 @@ export class MCPProxyManager {
   private aggregatedResources: Map<string, { client: MCPProxyClient; resource: Resource }> = new Map();
   private yamlConfigManager?: YamlConfigManager;
   private logger: ILogger;
+  private errorHandler: ErrorHandler;
+  private healthCheckInterval?: NodeJS.Timeout;
 
   constructor(yamlConfigManager?: YamlConfigManager, logger?: ILogger) {
     this.yamlConfigManager = yamlConfigManager;
     this.logger = logger || new SilentLogger();
+    this.errorHandler = ErrorHandler.getInstance(this.logger);
   }
 
   async addServer(config: ExternalServerConfig): Promise<void> {
@@ -124,7 +128,15 @@ export class MCPProxyManager {
       throw new Error(`Tool ${name} not found in any connected MCP server`);
     }
 
-    return entry.client.callTool(name, args);
+    return this.errorHandler.withErrorHandling(
+      () => entry.client.callTool(name, args),
+      {
+        operation: 'external_tool_call',
+        toolName: name,
+        serverName: entry.client.getServerName(),
+        args,
+      }
+    );
   }
 
   async readResource(uri: string): Promise<ReadResourceResult> {
@@ -133,7 +145,14 @@ export class MCPProxyManager {
       throw new Error(`Resource ${uri} not found in any connected MCP server`);
     }
 
-    return entry.client.readResource(uri);
+    return this.errorHandler.withErrorHandling(
+      () => entry.client.readResource(uri),
+      {
+        operation: 'external_resource_read',
+        resourceUri: uri,
+        serverName: entry.client.getServerName(),
+      }
+    );
   }
 
   getConnectedServers(): string[] {
@@ -223,5 +242,105 @@ export class MCPProxyManager {
     } catch (error) {
       this.logger.debug("[PROXY-MGR] Error during external servers initialization:", error);
     }
+  }
+
+  startHealthChecks(intervalMs: number = 30000): void {
+    this.logger.info(`[PROXY-MGR] Starting health checks (interval: ${intervalMs}ms)`);
+    
+    this.healthCheckInterval = setInterval(async () => {
+      await this.performHealthCheck();
+    }, intervalMs);
+  }
+
+  stopHealthChecks(): void {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = undefined;
+      this.logger.info('[PROXY-MGR] Health checks stopped');
+    }
+  }
+
+  async performHealthCheck(): Promise<Map<string, boolean>> {
+    const healthStatus = new Map<string, boolean>();
+    
+    for (const [serverName, client] of this.clients) {
+      try {
+        const isHealthy = client.isConnected();
+        healthStatus.set(serverName, isHealthy);
+        
+        if (!isHealthy) {
+          this.logger.warn(`[HEALTH-CHECK] Server ${serverName} is not connected`);
+          
+          // Attempt to reconnect
+          try {
+            await client.connect();
+            this.logger.info(`[HEALTH-CHECK] Successfully reconnected to ${serverName}`);
+            healthStatus.set(serverName, true);
+            this.updateAggregatedCapabilities();
+          } catch (reconnectError) {
+            this.logger.error(`[HEALTH-CHECK] Failed to reconnect to ${serverName}:`, reconnectError);
+          }
+        }
+      } catch (error) {
+        this.logger.error(`[HEALTH-CHECK] Error checking ${serverName}:`, error);
+        healthStatus.set(serverName, false);
+      }
+    }
+
+    // Log health metrics
+    const healthMetrics = {
+      type: 'mcp_health_check',
+      timestamp: new Date().toISOString(),
+      total_servers: this.clients.size,
+      healthy_servers: Array.from(healthStatus.values()).filter(Boolean).length,
+      unhealthy_servers: Array.from(healthStatus.values()).filter(h => !h).length,
+      server_status: Object.fromEntries(healthStatus),
+    };
+
+    this.logger.info('[HEALTH-METRICS]', JSON.stringify(healthMetrics));
+    
+    return healthStatus;
+  }
+
+  getHealthStatus(): Record<string, { connected: boolean; tools: number; resources: number }> {
+    const status: Record<string, { connected: boolean; tools: number; resources: number }> = {};
+    
+    for (const [serverName, client] of this.clients) {
+      status[serverName] = {
+        connected: client.isConnected(),
+        tools: client.getTools().length,
+        resources: client.getResources().length,
+      };
+    }
+    
+    return status;
+  }
+
+  async getDetailedServerHealth(): Promise<Record<string, unknown>> {
+    const healthDetails: Record<string, unknown> = {};
+    
+    for (const [serverName, client] of this.clients) {
+      try {
+        const startTime = Date.now();
+        const isConnected = client.isConnected();
+        const responseTime = Date.now() - startTime;
+        
+        healthDetails[serverName] = {
+          connected: isConnected,
+          response_time_ms: responseTime,
+          tools_count: client.getTools().length,
+          resources_count: client.getResources().length,
+          last_check: new Date().toISOString(),
+        };
+      } catch (error) {
+        healthDetails[serverName] = {
+          connected: false,
+          error: error instanceof Error ? error.message : String(error),
+          last_check: new Date().toISOString(),
+        };
+      }
+    }
+    
+    return healthDetails;
   }
 }

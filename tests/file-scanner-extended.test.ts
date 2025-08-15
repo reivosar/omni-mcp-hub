@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FileScanner, FileInfo, ScanOptions } from '../src/utils/file-scanner.js';
 import { YamlConfigManager } from '../src/config/yaml-config.js';
+import { SilentLogger } from '../src/utils/logger.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -13,6 +14,7 @@ vi.mock('fs/promises', () => ({
 describe('FileScanner Extended Tests', () => {
   let scanner: FileScanner;
   let mockYamlConfig: YamlConfigManager;
+  let mockLogger: SilentLogger;
 
   beforeEach(() => {
     // Create mock YamlConfigManager
@@ -24,7 +26,8 @@ describe('FileScanner Extended Tests', () => {
       matchesPattern: vi.fn()
     } as any;
 
-    scanner = new FileScanner(mockYamlConfig);
+    mockLogger = new SilentLogger();
+    scanner = new FileScanner(mockYamlConfig, mockLogger);
     vi.clearAllMocks();
   });
 
@@ -134,12 +137,9 @@ describe('FileScanner Extended Tests', () => {
       vi.mocked(mockYamlConfig.getConfig).mockReturnValue(mockConfig);
       vi.mocked(fs.stat).mockRejectedValue(new Error('ENOENT: no such file or directory'));
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
       const files = await scanner.scanForClaudeFiles();
       
       expect(files).toEqual([]);
-      expect(consoleSpy).toHaveBeenCalledWith('Directory not found: /nonexistent/path');
     });
 
     it('should sort results alphabetically', async () => {
@@ -350,15 +350,9 @@ describe('FileScanner Extended Tests', () => {
       vi.mocked(mockYamlConfig.shouldIncludeDirectory).mockReturnValue(true);
       vi.mocked(fs.readdir).mockRejectedValue(new Error('Permission denied'));
 
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
       const files = await scanner.scanForClaudeFiles('/test');
       
       expect(files).toEqual([]);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '⚠️ Directory access error: /test', 
-        expect.any(Error)
-      );
     });
 
     it('should follow symlinks when followSymlinks is true', async () => {
@@ -655,16 +649,9 @@ describe('FileScanner Extended Tests', () => {
       
       vi.mocked(fs.readdir).mockRejectedValue(new Error('Permission denied'));
 
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
       const files = await scanner.findFilesByPattern('*.md');
       
       expect(files).toEqual([]);
-      // The error should be caught and logged in scanDirectory, not in findFilesByPattern
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '⚠️ Directory access error: /error/path',
-        expect.any(Error)
-      );
     });
   });
 

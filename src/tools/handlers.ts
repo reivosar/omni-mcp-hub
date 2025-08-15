@@ -11,6 +11,7 @@ import { YamlConfigManager } from "../config/yaml-config.js";
 import { PathResolver } from "../utils/path-resolver.js";
 import { MCPProxyManager } from "../mcp-proxy/manager.js";
 import { ILogger, SilentLogger } from "../utils/logger.js";
+import { ErrorHandler, createStandardErrorResponse } from "../utils/error-handler.js";
 
 export class ToolHandlers {
   private server: Server;
@@ -21,6 +22,7 @@ export class ToolHandlers {
   private lastAppliedTime: string | null = null;
   private proxyManager?: MCPProxyManager;
   private logger: ILogger;
+  private errorHandler: ErrorHandler;
 
   constructor(
     server: Server,
@@ -33,6 +35,7 @@ export class ToolHandlers {
     this.claudeConfigManager = claudeConfigManager;
     this.activeProfiles = activeProfiles;
     this.logger = logger || new SilentLogger();
+    this.errorHandler = ErrorHandler.getInstance(this.logger);
     
     const pathResolver = PathResolver.getInstance();
     const yamlConfigPath = pathResolver.getYamlConfigPath();
@@ -172,15 +175,16 @@ export class ToolHandlers {
         default:
           // Check if it's a proxied tool from external MCP server
           if (this.proxyManager) {
-            try {
-              const result = await this.proxyManager.callTool(name, args);
-              return result;
-            } catch (error) {
-              this.logger.debug(`Error calling proxied tool ${name}:`, error);
-              throw error;
-            }
+            return this.errorHandler.wrapToolCall(
+              () => this.proxyManager!.callTool(name, args),
+              {
+                operation: 'proxy_tool_call',
+                toolName: name,
+                args,
+              }
+            );
           }
-          throw new Error(`Unknown tool: ${name}`);
+          return createStandardErrorResponse(`Unknown tool: ${name}`);
       }
     });
   }
@@ -189,6 +193,16 @@ export class ToolHandlers {
    * Handle apply_claude_config tool call
    */
   private async handleApplyClaudeConfig(args: any) {
+    return this.errorHandler.wrapToolCall(
+      () => this.doHandleApplyClaudeConfig(args),
+      {
+        operation: 'apply_claude_config',
+        args,
+      }
+    );
+  }
+
+  private async doHandleApplyClaudeConfig(args: any) {
     // Support single string argument or normal object argument
     let filePath: string = '';
     let profileName: string | undefined;
@@ -245,87 +259,67 @@ export class ToolHandlers {
     }
     
     if (!filePath) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `File path is required`,
-          },
-        ],
-        isError: true,
-      };
+      return createStandardErrorResponse('File path is required');
     }
     
-    try {
-      // Try to resolve file path if it's just a name without extension
-      let resolvedFilePath = filePath;
-      if (!path.extname(filePath) && !filePath.includes('/')) {
-        // Try common patterns for profile names
-        const pathResolver = PathResolver.getInstance();
-        const possiblePaths = pathResolver.generateFilePaths(filePath);
-        
-        for (const possiblePath of possiblePaths) {
-          try {
-            await this.claudeConfigManager.loadClaudeConfig(possiblePath);
-            resolvedFilePath = possiblePath;
-            break;
-          } catch {
-            // Continue to next path
-          }
+    // Try to resolve file path if it's just a name without extension
+    let resolvedFilePath = filePath;
+    if (!path.extname(filePath) && !filePath.includes('/')) {
+      // Try common patterns for profile names
+      const pathResolver = PathResolver.getInstance();
+      const possiblePaths = pathResolver.generateFilePaths(filePath);
+      
+      for (const possiblePath of possiblePaths) {
+        try {
+          await this.claudeConfigManager.loadClaudeConfig(possiblePath);
+          resolvedFilePath = possiblePath;
+          break;
+        } catch {
+          // Continue to next path
         }
       }
-      
-      const config = await this.claudeConfigManager.loadClaudeConfig(resolvedFilePath);
-      // Auto-generate profile name from filename (without extension) or use default
-      const yamlConfigManager = new YamlConfigManager();
-      const autoProfileName = profileName || path.basename(resolvedFilePath, path.extname(resolvedFilePath)) || yamlConfigManager.getDefaultProfile();
-      this.activeProfiles.set(autoProfileName, config);
-      
-      // Track the last applied profile
-      this.lastAppliedProfile = autoProfileName;
-      this.lastAppliedTime = new Date().toISOString();
-      
-      let responseMessages = [
+    }
+    
+    const config = await this.claudeConfigManager.loadClaudeConfig(resolvedFilePath);
+    // Auto-generate profile name from filename (without extension) or use default
+    const yamlConfigManager = new YamlConfigManager();
+    const autoProfileName = profileName || path.basename(resolvedFilePath, path.extname(resolvedFilePath)) || yamlConfigManager.getDefaultProfile();
+    this.activeProfiles.set(autoProfileName, config);
+    
+    // Track the last applied profile
+    this.lastAppliedProfile = autoProfileName;
+    this.lastAppliedTime = new Date().toISOString();
+    
+    let responseMessages = [
+      {
+        type: "text" as const,
+        text: `Successfully loaded CLAUDE.md configuration from ${resolvedFilePath} as profile '${autoProfileName}'`,
+      },
+    ];
+    
+    // If auto-apply is enabled
+    if (autoApply) {
+      const behaviorInstructions = BehaviorGenerator.generateInstructions(config);
+      responseMessages.push(
         {
           type: "text" as const,
-          text: `Successfully loaded CLAUDE.md configuration from ${resolvedFilePath} as profile '${autoProfileName}'`,
+          text: `\nAutomatically applying profile '${autoProfileName}'...`,
         },
-      ];
-      
-      // If auto-apply is enabled
-      if (autoApply) {
-        const behaviorInstructions = BehaviorGenerator.generateInstructions(config);
-        responseMessages.push(
-          {
-            type: "text" as const,
-            text: `\nAutomatically applying profile '${autoProfileName}'...`,
-          },
-          {
-            type: "text" as const,
-            text: behaviorInstructions,
-          }
-        );
-      } else {
-        responseMessages.push({
+        {
           type: "text" as const,
-          text: `Configuration includes: ${Object.keys(config).filter(k => !k.startsWith('_')).join(', ')}`,
-        });
-      }
-      
-      return {
-        content: responseMessages,
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Failed to load CLAUDE.md: ${error}`,
-          },
-        ],
-        isError: true,
-      };
+          text: behaviorInstructions,
+        }
+      );
+    } else {
+      responseMessages.push({
+        type: "text" as const,
+        text: `Configuration includes: ${Object.keys(config).filter(k => !k.startsWith('_')).join(', ')}`,
+      });
     }
+    
+    return {
+      content: responseMessages,
+    };
   }
 
 
@@ -334,7 +328,10 @@ export class ToolHandlers {
    * Handle list_claude_configs tool call
    */
   private async handleListClaudeConfigs(args: any) {
-    try {
+    return this.doHandleListClaudeConfigs(args);
+  }
+
+  private async doHandleListClaudeConfigs(args: any) {
       // Get loaded configs
       const loadedConfigNames = Array.from(this.activeProfiles.keys());
       
@@ -371,31 +368,24 @@ export class ToolHandlers {
         }
       };
       
-      return {
-        content: [
-          {
-            type: "text",
-            text: `CLAUDE.md configs:\n\n${JSON.stringify(result, null, 2)}`,
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Failed to list configs: ${error}`,
-          },
-        ],
-        isError: true,
-      };
-    }
+    return {
+      content: [
+        {
+          type: "text",
+          text: `CLAUDE.md configs:\n\n${JSON.stringify(result, null, 2)}`,
+        },
+      ],
+    };
   }
   
   /**
    * Handle get_active_profile tool call - returns currently applied profile info
    */
   private async handleGetAppliedConfig(args: any) {
+    return this.doHandleGetAppliedConfig(args);
+  }
+
+  private async doHandleGetAppliedConfig(args: any) {
     // Track the last applied profile (we'll need to store this when apply_claude_config is called)
     const lastAppliedProfile = this.lastAppliedProfile;
     

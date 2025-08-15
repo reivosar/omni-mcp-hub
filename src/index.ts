@@ -11,6 +11,7 @@ import { YamlConfigManager } from "./config/yaml-config.js";
 import { MCPProxyManager } from "./mcp-proxy/manager.js";
 import { PathResolver } from "./utils/path-resolver.js";
 import { Logger, ILogger } from "./utils/logger.js";
+import { ProcessErrorHandler } from "./utils/process-error-handler.js";
 
 export class OmniMCPServer {
   private server: Server;
@@ -86,6 +87,10 @@ export class OmniMCPServer {
     this.logger.debug("[INIT] Initializing external servers...");
     await this.initializeExternalServers();
     this.logger.debug("[INIT] External servers initialized");
+
+    this.logger.debug("[INIT] Starting health checks...");
+    this.proxyManager.startHealthChecks(30000);
+    this.logger.debug("[INIT] Health checks started");
 
     // Setup handlers AFTER external servers are connected
     this.logger.debug("[INIT] Setting up tool handlers...");
@@ -171,11 +176,37 @@ export class OmniMCPServer {
   generateBehaviorInstructions(config: ClaudeConfig): string {
     return BehaviorGenerator.generateInstructions(config);
   }
+
+  cleanup(): void {
+    this.logger.info('[CLEANUP] Starting server cleanup...');
+    
+    try {
+      this.proxyManager.stopHealthChecks();
+      this.proxyManager.disconnectAll();
+      this.logger.info('[CLEANUP] Server cleanup completed');
+    } catch (error) {
+      this.logger.error('[CLEANUP] Error during cleanup:', error);
+    }
+  }
 }
+
+// Setup process-level error handling first
+const logger = Logger.getInstance();
+const processErrorHandler = ProcessErrorHandler.getInstance(logger);
+processErrorHandler.setupGlobalErrorHandlers();
+
+// Start metrics collection
+const metricsInterval = processErrorHandler.startMetricsCollection(60000);
+
+// Clean up on shutdown
+process.on('beforeExit', () => {
+  clearInterval(metricsInterval);
+  server.cleanup();
+});
 
 // Start the server
 const server = new OmniMCPServer();
 server.run().catch((error) => {
-  Logger.getInstance().error("Server error:", error);
+  logger.error("Server startup error:", error);
   process.exit(1);
 });

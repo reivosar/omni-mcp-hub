@@ -7,14 +7,52 @@ export interface ProcessErrorConfig {
   logUncaughtExceptions?: boolean;
 }
 
+export interface IProcessAdapter {
+  on(event: string, listener: (...args: any[]) => void): void;
+  exit(code: number): void;
+  emit(event: string, ...args: any[]): void;
+  memoryUsage(): NodeJS.MemoryUsage;
+  cpuUsage(): NodeJS.CpuUsage;
+  uptime(): number;
+  pid: number;
+}
+
+export interface ITimerAdapter {
+  setTimeout(callback: () => void, ms: number): NodeJS.Timeout;
+  clearTimeout(timeout: NodeJS.Timeout): void;
+  setInterval(callback: () => void, ms: number): NodeJS.Timeout;
+  clearInterval(interval: NodeJS.Timeout): void;
+}
+
+export interface IConsoleAdapter {
+  error(...args: any[]): void;
+}
+
 export class ProcessErrorHandler {
-  private static instance: ProcessErrorHandler;
   private logger: ILogger;
   private config: ProcessErrorConfig;
+  private processAdapter: IProcessAdapter;
+  private timerAdapter: ITimerAdapter;
+  private consoleAdapter: IConsoleAdapter;
   private isShuttingDown = false;
+  private metricsInterval?: NodeJS.Timeout;
 
-  constructor(logger: ILogger, config: ProcessErrorConfig = {}) {
+  constructor(
+    logger: ILogger,
+    processAdapter: IProcessAdapter,
+    timerAdapter: ITimerAdapter = {
+      setTimeout: (cb, ms) => setTimeout(cb, ms),
+      clearTimeout: (t) => clearTimeout(t),
+      setInterval: (cb, ms) => setInterval(cb, ms),
+      clearInterval: (t) => clearInterval(t),
+    },
+    consoleAdapter: IConsoleAdapter = console,
+    config: ProcessErrorConfig = {}
+  ) {
     this.logger = logger;
+    this.processAdapter = processAdapter;
+    this.timerAdapter = timerAdapter;
+    this.consoleAdapter = consoleAdapter;
     this.config = {
       enableGracefulShutdown: true,
       shutdownTimeoutMs: 5000,
@@ -24,34 +62,26 @@ export class ProcessErrorHandler {
     };
   }
 
-  static getInstance(logger: ILogger, config?: ProcessErrorConfig): ProcessErrorHandler {
-    if (!ProcessErrorHandler.instance) {
-      ProcessErrorHandler.instance = new ProcessErrorHandler(logger, config);
-    }
-    return ProcessErrorHandler.instance;
-  }
-
   setupGlobalErrorHandlers(): void {
     this.logger.info('[PROCESS-ERROR] Setting up global error handlers');
 
-    process.on('uncaughtException', (error: Error) => {
+    this.processAdapter.on('uncaughtException', (error: Error) => {
       this.handleUncaughtException(error);
     });
 
-    process.on('unhandledRejection', (reason: unknown, _promise: Promise<unknown>) => {
+    this.processAdapter.on('unhandledRejection', (reason: unknown, _promise: Promise<unknown>) => {
       this.handleUnhandledRejection(reason, _promise);
     });
 
-    process.on('SIGTERM', () => {
+    this.processAdapter.on('SIGTERM', () => {
       this.handleSignal('SIGTERM');
     });
 
-    process.on('SIGINT', () => {
+    this.processAdapter.on('SIGINT', () => {
       this.handleSignal('SIGINT');
     });
 
-    // Handle memory warnings
-    process.on('warning', (warning) => {
+    this.processAdapter.on('warning', (warning: { name: string; message: string; stack?: string }) => {
       this.logger.warn('[PROCESS-WARNING]', {
         name: warning.name,
         message: warning.message,
@@ -68,14 +98,14 @@ export class ProcessErrorHandler {
       message: error.message,
       stack: error.stack,
       timestamp: new Date().toISOString(),
-      pid: process.pid,
-      memory: process.memoryUsage(),
+      pid: this.processAdapter.pid,
+      memory: this.processAdapter.memoryUsage(),
     };
 
     this.logger.error('[UNCAUGHT-EXCEPTION]', JSON.stringify(errorInfo, null, 2));
 
     if (this.config.logUncaughtExceptions) {
-      console.error('[CRITICAL] Uncaught Exception:', error);
+      this.consoleAdapter.error('[CRITICAL] Uncaught Exception:', error);
     }
 
     this.performGracefulShutdown('uncaught_exception', 1);
@@ -89,14 +119,14 @@ export class ProcessErrorHandler {
         stack: reason.stack,
       } : String(reason),
       timestamp: new Date().toISOString(),
-      pid: process.pid,
-      memory: process.memoryUsage(),
+      pid: this.processAdapter.pid,
+      memory: this.processAdapter.memoryUsage(),
     };
 
     this.logger.error('[UNHANDLED-REJECTION]', JSON.stringify(errorInfo, null, 2));
 
     if (this.config.logUncaughtExceptions) {
-      console.error('[CRITICAL] Unhandled Rejection:', reason);
+      this.consoleAdapter.error('[CRITICAL] Unhandled Rejection:', reason);
     }
 
     this.performGracefulShutdown('unhandled_rejection', 1);
@@ -110,43 +140,50 @@ export class ProcessErrorHandler {
   private performGracefulShutdown(reason: string, exitCode: number): void {
     if (this.isShuttingDown) {
       this.logger.warn('[SHUTDOWN] Already shutting down, forcing exit');
-      process.exit(exitCode);
+      this.processAdapter.exit(exitCode);
       return;
     }
 
     this.isShuttingDown = true;
     this.logger.info(`[SHUTDOWN] Starting graceful shutdown (reason: ${reason})`);
 
-    const shutdownTimeout = setTimeout(() => {
+    const shutdownTimeout = this.timerAdapter.setTimeout(() => {
       this.logger.error('[SHUTDOWN] Graceful shutdown timeout, forcing exit');
-      process.exit(exitCode);
-    }, this.config.shutdownTimeoutMs);
+      this.processAdapter.exit(exitCode);
+    }, this.config.shutdownTimeoutMs!);
 
-    // Clean shutdown logic
     this.performCleanup()
       .then(() => {
-        clearTimeout(shutdownTimeout);
+        this.timerAdapter.clearTimeout(shutdownTimeout);
         this.logger.info('[SHUTDOWN] Graceful shutdown complete');
-        process.exit(exitCode);
+        this.processAdapter.exit(exitCode);
       })
       .catch((error) => {
-        clearTimeout(shutdownTimeout);
+        this.timerAdapter.clearTimeout(shutdownTimeout);
         this.logger.error('[SHUTDOWN] Error during cleanup:', error);
-        process.exit(exitCode);
+        this.processAdapter.exit(exitCode);
       });
   }
 
   private async performCleanup(): Promise<void> {
     try {
-      // Emit shutdown event for components to clean up
-      process.emit('beforeExit' as never, 0);
+      this.logger.info('[CLEANUP] Starting server cleanup...');
+      
+      // Stop metrics collection
+      if (this.metricsInterval) {
+        this.timerAdapter.clearInterval(this.metricsInterval);
+        this.metricsInterval = undefined;
+      }
+      
+      // Emit cleanup events
+      this.processAdapter.emit('beforeExit', 0);
       
       // Give time for cleanup
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => this.timerAdapter.setTimeout(() => resolve(undefined), 100));
       
-      this.logger.info('[SHUTDOWN] Cleanup completed');
+      this.logger.info('[CLEANUP] Server cleanup completed');
     } catch (error) {
-      this.logger.error('[SHUTDOWN] Cleanup error:', error);
+      this.logger.error('[CLEANUP] Cleanup error:', error);
       throw error;
     }
   }
@@ -155,7 +192,7 @@ export class ProcessErrorHandler {
     return () => ({
       status: this.isShuttingDown ? 'shutting_down' : 'healthy',
       timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
+      uptime: this.processAdapter.uptime(),
     });
   }
 
@@ -163,10 +200,10 @@ export class ProcessErrorHandler {
     const metrics = {
       type: 'process_metrics',
       timestamp: new Date().toISOString(),
-      pid: process.pid,
-      uptime: process.uptime(),
-      memory: process.memoryUsage(),
-      cpu: process.cpuUsage(),
+      pid: this.processAdapter.pid,
+      uptime: this.processAdapter.uptime(),
+      memory: this.processAdapter.memoryUsage(),
+      cpu: this.processAdapter.cpuUsage(),
     };
 
     this.logger.info('[PROCESS-METRICS]', JSON.stringify(metrics));
@@ -175,8 +212,32 @@ export class ProcessErrorHandler {
   startMetricsCollection(intervalMs: number = 60000): NodeJS.Timeout {
     this.logger.info(`[PROCESS-METRICS] Starting metrics collection (interval: ${intervalMs}ms)`);
     
-    return setInterval(() => {
+    this.metricsInterval = this.timerAdapter.setInterval(() => {
       this.logProcessMetrics();
     }, intervalMs);
+    
+    return this.metricsInterval;
+  }
+
+  stopMetricsCollection(): void {
+    if (this.metricsInterval) {
+      this.timerAdapter.clearInterval(this.metricsInterval);
+      this.metricsInterval = undefined;
+      this.logger.info('[PROCESS-METRICS] Metrics collection stopped');
+    }
+  }
+
+  // For testing: reset internal state
+  reset(): void {
+    this.isShuttingDown = false;
+    if (this.metricsInterval) {
+      this.timerAdapter.clearInterval(this.metricsInterval);
+      this.metricsInterval = undefined;
+    }
+  }
+
+  // Getters for testing
+  get shuttingDown(): boolean {
+    return this.isShuttingDown;
   }
 }

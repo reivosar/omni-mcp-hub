@@ -1,0 +1,19 @@
+# Docker Test Configuration - MCP Server Integration
+externalServers:
+  enabled: true
+  autoConnect: true
+  
+  servers:
+    # Test server for development and testing
+    - name: "test-server"
+      command: "node"
+      args: ["/app/examples/test-server.js"]
+      description: "Test MCP server for proxy functionality testing"
+  
+  retry:
+    maxAttempts: 3
+    delayMs: 1000
+
+# Logging configuration for Docker testing
+logging:
+  level: "debug"

@@ -198,7 +198,7 @@ export class OmniMCPServer {
 
 // Setup process-level error handling first
 const logger = Logger.getInstance();
-const processErrorHandler = ProcessErrorHandler.getInstance(logger);
+const processErrorHandler = new ProcessErrorHandler(logger, process);
 processErrorHandler.setupGlobalErrorHandlers();
 
 // Start metrics collection
@@ -206,7 +206,7 @@ const metricsInterval = processErrorHandler.startMetricsCollection(60000);
 
 // Clean up on shutdown
 process.on('beforeExit', () => {
-  clearInterval(metricsInterval);
+  processErrorHandler.stopMetricsCollection();
   server.cleanup();
 });
 

@@ -26,14 +26,11 @@ A universal MCP (Model Context Protocol) server for Claude Code integration with
 Choose your focus and run the appropriate setup script:
 
 ```bash
-# For local CLAUDE.md resources and character behaviors
-./examples/local-resources/start.sh
+# For local CLAUDE.md resources and character behaviors (Docker)
+./examples/docker/local-resources/start.sh
 
-# For external MCP server integration
-./examples/mcp/start.sh
-
-# Or run the general example setup
-./examples/start.sh
+# For external MCP server integration (Docker)
+./examples/docker/mcp/start.sh
 ```
 
 ### Docker Setup
@@ -117,14 +114,18 @@ Character behaviors and CLAUDE.md configuration files:
 
 External MCP server integration examples:
 
-- **`external-servers-config.yaml`**: Complete external MCP server configuration
+- **`omni-config.yaml`**: Complete external MCP server configuration
 - **`test-proxy.yaml`**: Simple test configuration for development
 - **`test-server.js`**: Test MCP server for proxy functionality
 - **`README.md`**: MCP integration documentation
 
-**Configuration:**
-- **`omni-config.yaml`**: Main configuration file
-- **`start.sh`**: Setup script
+### Docker Environments (`examples/docker/`)
+
+Docker-based test environments:
+
+- **`local-resources/`**: Behavior profile testing environment
+- **`mcp/`**: MCP server integration testing environment
+- **`README.md`**: Docker environments documentation
 
 ### Using Character Behaviors
 

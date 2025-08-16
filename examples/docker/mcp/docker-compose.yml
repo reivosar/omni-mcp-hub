@@ -3,9 +3,9 @@ services:
     extends:
       file: ../../docker/docker-compose.yml
       service: omni-mcp-hub
-    container_name: omni-mcp-hub-test
+    container_name: omni-mcp-hub-mcp
     volumes:
-      - ../local-resources:/app/examples:ro
+      - ../../mcp:/app/examples:ro
       - ./omni-config.yaml:/app/omni-config.yaml:ro
 
 volumes:

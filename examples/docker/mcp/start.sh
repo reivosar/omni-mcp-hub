@@ -1,15 +1,19 @@
 #!/bin/bash
 
-# Start Docker test environment
+# Start Docker test environment with MCP config
 set -e
 
-echo "Starting Omni MCP Hub Docker test environment..."
+echo "Starting Omni MCP Hub Docker test environment (with MCP config)..."
 
 # Navigate to script directory
 cd "$(dirname "$0")"
 
-# Stop existing containers
+# Stop existing containers (both possible container names)
 echo "Cleaning up existing containers..."
+docker stop omni-mcp-hub-test 2>/dev/null || true
+docker rm omni-mcp-hub-test 2>/dev/null || true
+docker stop omni-mcp-hub-mcp 2>/dev/null || true
+docker rm omni-mcp-hub-mcp 2>/dev/null || true
 docker-compose down --remove-orphans 2>/dev/null || true
 
 # Start container
@@ -21,7 +25,7 @@ echo "Waiting for container to start..."
 sleep 5
 
 # Check if container is running
-if docker-compose ps | grep -q "omni-mcp-hub-test.*Up"; then
+if docker-compose ps | grep -q "omni-mcp-hub-mcp.*Up"; then
     echo "✅ Container is running"
 else
     echo "❌ Container failed to start"
@@ -36,14 +40,14 @@ echo ""
 
 # Update Claude Code MCP configuration
 echo "Updating Claude Code MCP settings..."
-PROJECT_ROOT=$(cd ../.. && pwd)
+PROJECT_ROOT=$(cd ../../.. && pwd)
 cat > ~/.claude.json << EOF
 {
   "mcpServers": {
     "omni-mcp-hub": {
       "command": "docker",
-      "args": ["exec", "-i", "omni-mcp-hub-test", "node", "dist/index.js"],
-      "description": "Omni MCP Hub - Docker test environment"
+      "args": ["exec", "-i", "omni-mcp-hub-mcp", "node", "dist/index.js"],
+      "description": "Omni MCP Hub - Docker test environment (MCP config)"
     }
   }
 }
@@ -53,17 +57,11 @@ echo "Claude Code MCP configuration updated!"
 echo ""
 echo "Commands:"
 echo "  View logs:    docker-compose logs -f"
-echo "  Shell access: docker-compose exec omni-mcp-hub-test sh"
+echo "  Shell access: docker-compose exec omni-mcp-hub-mcp sh"
 echo "  Stop:         docker-compose down"
 echo ""
 echo "Starting Claude Code..."
 
-# Check if Claude Code is already running and stop it
-CLAUDE_PID=$(pgrep -f "claude" 2>/dev/null || true)
-if [ -n "$CLAUDE_PID" ]; then
-    echo "Stopping existing Claude Code processes..."
-    kill $CLAUDE_PID 2>/dev/null || true
-    sleep 2
-fi
-
+# Simply start Claude Code without trying to stop existing processes
+# The user should manage their own Claude Code sessions
 claude

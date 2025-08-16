@@ -44,7 +44,10 @@ export class ConfigLoader {
 
       // 2. Load profiles from YAML configuration
       if (yamlConfig.autoLoad?.profiles) {
+        this.logger.info(`[CONFIG-LOADER] Found ${yamlConfig.autoLoad.profiles.length} autoLoad profiles to load`);
         await this.loadProfilesFromYaml(yamlConfig.autoLoad.profiles, activeProfiles);
+      } else {
+        this.logger.info("[CONFIG-LOADER] No autoLoad profiles found in YAML config");
       }
 
       // 3. Load profiles from legacy .mcp-config.json (backward compatibility)
@@ -137,8 +140,10 @@ export class ConfigLoader {
     activeProfiles: Map<string, ClaudeConfig>
   ): Promise<void> {
     const config = this.yamlConfigManager.getConfig();
+    this.logger.info(`[CONFIG-LOADER] Processing ${profiles.length} YAML profiles`);
     
     for (const profile of profiles) {
+      this.logger.info(`[CONFIG-LOADER] Loading profile '${profile.name}' from path: ${profile.path}, autoApply: ${profile.autoApply}`);
       if (profile.path && profile.name) {
         // Skip if autoApply is explicitly set to false
         if (profile.autoApply === false) {
@@ -158,11 +163,13 @@ export class ConfigLoader {
           (loadedConfig as { _autoApply?: boolean; _filePath?: string })._autoApply = profile.autoApply === true;
           (loadedConfig as { _autoApply?: boolean; _filePath?: string })._filePath = fullPath;
           activeProfiles.set(profile.name, loadedConfig);
+          this.logger.info(`[CONFIG-LOADER] Successfully loaded profile '${profile.name}' from ${fullPath}`);
           
           // If autoApply is true, apply the behavior immediately
           if (profile.autoApply === true) {
             const { BehaviorGenerator } = await import('../utils/behavior-generator.js');
             const behaviorInstructions = BehaviorGenerator.generateInstructions(loadedConfig);
+            this.logger.info(`[CONFIG-LOADER] Auto-applying profile '${profile.name}'`);
             this.logger.debug(`\n=== APPLYING PROFILE '${profile.name}' ===`);
             this.logger.debug(behaviorInstructions);
             this.logger.debug(`=== END PROFILE APPLICATION ===\n`);
@@ -173,6 +180,7 @@ export class ConfigLoader {
             this.yamlConfigManager.log('info', `Auto-loaded profile '${profile.name}': ${profile.path}${applyStatus}`);
           }
         } catch (error) {
+          this.logger.info(`[CONFIG-LOADER] Failed to load profile '${profile.name}' from ${profile.path}: ${error}`);
           if (config.logging?.verboseFileLoading) {
             this.logger.debug(`Profile '${profile.name}' loading failed: ${error}`);
           }

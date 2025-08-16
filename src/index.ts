@@ -75,14 +75,12 @@ export class OmniMCPServer {
   private async initialize(): Promise<void> {
     this.logger.info("[INIT] Starting server initialization...");
 
-    // Load YAML configuration first
-    this.logger.debug("[INIT] Loading YAML configuration...");
-    await this.yamlConfigManager.loadYamlConfig();
-    this.logger.debug("[INIT] YAML configuration loaded");
-
-    this.logger.debug("[INIT] Loading initial configuration...");
+    // Note: YAML config is loaded by configLoader.loadInitialConfig()
+    // No need to load it separately here
+    
+    this.logger.info("[INIT] Loading initial configuration and autoLoad profiles...");
     await this.loadInitialConfiguration();
-    this.logger.debug("[INIT] Initial configuration loaded");
+    this.logger.info("[INIT] Initial configuration loaded");
 
     this.logger.debug("[INIT] Initializing external servers...");
     await this.initializeExternalServers();

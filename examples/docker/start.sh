@@ -33,16 +33,23 @@ fi
 echo ""
 echo "🎉 Docker test environment ready!"
 echo ""
-echo "Claude Code MCP settings:"
-echo '{
+
+# Update Claude Code MCP configuration
+echo "Updating Claude Code MCP settings..."
+PROJECT_ROOT=$(cd ../.. && pwd)
+cat > ~/.claude.json << EOF
+{
   "mcpServers": {
     "omni-mcp-hub": {
-      "command": "docker-compose",
-      "args": ["-f", "examples/docker/docker-compose.yml", "exec", "-T", "omni-mcp-hub-test", "node", "dist/index.js"],
-      "cwd": "'$(cd ../.. && pwd)'"
+      "command": "docker",
+      "args": ["exec", "-i", "omni-mcp-hub-test", "node", "dist/index.js"],
+      "description": "Omni MCP Hub - Docker test environment"
     }
   }
-}'
+}
+EOF
+
+echo "Claude Code MCP configuration updated!"
 echo ""
 echo "Commands:"
 echo "  View logs:    docker-compose logs -f"

@@ -6,7 +6,7 @@ services:
     container_name: omni-mcp-hub-test
     volumes:
       - ../local-resources:/app/examples:ro
-      - ../local-resources/omni-config.yaml:/app/omni-config.yaml:ro
+      - ./omni-config.yaml:/app/omni-config.yaml:ro
 
 volumes:
   omni-logs:

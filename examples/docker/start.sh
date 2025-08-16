@@ -48,3 +48,15 @@ echo "Commands:"
 echo "  View logs:    docker-compose logs -f"
 echo "  Shell access: docker-compose exec omni-mcp-hub-test sh"
 echo "  Stop:         docker-compose down"
+echo ""
+echo "Starting Claude Code..."
+
+# Check if Claude Code is already running and stop it
+CLAUDE_PID=$(pgrep -f "claude" 2>/dev/null || true)
+if [ -n "$CLAUDE_PID" ]; then
+    echo "Stopping existing Claude Code processes..."
+    kill $CLAUDE_PID 2>/dev/null || true
+    sleep 2
+fi
+
+claude

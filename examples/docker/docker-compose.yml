@@ -7,3 +7,6 @@ services:
     volumes:
       - ../local-resources:/app/examples:ro
       - ../local-resources/omni-config.yaml:/app/omni-config.yaml:ro
+
+volumes:
+  omni-logs:

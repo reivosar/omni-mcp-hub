@@ -236,7 +236,7 @@ export class ToolHandlers {
       }
     }
     
-    // If no filePath but profileName is provided, try to find the file
+    // Handle profileName-only case (resolve path from YAML config)
     if (!filePath && profileName) {
       // First check if profile is already loaded
       if (this.activeProfiles.has(profileName)) {
@@ -285,7 +285,36 @@ export class ToolHandlers {
         filePath = existingPath;
       }
       
-      // If still no filePath, try common paths
+      // If still no filePath, try YAML config autoLoad profiles first
+      if (!filePath) {
+        const pathResolver = PathResolver.getInstance();
+        const yamlConfigPath = pathResolver.getAbsoluteYamlConfigPath();
+        const yamlConfigManager = YamlConfigManager.createWithPath(yamlConfigPath, this.logger);
+        try {
+          const yamlConfig = await yamlConfigManager.loadYamlConfig();
+          const autoLoadProfiles = yamlConfig.autoLoad?.profiles || [];
+          
+          // Look for matching profile in autoLoad
+          const matchingProfile = autoLoadProfiles.find(p => p.name === profileName);
+          if (matchingProfile?.path) {
+            // Resolve path (support both absolute and relative paths)
+            const resolvedPath = path.isAbsolute(matchingProfile.path) 
+              ? matchingProfile.path 
+              : path.resolve(process.cwd(), matchingProfile.path);
+            
+            try {
+              await this.claudeConfigManager.loadClaudeConfig(resolvedPath);
+              filePath = resolvedPath;
+            } catch {
+              // Path from YAML config doesn't work, continue to fallback
+            }
+          }
+        } catch {
+          // YAML config loading failed, continue to fallback
+        }
+      }
+      
+      // If still no filePath, try common paths as fallback
       if (!filePath) {
         const pathResolver = PathResolver.getInstance();
         const possiblePaths = pathResolver.generateProfilePaths(profileName);
@@ -302,21 +331,32 @@ export class ToolHandlers {
       }
     }
     
+    // If we have a filePath (either provided or resolved), resolve path format
+    if (filePath) {
+      // Handle Docker container paths (convert /app/ to actual project path)
+      if (filePath.startsWith('/app/')) {
+        const projectRelativePath = filePath.replace('/app/', '');
+        filePath = path.join(process.cwd(), projectRelativePath);
+      }
+      // Handle other relative paths
+      else if (!path.isAbsolute(filePath)) {
+        filePath = path.resolve(process.cwd(), filePath);
+      }
+    }
+    
     if (!filePath) {
       return createStandardErrorResponse('File path is required');
     }
     
-    // Try to resolve file path if it's just a name without extension
-    let resolvedFilePath = filePath;
+    // If it's just a name without extension, try common patterns
     if (!path.extname(filePath) && !filePath.includes('/')) {
-      // Try common patterns for profile names
       const pathResolver = PathResolver.getInstance();
       const possiblePaths = pathResolver.generateFilePaths(filePath);
       
       for (const possiblePath of possiblePaths) {
         try {
           await this.claudeConfigManager.loadClaudeConfig(possiblePath);
-          resolvedFilePath = possiblePath;
+          filePath = possiblePath;
           break;
         } catch {
           // Continue to next path
@@ -324,10 +364,10 @@ export class ToolHandlers {
       }
     }
     
-    const config = await this.claudeConfigManager.loadClaudeConfig(resolvedFilePath);
+    const config = await this.claudeConfigManager.loadClaudeConfig(filePath);
     // Auto-generate profile name from filename (without extension) or use default
     const yamlConfigManager = new YamlConfigManager();
-    const autoProfileName = profileName || path.basename(resolvedFilePath, path.extname(resolvedFilePath)) || yamlConfigManager.getDefaultProfile();
+    const autoProfileName = profileName || path.basename(filePath, path.extname(filePath)) || yamlConfigManager.getDefaultProfile();
     this.activeProfiles.set(autoProfileName, config);
     
     // Track the last applied profile
@@ -337,7 +377,7 @@ export class ToolHandlers {
     let responseMessages = [
       {
         type: "text" as const,
-        text: `Successfully loaded CLAUDE.md configuration from ${resolvedFilePath} as profile '${autoProfileName}'`,
+        text: `Successfully loaded CLAUDE.md configuration from ${filePath} as profile '${autoProfileName}'`,
       },
     ];
     

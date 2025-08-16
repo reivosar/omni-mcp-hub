@@ -237,7 +237,7 @@ examples/
 *.temp
 
 # Build artifacts that shouldn't be in container
-# dist/ is needed for production build
+dist/
 build/
 
 # Development only files

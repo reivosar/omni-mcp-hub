@@ -224,6 +224,9 @@ docker-compose*
 test-results/
 test-reports/
 
+# Examples - not needed in production container
+examples/
+
 # Backup files
 *.bak
 *.backup

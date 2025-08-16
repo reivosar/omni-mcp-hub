@@ -234,7 +234,7 @@ test-reports/
 *.temp
 
 # Build artifacts that shouldn't be in container
-dist/
+# dist/ is needed for production build
 build/
 
 # Development only files
@@ -244,8 +244,7 @@ development/
 
 # Documentation
 docs/
-*.md
-README*
+README.md
 
 # License files
 LICENSE*

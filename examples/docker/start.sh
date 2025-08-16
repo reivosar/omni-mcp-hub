@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# Start Docker test environment
+set -e
+
+echo "Starting Omni MCP Hub Docker test environment..."
+
+# Navigate to script directory
+cd "$(dirname "$0")"
+
+# Stop existing containers
+echo "Cleaning up existing containers..."
+docker-compose down --remove-orphans 2>/dev/null || true
+
+# Start container
+echo "Starting container..."
+docker-compose up -d
+
+# Wait for container to be ready
+echo "Waiting for container to start..."
+sleep 5
+
+# Check if container is running
+if docker-compose ps | grep -q "omni-mcp-hub-test.*Up"; then
+    echo "✅ Container is running"
+else
+    echo "❌ Container failed to start"
+    echo "Logs:"
+    docker-compose logs
+    exit 1
+fi
+
+echo ""
+echo "🎉 Docker test environment ready!"
+echo ""
+echo "Claude Code MCP settings:"
+echo '{
+  "mcpServers": {
+    "omni-mcp-hub": {
+      "command": "docker-compose",
+      "args": ["-f", "examples/docker/docker-compose.yml", "exec", "-T", "omni-mcp-hub-test", "node", "dist/index.js"],
+      "cwd": "'$(cd ../.. && pwd)'"
+    }
+  }
+}'
+echo ""
+echo "Commands:"
+echo "  View logs:    docker-compose logs -f"
+echo "  Shell access: docker-compose exec omni-mcp-hub-test sh"
+echo "  Stop:         docker-compose down"

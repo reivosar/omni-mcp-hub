@@ -38,10 +38,6 @@ RUN npm ci --omit=dev && npm cache clean --force
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Copy configuration and examples
-COPY --from=builder /app/examples ./examples
-COPY --from=builder /app/*.yaml ./
-
 # Create logs directory
 RUN mkdir -p logs && chown -R omni:nodejs logs
 

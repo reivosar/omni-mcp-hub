@@ -1,0 +1,12 @@
+services:
+  omni-mcp-hub:
+    extends:
+      file: ../../docker/docker-compose.yml
+      service: omni-mcp-hub
+    container_name: omni-mcp-hub-mcp
+    volumes:
+      - ../../mcp:/app/examples:ro
+      - ./omni-config.yaml:/app/omni-config.yaml:ro
+
+volumes:
+  omni-logs:

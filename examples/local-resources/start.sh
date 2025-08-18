@@ -19,19 +19,31 @@ echo ""
 # 1. Build
 echo -e "${YELLOW}1. Building project...${NC}"
 cd "$PROJECT_DIR"
-npm run build
+if ! npm run build; then
+    echo -e "${RED}Build failed! Exiting.${NC}"
+    exit 1
+fi
 cd - > /dev/null
+
+# Verify dist directory exists
+if [ ! -f "$PROJECT_DIR/dist/index.js" ]; then
+    echo -e "${RED}Build output not found: $PROJECT_DIR/dist/index.js${NC}"
+    exit 1
+fi
+
 echo -e "${GREEN}Build completed${NC}"
 echo ""
 
 # 2. Claude Code MCP Configuration
 echo -e "${YELLOW}2. Setting up MCP Configuration...${NC}"
 
+# Move to examples/local-resources directory first
+cd "$(dirname "$0")"
+
 MCP_CONFIG=".claude"
 
 if [ -f "$MCP_CONFIG" ]; then
     echo "Updating existing MCP configuration..."
-    cp "$MCP_CONFIG" "$MCP_CONFIG.backup"
     
     python3 -c "
 import json
@@ -45,7 +57,7 @@ if 'mcpServers' not in config:
 
 config['mcpServers']['omni-mcp-hub'] = {
     'command': 'node',
-    'args': ['$PROJECT_DIR/dist/index.js'],
+    'args': ['../../dist/index.js'],
     'description': 'Omni MCP Hub - Local Resources focused configuration'
 }
 
@@ -60,7 +72,7 @@ else
     "omni-mcp-hub": {
       "command": "node",
       "args": [
-        "$PROJECT_DIR/dist/index.js"
+        "../../dist/index.js"
       ],
       "description": "Omni MCP Hub - Local Resources focused configuration"
     }
@@ -103,6 +115,5 @@ echo "   - Tsundere character - Classic anime personality"
 echo "   - Naruto (Naruto) - Enthusiastic and determined"
 echo ""
 
-# Move to examples/local-resources directory and launch Claude Code
-cd "$(dirname "$0")"
-exec claude
+# Launch Claude Code with explicit MCP config
+exec claude --mcp-config .claude

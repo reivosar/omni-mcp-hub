@@ -19,19 +19,49 @@ A universal MCP (Model Context Protocol) server for Claude Code integration with
 
 ## Quick Start
 
+### Native Setup
+
 **Quick Start Options:**
 
-Choose your focus and run the appropriate setup script:
+Choose your configuration and run the appropriate setup script:
 
 ```bash
+# For mixed MCP servers with multiple integrations (Recommended)
+./examples/mixed/start.sh
+
 # For local CLAUDE.md resources and character behaviors
 ./examples/local-resources/start.sh
 
-# For external MCP server integration
-./examples/mcp/start.sh
+# For external MCP server integration (Docker)
+./examples/docker/mcp/start.sh
+```
 
-# Or run the general example setup
-./examples/start.sh
+### Docker Setup
+
+**Run with Docker (Recommended):**
+
+```bash
+# Production deployment
+docker-compose -f docker/docker-compose.yml up -d
+
+# Development with hot reload
+docker-compose -f docker/docker-compose.yml --profile dev up
+
+# With external databases
+docker-compose -f docker/docker-compose.yml --profile postgres --profile redis up -d
+
+# Testing with MCP servers
+docker-compose -f docker/docker-compose.yml --profile test up
+```
+
+**Quick Docker Commands:**
+```bash
+# Build and run
+docker build -t omni-mcp-hub -f docker/Dockerfile .
+docker run -p 3000:3000 -v $(pwd)/omni-config.yaml:/app/omni-config.yaml omni-mcp-hub
+
+# Development mode
+docker-compose -f docker/docker-compose.yml up omni-mcp-hub-dev
 ```
 
 Each script automatically:
@@ -54,10 +84,16 @@ Each script automatically:
 - **add**: Add two numbers together
 - **echo**: Echo back a message
 
-### CLAUDE.md Management Tools
+### CLAUDE.md Management Tools (enabled when fileSettings are configured)
 - **apply_claude_config**: Load and apply a CLAUDE.md configuration file
 - **list_claude_configs**: List all CLAUDE.md configuration files (both loaded and available)
 - **get_applied_config**: Get information about the currently applied configuration
+
+### External MCP Server Tools (when configured)
+- **Serena Tools** (~25 tools): Semantic code search, symbol manipulation, memory management
+- **Filesystem Tools** (~14 tools): File system browsing and operations
+- **Local-files Tools** (~14 tools): Local markdown and text file reading
+- **Git Tools** (when available): Git repository operations and history
 
 ## Available Resources
 
@@ -69,7 +105,24 @@ Each script automatically:
 
 ## Examples Directory
 
-The `examples/` directory is organized into two main categories:
+The `examples/` directory is organized into three main categories:
+
+### Mixed MCP Servers (`examples/mixed/`) **[Recommended]**
+
+Flexible multi-MCP server integration with profile management:
+
+**Configuration:**
+- **`omni-config.yaml`**: Mixed MCP server configuration with autoLoad profiles
+- **`dev-assistant.md`**: Development-focused AI assistant profile
+- **`code-reviewer.md`**: Code review specialist profile
+- **`start.sh`**: Complete setup script for mixed environment
+- **`README.md`**: Mixed MCP servers documentation
+
+**Features:**
+- Multiple MCP servers: Serena + Filesystem + Local-files
+- Profile switching: Development vs Code Review modes
+- File scanning: Automatic profile detection and loading
+- Comprehensive toolset: 50+ tools from multiple sources
 
 ### Local Resources (`examples/local-resources/`)
 
@@ -87,19 +140,36 @@ Character behaviors and CLAUDE.md configuration files:
 
 External MCP server integration examples:
 
-- **`external-servers-config.yaml`**: Complete external MCP server configuration
+- **`omni-config.yaml`**: Complete external MCP server configuration
 - **`test-proxy.yaml`**: Simple test configuration for development
 - **`test-server.js`**: Test MCP server for proxy functionality
 - **`README.md`**: MCP integration documentation
 
-**Configuration:**
-- **`omni-config.yaml`**: Main configuration file
-- **`start.sh`**: Setup script
+### Docker Environments (`examples/docker/`)
 
-### Using Character Behaviors
+Docker-based test environments:
 
+- **`local-resources/`**: Behavior profile testing environment
+- **`mcp/`**: MCP server integration testing environment
+- **`README.md`**: Docker environments documentation
+
+### Usage Examples
+
+**Mixed MCP Environment:**
 ```bash
-# Apply different anime character personalities
+# Switch between development profiles
+/use apply_claude_config profileName:"dev-assistant"    # Development mode
+/use apply_claude_config profileName:"code-reviewer"    # Review mode
+
+# Use integrated MCP tools
+/use serena__find_symbol className:"UserController"
+/use filesystem__read_file path:"README.md" 
+/use local-files__list_directory path:"."
+```
+
+**Character Behaviors:**
+```bash
+# Apply different anime character personalities  
 /use apply_claude_config profileName:"lum"      # Lum (auto-loaded)
 /use apply_claude_config profileName:"zoro"     # Zoro personality
 /use apply_claude_config profileName:"tsundere" # Tsundere character
@@ -342,12 +412,83 @@ All tests are written using **Vitest** with TypeScript support and provide compr
 
 ## Scripts
 
+### Native Development
 - `npm run build` - Build TypeScript to JavaScript
 - `npm run start` - Run the built server
 - `npm run dev` - Run in development mode with tsx
 - `npm test` - Run tests with Vitest
 - `npm run test:ui` - Run tests with Vitest UI
 - `npm run test:coverage` - Run tests with coverage report
+
+### Docker Development
+- `docker-compose -f docker/docker-compose.yml up` - Run production containers
+- `docker-compose -f docker/docker-compose.yml --profile dev up` - Run development with hot reload
+- `docker-compose -f docker/docker-compose.yml down` - Stop all containers
+- `docker-compose -f docker/docker-compose.yml logs -f omni-mcp-hub` - View logs
+- `docker-compose -f docker/docker-compose.yml exec omni-mcp-hub npm test` - Run tests in container
+
+## Docker Deployment
+
+### Production Deployment
+
+1. **Basic Setup:**
+   ```bash
+   # Clone and build
+   git clone https://github.com/reivosar/omni-mcp-hub.git
+   cd omni-mcp-hub
+   
+   # Start production services
+   docker-compose -f docker/docker-compose.yml up -d
+   ```
+
+2. **With External Databases:**
+   ```bash
+   # Start with PostgreSQL and Redis
+   docker-compose -f docker/docker-compose.yml --profile postgres --profile redis up -d
+   ```
+
+3. **Health Monitoring:**
+   ```bash
+   # Check service health
+   docker-compose -f docker/docker-compose.yml ps
+   docker-compose -f docker/docker-compose.yml logs omni-mcp-hub
+   
+   # View logs in real-time
+   docker-compose -f docker/docker-compose.yml logs -f omni-mcp-hub
+   ```
+
+### Development Workflow
+
+1. **Development Mode:**
+   ```bash
+   # Start development container with hot reload
+   docker-compose -f docker/docker-compose.yml --profile dev up
+   
+   # Run tests
+   docker-compose -f docker/docker-compose.yml exec omni-mcp-hub-dev npm test
+   
+   # Access container shell
+   docker-compose -f docker/docker-compose.yml exec omni-mcp-hub-dev sh
+   ```
+
+2. **Configuration Management:**
+   ```bash
+   # Mount custom config
+   docker run -v $(pwd)/custom-config.yaml:/app/omni-config.yaml omni-mcp-hub
+   
+   # Mount examples directory
+   docker run -v $(pwd)/examples:/app/examples omni-mcp-hub
+   ```
+
+### Container Features
+
+- **Multi-stage build** for optimized production images
+- **Non-root user** for security
+- **Health checks** for container monitoring
+- **Signal handling** with dumb-init
+- **Volume mounts** for configuration and logs
+- **Network isolation** with custom bridge network
+- **Service profiles** for different deployment scenarios
 
 ## License
 

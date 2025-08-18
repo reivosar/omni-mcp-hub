@@ -5,7 +5,7 @@
       "args": [
         "../../dist/index.js"
       ],
-      "description": "Omni MCP Hub - External MCP Integration"
+      "description": "Omni MCP Hub - Local Resources focused configuration"
     }
   }
 }

@@ -37,18 +37,27 @@ export class ToolHandlers {
     this.logger = logger || new SilentLogger();
     this.errorHandler = ErrorHandler.getInstance(this.logger);
     
+    this.logger.debug('[TOOL-HANDLERS] Initializing ToolHandlers');
+    this.logger.debug('[TOOL-HANDLERS] Active profiles count:', activeProfiles.size);
+    this.logger.debug('[TOOL-HANDLERS] Proxy manager provided:', !!proxyManagerOrFileScanner);
+    
     const pathResolver = PathResolver.getInstance();
     const yamlConfigPath = pathResolver.getYamlConfigPath();
+    this.logger.debug('[TOOL-HANDLERS] YAML config path:', yamlConfigPath);
     
     // Handle both old and new constructor signatures
     if (proxyManagerOrFileScanner && 'addServer' in proxyManagerOrFileScanner) {
+      this.logger.debug('[TOOL-HANDLERS] Using new signature with MCPProxyManager');
       // New signature with MCPProxyManager
       this.proxyManager = proxyManagerOrFileScanner;
       this.fileScanner = new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath, this.logger), this.logger);
     } else {
+      this.logger.debug('[TOOL-HANDLERS] Using old signature with FileScanner');
       // Old signature with FileScanner
       this.fileScanner = proxyManagerOrFileScanner || new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath, this.logger), this.logger);
     }
+    
+    this.logger.debug('[TOOL-HANDLERS] ToolHandlers initialization complete');
   }
 
 
@@ -67,8 +76,33 @@ export class ToolHandlers {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       this.logger.debug("[TOOL-HANDLER] Processing tools/list request");
       
-      // Get base tools
-      const baseTools = [
+      // Check if local resources are configured by checking external servers and fileSettings
+      // If external servers are disabled OR fileSettings are configured, include CLAUDE.md tools
+      let hasLocalResources = true;
+      
+      // Check if fileSettings are configured in YAML config
+      const pathResolver = PathResolver.getInstance();
+      const yamlConfigPath = pathResolver.getYamlConfigPath();
+      const yamlConfigManager = YamlConfigManager.createWithPath(yamlConfigPath, this.logger);
+      const config = yamlConfigManager?.getConfig?.();
+      const hasFileSettings = !!(config?.fileSettings && Object.keys(config.fileSettings).length > 0);
+      
+      if (this.proxyManager) {
+        const connectedServers = this.proxyManager.getConnectedServers();
+        // Include CLAUDE.md tools if no external servers OR if fileSettings are configured
+        hasLocalResources = connectedServers.length === 0 || hasFileSettings;
+        this.logger.info(`[TOOL-HANDLER] Connected servers count: ${connectedServers.length}`);
+        this.logger.info(`[TOOL-HANDLER] FileSettings configured: ${hasFileSettings}`);
+      } else {
+        this.logger.info(`[TOOL-HANDLER] No proxy manager available - defaulting to local resources mode`);
+      }
+      
+      this.logger.info(`[TOOL-HANDLER] hasLocalResources determined: ${hasLocalResources}`);
+      
+      this.logger.debug(`[TOOL-HANDLER] Local resources configured: ${hasLocalResources}`);
+      
+      // Only include CLAUDE.md management tools if local resources are configured
+      const baseTools = hasLocalResources ? [
         // CLAUDE.md management tools
           {
             name: "apply_claude_config",
@@ -110,11 +144,11 @@ export class ToolHandlers {
               required: [],
             },
           },
-        ];
+        ] : [];
 
-      this.logger.debug(`[TOOL-HANDLER] Base tools count: ${baseTools.length}`);
+      this.logger.info(`[TOOL-HANDLER] Base tools count: ${baseTools.length}`);
       baseTools.forEach((tool, i) => {
-        this.logger.debug(`[TOOL-HANDLER] Base tool ${i+1}: ${tool.name}`);
+        this.logger.info(`[TOOL-HANDLER] Base tool ${i+1}: ${tool.name}`);
       });
 
       // Add proxied tools from external MCP servers
@@ -160,6 +194,8 @@ export class ToolHandlers {
   private setupCallToolHandler(): void {
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
+      this.logger.debug(`[TOOL-HANDLER] Processing tool call: ${name}`);
+      this.logger.debug(`[TOOL-HANDLER] Tool arguments:`, JSON.stringify(args));
 
       switch (name) {
         case "apply_claude_config":
@@ -175,6 +211,7 @@ export class ToolHandlers {
         default:
           // Check if it's a proxied tool from external MCP server
           if (this.proxyManager) {
+            this.logger.debug(`[TOOL-HANDLER] Attempting proxy tool call: ${name}`);
             return this.errorHandler.wrapToolCall(
               () => this.proxyManager!.callTool(name, args),
               {
@@ -184,6 +221,7 @@ export class ToolHandlers {
               }
             );
           }
+          this.logger.debug(`[TOOL-HANDLER] Unknown tool requested: ${name}`);
           return createStandardErrorResponse(`Unknown tool: ${name}`);
       }
     });
@@ -193,6 +231,7 @@ export class ToolHandlers {
    * Handle apply_claude_config tool call
    */
   private async handleApplyClaudeConfig(args: unknown) {
+    this.logger.debug('[APPLY-CLAUDE-CONFIG] Handler called');
     return this.errorHandler.wrapToolCall(
       () => this.doHandleApplyClaudeConfig(args),
       {
@@ -203,15 +242,20 @@ export class ToolHandlers {
   }
 
   private async doHandleApplyClaudeConfig(args: unknown) {
+    this.logger.debug('[APPLY-CLAUDE-CONFIG] Starting configuration application');
+    this.logger.debug('[APPLY-CLAUDE-CONFIG] Raw arguments:', JSON.stringify(args));
+    
     // Support single string argument or normal object argument
     let filePath: string = '';
     let profileName: string | undefined;
     let autoApply: boolean = true; // Auto-apply by default
     
     if (typeof args === 'string') {
-      // Treat as filePath if string
-      filePath = args;
+      this.logger.debug('[APPLY-CLAUDE-CONFIG] Arguments type: string, treating as profileName');
+      // Treat as profileName if string (common usage pattern)
+      profileName = args;
     } else if (args && typeof args === 'object') {
+      this.logger.debug('[APPLY-CLAUDE-CONFIG] Arguments type: object, parsing properties');
       const argsObj = args as { 
         filePath?: string; 
         profileName?: string;
@@ -220,86 +264,203 @@ export class ToolHandlers {
       filePath = argsObj.filePath || '';
       profileName = argsObj.profileName;
       autoApply = argsObj.autoApply !== undefined ? argsObj.autoApply : true;
+      this.logger.debug('[APPLY-CLAUDE-CONFIG] Parsed - filePath:', filePath, 'profileName:', profileName, 'autoApply:', autoApply);
       
-      // If filePath is empty, look for first argument
-      if (!filePath) {
+      // If filePath is empty, look for first argument value (could be profileName)
+      if (!filePath && !profileName) {
         const keys = Object.keys(args);
-        if (keys.length > 0 && keys[0] !== 'profileName' && keys[0] !== 'autoApply') {
-          filePath = (args as Record<string, unknown>)[keys[0]] as string || '';
+        if (keys.length > 0) {
+          const firstValue = (args as Record<string, unknown>)[keys[0]] as string || '';
+          if (keys[0] === 'filePath') {
+            filePath = firstValue;
+          } else {
+            // Treat first argument as profileName
+            profileName = firstValue;
+          }
         }
       }
     }
     
-    // If no filePath but profileName is provided, try to find the file
+    this.logger.debug('[APPLY-CLAUDE-CONFIG] After parsing - filePath:', filePath, 'profileName:', profileName);
+    
+    // Handle profileName-only case (resolve path from YAML config)
     if (!filePath && profileName) {
+      this.logger.debug('[APPLY-CLAUDE-CONFIG] Handling profileName-only case:', profileName);
       // First check if profile is already loaded
       if (this.activeProfiles.has(profileName)) {
+        this.logger.debug('[APPLY-CLAUDE-CONFIG] Profile already loaded:', profileName);
         const config = this.activeProfiles.get(profileName);
-        const existingPath = (config as Record<string, unknown>)?._filePath as string;
-        if (existingPath) {
-          filePath = existingPath;
+        
+        // If profile is already loaded, apply it directly
+        this.lastAppliedProfile = profileName;
+        this.lastAppliedTime = new Date().toISOString();
+        
+        let responseMessages = [
+          {
+            type: "text" as const,
+            text: `Profile '${profileName}' is already loaded and available`,
+          },
+        ];
+        
+        // If auto-apply is enabled
+        if (autoApply) {
+          const behaviorInstructions = BehaviorGenerator.generateInstructions(config!);
+          responseMessages.push(
+            {
+              type: "text" as const,
+              text: `\nApplying profile '${profileName}'...`,
+            },
+            {
+              type: "text" as const,
+              text: behaviorInstructions,
+            }
+          );
+        } else {
+          responseMessages.push({
+            type: "text" as const,
+            text: `Configuration includes: ${Object.keys(config!).filter(k => !k.startsWith('_')).join(', ')}`,
+          });
+        }
+        
+        return {
+          content: responseMessages,
+        };
+      }
+      
+      // If not loaded, try to find the file path
+      this.logger.debug('[APPLY-CLAUDE-CONFIG] Profile not loaded, searching for file path');
+      const existingConfig = this.activeProfiles.get(profileName);
+      const existingPath = (existingConfig as Record<string, unknown>)?._filePath as string;
+      if (existingPath) {
+        this.logger.debug('[APPLY-CLAUDE-CONFIG] Found existing path:', existingPath);
+        filePath = existingPath;
+      }
+      
+      // If still no filePath, try YAML config autoLoad profiles first
+      if (!filePath) {
+        this.logger.debug('[APPLY-CLAUDE-CONFIG] No existing path found, checking YAML config autoLoad profiles');
+        const pathResolver = PathResolver.getInstance();
+        const yamlConfigPath = pathResolver.getAbsoluteYamlConfigPath();
+        this.logger.debug('[APPLY-CLAUDE-CONFIG] YAML config path:', yamlConfigPath);
+        const yamlConfigManager = YamlConfigManager.createWithPath(yamlConfigPath, this.logger);
+        try {
+          const yamlConfig = await yamlConfigManager.loadYamlConfig();
+          this.logger.debug('[APPLY-CLAUDE-CONFIG] Loaded YAML config, autoLoad profiles:', yamlConfig.autoLoad?.profiles?.length || 0);
+          const autoLoadProfiles = yamlConfig.autoLoad?.profiles || [];
+          
+          // Look for matching profile in autoLoad
+          const matchingProfile = autoLoadProfiles.find(p => p.name === profileName);
+          this.logger.debug('[APPLY-CLAUDE-CONFIG] Searching for matching profile in autoLoad:', profileName);
+          if (matchingProfile?.path) {
+            this.logger.debug('[APPLY-CLAUDE-CONFIG] Found matching profile in autoLoad:', matchingProfile.path);
+            // Use PathResolver to handle all path resolution
+            const pathResolver = PathResolver.getInstance();
+            let resolvedPath = pathResolver.resolveProfilePath(matchingProfile.path);
+            
+            try {
+              this.logger.debug('[APPLY-CLAUDE-CONFIG] Attempting to load config from resolved path:', resolvedPath);
+              await this.claudeConfigManager.loadClaudeConfig(resolvedPath);
+              filePath = resolvedPath;
+              this.logger.debug('[APPLY-CLAUDE-CONFIG] Successfully loaded from YAML autoLoad path:', resolvedPath);
+            } catch (error) {
+              this.logger.debug('[APPLY-CLAUDE-CONFIG] Failed to load from YAML autoLoad path:', resolvedPath, 'Error:', error);
+              // Path from YAML config doesn't work, continue to fallback
+            }
+          }
+        } catch (error) {
+          this.logger.debug('[APPLY-CLAUDE-CONFIG] Failed to load YAML config:', error);
+          // YAML config loading failed, continue to fallback
         }
       }
       
-      // If still no filePath, try common paths
+      // If still no filePath, try common paths as fallback
       if (!filePath) {
+        this.logger.debug('[APPLY-CLAUDE-CONFIG] Still no filePath, trying common paths fallback');
         const pathResolver = PathResolver.getInstance();
         const possiblePaths = pathResolver.generateProfilePaths(profileName);
+        this.logger.debug('[APPLY-CLAUDE-CONFIG] Generated possible paths:', possiblePaths);
         
         for (const possiblePath of possiblePaths) {
           try {
+            this.logger.debug('[APPLY-CLAUDE-CONFIG] Trying possible path:', possiblePath);
             await this.claudeConfigManager.loadClaudeConfig(possiblePath);
             filePath = possiblePath;
+            this.logger.debug('[APPLY-CLAUDE-CONFIG] Successfully loaded from possible path:', possiblePath);
             break;
-          } catch {
+          } catch (error) {
+            this.logger.debug('[APPLY-CLAUDE-CONFIG] Failed to load from possible path:', possiblePath, 'Error:', error);
             // Continue to next path
           }
         }
       }
     }
     
+    // If we have a filePath (either provided or resolved), resolve path format
+    if (filePath) {
+      this.logger.debug('[APPLY-CLAUDE-CONFIG] Resolving filePath format:', filePath);
+      // Use PathResolver to handle all path resolution consistently
+      const pathResolver = PathResolver.getInstance();
+      const originalPath = filePath;
+      filePath = pathResolver.resolveProfilePath(filePath);
+      this.logger.debug('[APPLY-CLAUDE-CONFIG] Resolved path:', originalPath, 'to:', filePath);
+    }
+    
     if (!filePath) {
+      this.logger.debug('[APPLY-CLAUDE-CONFIG] No filePath found after all resolution attempts');
       return createStandardErrorResponse('File path is required');
     }
     
-    // Try to resolve file path if it's just a name without extension
-    let resolvedFilePath = filePath;
+    this.logger.debug('[APPLY-CLAUDE-CONFIG] Final filePath to load:', filePath);
+    
+    // If it's just a name without extension, try common patterns
     if (!path.extname(filePath) && !filePath.includes('/')) {
-      // Try common patterns for profile names
+      this.logger.debug('[APPLY-CLAUDE-CONFIG] FilePath has no extension, trying common patterns');
       const pathResolver = PathResolver.getInstance();
       const possiblePaths = pathResolver.generateFilePaths(filePath);
+      this.logger.debug('[APPLY-CLAUDE-CONFIG] Generated file paths:', possiblePaths);
       
       for (const possiblePath of possiblePaths) {
         try {
+          this.logger.debug('[APPLY-CLAUDE-CONFIG] Trying file path:', possiblePath);
           await this.claudeConfigManager.loadClaudeConfig(possiblePath);
-          resolvedFilePath = possiblePath;
+          filePath = possiblePath;
+          this.logger.debug('[APPLY-CLAUDE-CONFIG] Successfully loaded from file path:', possiblePath);
           break;
-        } catch {
+        } catch (error) {
+          this.logger.debug('[APPLY-CLAUDE-CONFIG] Failed to load from file path:', possiblePath, 'Error:', error);
           // Continue to next path
         }
       }
     }
     
-    const config = await this.claudeConfigManager.loadClaudeConfig(resolvedFilePath);
+    this.logger.debug('[APPLY-CLAUDE-CONFIG] Attempting final config load from:', filePath);
+    const config = await this.claudeConfigManager.loadClaudeConfig(filePath);
+    this.logger.debug('[APPLY-CLAUDE-CONFIG] Successfully loaded config, keys:', Object.keys(config));
+    
     // Auto-generate profile name from filename (without extension) or use default
     const yamlConfigManager = new YamlConfigManager();
-    const autoProfileName = profileName || path.basename(resolvedFilePath, path.extname(resolvedFilePath)) || yamlConfigManager.getDefaultProfile();
+    const autoProfileName = profileName || path.basename(filePath, path.extname(filePath)) || yamlConfigManager.getDefaultProfile();
+    this.logger.debug('[APPLY-CLAUDE-CONFIG] Generated profile name:', autoProfileName);
     this.activeProfiles.set(autoProfileName, config);
+    this.logger.debug('[APPLY-CLAUDE-CONFIG] Stored in activeProfiles, total profiles:', this.activeProfiles.size);
     
     // Track the last applied profile
     this.lastAppliedProfile = autoProfileName;
     this.lastAppliedTime = new Date().toISOString();
+    this.logger.debug('[APPLY-CLAUDE-CONFIG] Tracked last applied profile:', autoProfileName, 'at:', this.lastAppliedTime);
     
     let responseMessages = [
       {
         type: "text" as const,
-        text: `Successfully loaded CLAUDE.md configuration from ${resolvedFilePath} as profile '${autoProfileName}'`,
+        text: `Successfully loaded CLAUDE.md configuration from ${filePath} as profile '${autoProfileName}'`,
       },
     ];
     
     // If auto-apply is enabled
     if (autoApply) {
+      this.logger.debug('[APPLY-CLAUDE-CONFIG] Auto-apply enabled, generating behavior instructions');
       const behaviorInstructions = BehaviorGenerator.generateInstructions(config);
+      this.logger.debug('[APPLY-CLAUDE-CONFIG] Generated instructions length:', behaviorInstructions.length);
       responseMessages.push(
         {
           type: "text" as const,
@@ -311,6 +472,7 @@ export class ToolHandlers {
         }
       );
     } else {
+      this.logger.debug('[APPLY-CLAUDE-CONFIG] Auto-apply disabled, showing config summary');
       responseMessages.push({
         type: "text" as const,
         text: `Configuration includes: ${Object.keys(config).filter(k => !k.startsWith('_')).join(', ')}`,
@@ -328,18 +490,24 @@ export class ToolHandlers {
    * Handle list_claude_configs tool call
    */
   private async handleListClaudeConfigs(args: unknown) {
+    this.logger.debug('[LIST-CLAUDE-CONFIGS] Handler called');
     return this.doHandleListClaudeConfigs(args);
   }
 
   private async doHandleListClaudeConfigs(_args: unknown) {
+      this.logger.debug('[LIST-CLAUDE-CONFIGS] Starting list operation');
       // Get loaded configs
       const loadedConfigNames = Array.from(this.activeProfiles.keys());
+      this.logger.debug('[LIST-CLAUDE-CONFIGS] Loaded config names:', loadedConfigNames);
       
       // Get all available files
+      this.logger.debug('[LIST-CLAUDE-CONFIGS] Scanning for available files');
       const availableFiles = await this.fileScanner.scanForClaudeFiles();
+      this.logger.debug('[LIST-CLAUDE-CONFIGS] Found available files:', availableFiles.length);
       const loadedPaths = Array.from(this.activeProfiles.values()).map(config => 
         (config as Record<string, unknown>)._filePath as string
       ).filter(Boolean);
+      this.logger.debug('[LIST-CLAUDE-CONFIGS] Loaded file paths:', loadedPaths);
       
       // Separate loaded and unloaded
       const unloadedFiles = availableFiles.filter(file => 
@@ -382,14 +550,18 @@ export class ToolHandlers {
    * Handle get_active_profile tool call - returns currently applied profile info
    */
   private async handleGetAppliedConfig(args: unknown) {
+    this.logger.debug('[GET-APPLIED-CONFIG] Handler called');
     return this.doHandleGetAppliedConfig(args);
   }
 
   private async doHandleGetAppliedConfig(_args: unknown) {
+    this.logger.debug('[GET-APPLIED-CONFIG] Starting get applied config operation');
     // Track the last applied profile (we'll need to store this when apply_claude_config is called)
     const lastAppliedProfile = this.lastAppliedProfile;
+    this.logger.debug('[GET-APPLIED-CONFIG] Last applied profile:', lastAppliedProfile);
     
     if (!lastAppliedProfile) {
+      this.logger.debug('[GET-APPLIED-CONFIG] No configuration currently applied');
       return {
         content: [
           {
@@ -402,6 +574,7 @@ export class ToolHandlers {
     
     const config = this.activeProfiles.get(lastAppliedProfile);
     if (!config) {
+      this.logger.debug('[GET-APPLIED-CONFIG] Configuration no longer in memory:', lastAppliedProfile);
       return {
         content: [
           {
@@ -411,6 +584,8 @@ export class ToolHandlers {
         ],
       };
     }
+    
+    this.logger.debug('[GET-APPLIED-CONFIG] Found configuration for profile:', lastAppliedProfile);
     
     const profileInfo = {
       name: lastAppliedProfile,

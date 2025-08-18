@@ -11,6 +11,12 @@ vi.mock('child_process', () => ({
     on: vi.fn(),
     kill: vi.fn(),
     pid: 12345
+  }),
+  exec: vi.fn().mockImplementation((command, callback) => {
+    // Mock successful execution
+    if (callback) {
+      callback(null, 'mocked output', '');
+    }
   })
 }));
 

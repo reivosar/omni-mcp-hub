@@ -75,14 +75,12 @@ export class OmniMCPServer {
   private async initialize(): Promise<void> {
     this.logger.info("[INIT] Starting server initialization...");
 
-    // Load YAML configuration first
-    this.logger.debug("[INIT] Loading YAML configuration...");
-    await this.yamlConfigManager.loadYamlConfig();
-    this.logger.debug("[INIT] YAML configuration loaded");
-
-    this.logger.debug("[INIT] Loading initial configuration...");
+    // Note: YAML config is loaded by configLoader.loadInitialConfig()
+    // No need to load it separately here
+    
+    this.logger.info("[INIT] Loading initial configuration and autoLoad profiles...");
     await this.loadInitialConfiguration();
-    this.logger.debug("[INIT] Initial configuration loaded");
+    this.logger.info("[INIT] Initial configuration loaded");
 
     this.logger.debug("[INIT] Initializing external servers...");
     await this.initializeExternalServers();
@@ -200,15 +198,15 @@ export class OmniMCPServer {
 
 // Setup process-level error handling first
 const logger = Logger.getInstance();
-const processErrorHandler = ProcessErrorHandler.getInstance(logger);
+const processErrorHandler = new ProcessErrorHandler(logger, process);
 processErrorHandler.setupGlobalErrorHandlers();
 
 // Start metrics collection
-const metricsInterval = processErrorHandler.startMetricsCollection(60000);
+const _metricsInterval = processErrorHandler.startMetricsCollection(60000);
 
 // Clean up on shutdown
 process.on('beforeExit', () => {
-  clearInterval(metricsInterval);
+  processErrorHandler.stopMetricsCollection();
   server.cleanup();
 });
 

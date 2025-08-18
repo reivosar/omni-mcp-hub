@@ -1,0 +1,45 @@
+# Omni MCP Hub Configuration - MCP Integration Only
+# This configuration focuses ONLY on external MCP server integration
+
+externalServers:
+  enabled: true
+  autoConnect: true
+  
+  servers:
+    # Example configurations (uncomment to use)
+    
+    # Filesystem MCP Server - provides file operations
+    # - name: "filesystem"
+    #   command: "npx"
+    #   args: ["@modelcontextprotocol/server-filesystem", "/allowed/path"]
+    #   description: "Filesystem operations MCP server"
+    
+    # GitHub MCP Server - requires GITHUB_TOKEN environment variable  
+    # - name: "github"
+    #   command: "python"
+    #   args: ["-m", "mcp_server_github"]
+    #   description: "GitHub API integration"
+    #   env:
+    #     GITHUB_TOKEN: "your-github-token"
+    
+    # PostgreSQL MCP Server - database operations
+    # - name: "postgres"
+    #   command: "npx"
+    #   args: ["@modelcontextprotocol/server-postgres", "postgresql://localhost/mydb"]
+    #   description: "PostgreSQL database MCP server"
+    
+    # SQLite MCP Server - lightweight database operations
+    # - name: "sqlite"
+    #   command: "npx" 
+    #   args: ["@modelcontextprotocol/server-sqlite", "/path/to/database.db"]
+    #   description: "SQLite database MCP server"
+    
+    # Test server for development and testing
+    - name: "test-server"
+      command: "node"
+      args: ["./test-server.js"]
+      description: "Test MCP server for proxy functionality testing"
+  
+  retry:
+    maxAttempts: 3
+    delayMs: 1000

@@ -4,6 +4,7 @@ import * as yaml from 'js-yaml';
 import { fileURLToPath } from 'url';
 import { minimatch } from 'minimatch';
 import { ILogger, SilentLogger } from '../utils/logger.js';
+import { PathResolver } from '../utils/path-resolver.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -153,7 +154,8 @@ export class YamlConfigManager {
       return process.env.OMNI_CONFIG_PATH;
     }
     
-    const configPath = path.join(process.cwd(), 'omni-config.yaml');
+    const pathResolver = PathResolver.getInstance();
+    const configPath = pathResolver.resolveAbsolutePath('omni-config.yaml');
     console.log(`[YAML-CONFIG] Looking for config file at: ${configPath}`);
     console.log(`[YAML-CONFIG] Current working directory: ${process.cwd()}`);
     return configPath;
@@ -306,8 +308,9 @@ export class YamlConfigManager {
     if (includePaths.length === 0) return true;
 
     return includePaths.some(includePath => {
-      const resolvedIncludePath = path.resolve(includePath);
-      const resolvedDirPath = path.resolve(dirPath);
+      const pathResolver = PathResolver.getInstance();
+      const resolvedIncludePath = pathResolver.resolveAbsolutePath(includePath);
+      const resolvedDirPath = pathResolver.resolveAbsolutePath(dirPath);
       return resolvedDirPath.startsWith(resolvedIncludePath);
     });
   }
@@ -330,7 +333,8 @@ export class YamlConfigManager {
    * Save configuration file
    */
   async saveYamlConfig(configPath?: string): Promise<void> {
-    const savePath = configPath || this.configPath || path.join(process.cwd(), 'omni-config.yaml');
+    const pathResolver = PathResolver.getInstance();
+    const savePath = configPath || this.configPath || pathResolver.resolveAbsolutePath('omni-config.yaml');
     const yamlContent = yaml.dump(this.config, {
       indent: 2,
       lineWidth: 80,

@@ -344,14 +344,9 @@ export class ToolHandlers {
           this.logger.debug('[APPLY-CLAUDE-CONFIG] Searching for matching profile in autoLoad:', profileName);
           if (matchingProfile?.path) {
             this.logger.debug('[APPLY-CLAUDE-CONFIG] Found matching profile in autoLoad:', matchingProfile.path);
-            // Handle Docker container paths first
-            let resolvedPath = matchingProfile.path;
-            if (resolvedPath.startsWith('/app/')) {
-              const projectRelativePath = resolvedPath.replace('/app/', '');
-              resolvedPath = path.join(process.cwd(), projectRelativePath);
-            } else if (!path.isAbsolute(resolvedPath)) {
-              resolvedPath = path.resolve(process.cwd(), resolvedPath);
-            }
+            // Use PathResolver to handle all path resolution
+            const pathResolver = PathResolver.getInstance();
+            let resolvedPath = pathResolver.resolveProfilePath(matchingProfile.path);
             
             try {
               this.logger.debug('[APPLY-CLAUDE-CONFIG] Attempting to load config from resolved path:', resolvedPath);
@@ -394,18 +389,11 @@ export class ToolHandlers {
     // If we have a filePath (either provided or resolved), resolve path format
     if (filePath) {
       this.logger.debug('[APPLY-CLAUDE-CONFIG] Resolving filePath format:', filePath);
-      // Handle Docker container paths (convert /app/ to actual project path)
-      if (filePath.startsWith('/app/')) {
-        const projectRelativePath = filePath.replace('/app/', '');
-        filePath = path.join(process.cwd(), projectRelativePath);
-        this.logger.debug('[APPLY-CLAUDE-CONFIG] Converted Docker path:', filePath);
-      }
-      // Handle other relative paths
-      else if (!path.isAbsolute(filePath)) {
-        const originalPath = filePath;
-        filePath = path.resolve(process.cwd(), filePath);
-        this.logger.debug('[APPLY-CLAUDE-CONFIG] Resolved relative path:', originalPath, 'to:', filePath);
-      }
+      // Use PathResolver to handle all path resolution consistently
+      const pathResolver = PathResolver.getInstance();
+      const originalPath = filePath;
+      filePath = pathResolver.resolveProfilePath(filePath);
+      this.logger.debug('[APPLY-CLAUDE-CONFIG] Resolved path:', originalPath, 'to:', filePath);
     }
     
     if (!filePath) {

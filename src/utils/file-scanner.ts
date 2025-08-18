@@ -2,6 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { YamlConfig, YamlConfigManager } from '../config/yaml-config.js';
 import { ILogger, SilentLogger } from './logger.js';
+import { PathResolver } from './path-resolver.js';
 
 export interface FileInfo {
   path: string;
@@ -45,9 +46,8 @@ export class FileScanner {
     const includePaths = config.fileSettings?.includePaths || [];
     if (includePaths.length > 0) {
       for (const includePath of includePaths) {
-        const absolutePath = path.isAbsolute(includePath) 
-          ? includePath 
-          : path.join(process.cwd(), includePath);
+        const pathResolver = PathResolver.getInstance();
+        const absolutePath = pathResolver.resolveAbsolutePath(includePath);
         
         try {
           const stat = await fs.stat(absolutePath);
@@ -98,7 +98,8 @@ export class FileScanner {
       const entries = await fs.readdir(dirPath, { withFileTypes: true });
 
       for (const entry of entries) {
-        const fullPath = path.join(dirPath, entry.name);
+        const pathResolver = PathResolver.getInstance();
+        const fullPath = pathResolver.resolveAbsolutePath(path.join(dirPath, entry.name));
 
         // Skip hidden files/directories
         if (!options.includeHidden && entry.name.startsWith('.')) {
@@ -264,7 +265,8 @@ export class FileScanner {
    * Normalize file path
    */
   static normalizePath(filePath: string): string {
-    return path.resolve(filePath);
+    const pathResolver = PathResolver.getInstance();
+    return pathResolver.resolveAbsolutePath(filePath);
   }
 
   /**

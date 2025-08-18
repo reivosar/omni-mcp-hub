@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { PathResolver } from './path-resolver.js';
 
 export interface ClaudeConfig {
   projectName?: string;
@@ -106,7 +107,8 @@ export class ClaudeConfigManager {
    */
   async loadClaudeConfig(filePath: string): Promise<ClaudeConfig> {
     try {
-      const absolutePath = path.resolve(filePath);
+      const pathResolver = PathResolver.getInstance();
+      const absolutePath = pathResolver.resolveAbsolutePath(filePath);
       
       // Check cache first
       if (this.configCache.has(absolutePath)) {
@@ -137,7 +139,8 @@ export class ClaudeConfigManager {
     await fs.writeFile(filePath, content, 'utf-8');
     
     // Update cache
-    const absolutePath = path.resolve(filePath);
+    const pathResolver = PathResolver.getInstance();
+    const absolutePath = pathResolver.resolveAbsolutePath(filePath);
     this.configCache.set(absolutePath, { ...config, _lastModified: new Date().toISOString() });
   }
 
@@ -255,7 +258,10 @@ export class ClaudeConfigManager {
       return files
         .filter((file): file is string => typeof file === 'string')
         .filter(file => file.toLowerCase().includes('claude.md'))
-        .map(file => path.join(directory, file));
+        .map(file => {
+          const pathResolver = PathResolver.getInstance();
+          return pathResolver.resolveAbsolutePath(path.join(directory, file));
+        });
     } catch (_error) {
       return [];
     }

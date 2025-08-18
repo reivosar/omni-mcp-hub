@@ -154,9 +154,9 @@ export class ConfigLoader {
         }
         
         try {
-          const fullPath = path.isAbsolute(profile.path) 
-            ? profile.path 
-            : path.join(process.cwd(), profile.path);
+          // Use PathResolver for consistent path handling
+          const pathResolver = PathResolver.getInstance();
+          const fullPath = pathResolver.resolveProfilePath(profile.path);
           
           const loadedConfig = await this.claudeConfigManager.loadClaudeConfig(fullPath);
           // Mark config with autoApply flag for later use
@@ -199,9 +199,9 @@ export class ConfigLoader {
     for (const profile of profiles) {
       if (profile.path && profile.name) {
         try {
-          const fullPath = path.isAbsolute(profile.path) 
-            ? profile.path 
-            : path.join(process.cwd(), profile.path);
+          // Use PathResolver for consistent path handling
+          const pathResolver = PathResolver.getInstance();
+          const fullPath = pathResolver.resolveProfilePath(profile.path);
           
           const loadedConfig = await this.claudeConfigManager.loadClaudeConfig(fullPath);
           activeProfiles.set(profile.name, loadedConfig);

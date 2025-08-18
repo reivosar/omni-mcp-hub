@@ -74,11 +74,33 @@ export class PathResolver {
 
   /**
    * Resolve relative path to absolute path
+   * Handles ./ and ../ prefixes explicitly
    */
   resolveAbsolutePath(relativePath: string): string {
     if (path.isAbsolute(relativePath)) {
       return relativePath;
     }
+    
+    // For relative paths starting with ./ or ../, resolve from current working directory
+    if (relativePath.startsWith('./') || relativePath.startsWith('../')) {
+      return path.resolve(process.cwd(), relativePath);
+    }
+    
+    // For other relative paths, also resolve from current working directory
     return path.resolve(process.cwd(), relativePath);
+  }
+
+  /**
+   * Resolve profile path with project root fallback
+   * Converts all relative paths to absolute paths
+   */
+  resolveProfilePath(profilePath: string): string {
+    // If already absolute, return as-is
+    if (path.isAbsolute(profilePath)) {
+      return profilePath;
+    }
+    
+    // For relative paths, resolve from current working directory
+    return this.resolveAbsolutePath(profilePath);
   }
 }

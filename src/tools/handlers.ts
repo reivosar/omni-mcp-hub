@@ -76,8 +76,14 @@ export class ToolHandlers {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       this.logger.debug("[TOOL-HANDLER] Processing tools/list request");
       
-      // Get base tools
-      const baseTools = [
+      // Check if local resources are configured
+      // For Serena-only setup, we don't need CLAUDE.md management tools
+      const hasLocalResources = false;
+      
+      this.logger.debug(`[TOOL-HANDLER] Local resources configured: ${hasLocalResources}`);
+      
+      // Only include CLAUDE.md management tools if local resources are configured
+      const baseTools = hasLocalResources ? [
         // CLAUDE.md management tools
           {
             name: "apply_claude_config",
@@ -119,7 +125,7 @@ export class ToolHandlers {
               required: [],
             },
           },
-        ];
+        ] : [];
 
       this.logger.debug(`[TOOL-HANDLER] Base tools count: ${baseTools.length}`);
       baseTools.forEach((tool, i) => {

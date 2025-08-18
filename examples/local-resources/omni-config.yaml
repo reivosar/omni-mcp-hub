@@ -1,18 +1,18 @@
-# Docker Test Configuration with Lum-chan Setup
+# Local Resources Configuration with Character Behaviors
 autoLoad:
   profiles:
     - name: "lum"
-      path: "/app/examples/lum-behavior.md"
+      path: "lum-behavior.md"
       autoApply: true
 
-# File scanning settings for Docker test environment
+# File scanning settings for local development
 fileSettings:
   configFiles:
     claude: "CLAUDE.md"
     behavior: "*-behavior.md"
     custom: "*-config.md"
   includePaths:
-    - "/app/examples/"
+    - "."
   excludePatterns:
     - "*.tmp"
     - "*.backup"
@@ -35,13 +35,13 @@ profileManagement:
   autoNamePattern: "%filename%"
   defaultProfile: "lum"
 
-# Logging configuration for Docker testing
+# Logging configuration for local development
 logging:
   level: "debug"
   verboseFileLoading: true
   verboseProfileSwitching: true
 
-# External servers disabled for local testing
+# External servers disabled for local resource testing
 externalServers:
   enabled: false
   servers: []

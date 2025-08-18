@@ -77,8 +77,20 @@ export class ToolHandlers {
       this.logger.debug("[TOOL-HANDLER] Processing tools/list request");
       
       // Check if local resources are configured
-      // For Serena-only setup, we don't need CLAUDE.md management tools
-      const hasLocalResources = false;
+      let hasLocalResources = false;
+      if (this.fileScanner) {
+        try {
+          const yamlConfigManager = (this.fileScanner as any).yamlConfig as YamlConfigManager;
+          const config = yamlConfigManager.getConfig();
+          hasLocalResources = !!(
+            (config.fileSettings?.includePaths && config.fileSettings.includePaths.length > 0) ||
+            (config.autoLoad?.profiles && config.autoLoad.profiles.length > 0) ||
+            config.directoryScanning
+          );
+        } catch (error) {
+          this.logger.debug(`[TOOL-HANDLER] Error checking local resources: ${error}`);
+        }
+      }
       
       this.logger.debug(`[TOOL-HANDLER] Local resources configured: ${hasLocalResources}`);
       

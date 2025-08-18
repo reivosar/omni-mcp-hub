@@ -23,11 +23,14 @@ A universal MCP (Model Context Protocol) server for Claude Code integration with
 
 **Quick Start Options:**
 
-Choose your focus and run the appropriate setup script:
+Choose your configuration and run the appropriate setup script:
 
 ```bash
-# For local CLAUDE.md resources and character behaviors (Docker)
-./examples/docker/local-resources/start.sh
+# For mixed MCP servers with multiple integrations (Recommended)
+./examples/mixed/start.sh
+
+# For local CLAUDE.md resources and character behaviors
+./examples/local-resources/start.sh
 
 # For external MCP server integration (Docker)
 ./examples/docker/mcp/start.sh
@@ -81,10 +84,16 @@ Each script automatically:
 - **add**: Add two numbers together
 - **echo**: Echo back a message
 
-### CLAUDE.md Management Tools
+### CLAUDE.md Management Tools (enabled when fileSettings are configured)
 - **apply_claude_config**: Load and apply a CLAUDE.md configuration file
 - **list_claude_configs**: List all CLAUDE.md configuration files (both loaded and available)
 - **get_applied_config**: Get information about the currently applied configuration
+
+### External MCP Server Tools (when configured)
+- **Serena Tools** (~25 tools): Semantic code search, symbol manipulation, memory management
+- **Filesystem Tools** (~14 tools): File system browsing and operations
+- **Local-files Tools** (~14 tools): Local markdown and text file reading
+- **Git Tools** (when available): Git repository operations and history
 
 ## Available Resources
 
@@ -96,7 +105,24 @@ Each script automatically:
 
 ## Examples Directory
 
-The `examples/` directory is organized into two main categories:
+The `examples/` directory is organized into three main categories:
+
+### Mixed MCP Servers (`examples/mixed/`) **[Recommended]**
+
+Flexible multi-MCP server integration with profile management:
+
+**Configuration:**
+- **`omni-config.yaml`**: Mixed MCP server configuration with autoLoad profiles
+- **`dev-assistant.md`**: Development-focused AI assistant profile
+- **`code-reviewer.md`**: Code review specialist profile
+- **`start.sh`**: Complete setup script for mixed environment
+- **`README.md`**: Mixed MCP servers documentation
+
+**Features:**
+- Multiple MCP servers: Serena + Filesystem + Local-files
+- Profile switching: Development vs Code Review modes
+- File scanning: Automatic profile detection and loading
+- Comprehensive toolset: 50+ tools from multiple sources
 
 ### Local Resources (`examples/local-resources/`)
 
@@ -127,10 +153,23 @@ Docker-based test environments:
 - **`mcp/`**: MCP server integration testing environment
 - **`README.md`**: Docker environments documentation
 
-### Using Character Behaviors
+### Usage Examples
 
+**Mixed MCP Environment:**
 ```bash
-# Apply different anime character personalities
+# Switch between development profiles
+/use apply_claude_config profileName:"dev-assistant"    # Development mode
+/use apply_claude_config profileName:"code-reviewer"    # Review mode
+
+# Use integrated MCP tools
+/use serena__find_symbol className:"UserController"
+/use filesystem__read_file path:"README.md" 
+/use local-files__list_directory path:"."
+```
+
+**Character Behaviors:**
+```bash
+# Apply different anime character personalities  
 /use apply_claude_config profileName:"lum"      # Lum (auto-loaded)
 /use apply_claude_config profileName:"zoro"     # Zoro personality
 /use apply_claude_config profileName:"tsundere" # Tsundere character

@@ -1,0 +1,108 @@
+# Omni MCP Hub Configuration - Mixed MCP Servers
+# This configuration allows flexible setup of multiple MCP servers for various development needs
+
+autoLoad:
+  profiles:
+    - name: "dev-assistant"
+      path: "dev-assistant.md"
+      autoApply: false
+    - name: "code-reviewer"
+      path: "code-reviewer.md"
+      autoApply: false
+
+# File scanning settings for mixed development
+fileSettings:
+  configFiles:
+    claude: "CLAUDE.md"
+    behavior: "*-assistant.md"
+    custom: "*-reviewer.md"
+  includePaths:
+    - "."
+  excludePatterns:
+    - "*.tmp"
+    - "*.backup"
+    - "*~"
+  allowedExtensions:
+    - ".md"
+    - ".markdown"
+    - ".txt"
+
+externalServers:
+  enabled: true
+  autoConnect: true
+  
+  servers:
+    # Serena - Semantic code retrieval and editing
+    - name: "serena"
+      command: "uvx"
+      args: ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server", "--enable-web-dashboard", "false"]
+      description: "Semantic code retrieval and editing for large codebases"
+    
+    # Filesystem operations
+    - name: "filesystem"
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+      description: "File system browsing and operations"
+    
+    # Git operations (disabled - package not available)
+    # - name: "git"
+    #   command: "npx"
+    #   args: ["-y", "@modelcontextprotocol/server-git", "--repository", "."]
+    #   description: "Git repository operations and history"
+    
+    # Local file reading for profiles and documentation  
+    - name: "local-files"
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+      description: "Read local markdown and text files for profile loading"
+    
+    # Codebase analysis and search
+    # - name: "codebase"
+    #   command: "npx"
+    #   args: ["-y", "@modelcontextprotocol/server-codebase", "."]
+    #   description: "Whole codebase search and analysis"
+    
+    # Desktop automation tools
+    # - name: "desktop"
+    #   command: "uvx"
+    #   args: ["desktop-commander"]
+    #   description: "Desktop automation and system control"
+    
+    # Code intelligence platform
+    # - name: "sourcegraph"
+    #   command: "npx"
+    #   args: ["-y", "@sourcegraph/mcp-server"]
+    #   description: "Code intelligence and cross-repository search"
+    #   env:
+    #     SOURCEGRAPH_TOKEN: "your-api-token"
+    
+    # Advanced code analysis
+    # - name: "codemcp"
+    #   command: "uvx"
+    #   args: ["codemcp", "--workspace", "."]
+    #   description: "Advanced code analysis and manipulation tools"
+    
+    # Syntax tree analysis
+    # - name: "tree-sitter"
+    #   command: "npx"
+    #   args: ["-y", "@tree-sitter/mcp-server"]
+    #   description: "Syntax tree analysis for precise code understanding"
+    
+    # Custom server example
+    # - name: "my-custom-server"
+    #   command: "python"
+    #   args: ["/path/to/my/mcp-server.py"]
+    #   env:
+    #     API_KEY: "your-api-key"
+    #     CONFIG_PATH: "/path/to/config"
+    #   description: "My custom MCP server integration"
+  
+  retry:
+    maxAttempts: 3
+    delayMs: 1000
+
+# Logging configuration
+logging:
+  level: "info"
+  verboseFileLoading: false
+  verboseProfileSwitching: false

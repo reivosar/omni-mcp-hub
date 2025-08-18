@@ -5,7 +5,7 @@
       "args": [
         "../../dist/index.js"
       ],
-      "description": "Omni MCP Hub - Serena Integration"
+      "description": "Omni MCP Hub - Mixed MCP Servers Integration"
     }
   }
 }

@@ -76,14 +76,23 @@ export class ToolHandlers {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       this.logger.debug("[TOOL-HANDLER] Processing tools/list request");
       
-      // Check if local resources are configured by checking external servers
-      // If external servers are disabled, assume we're using local resources
+      // Check if local resources are configured by checking external servers and fileSettings
+      // If external servers are disabled OR fileSettings are configured, include CLAUDE.md tools
       let hasLocalResources = true;
+      
+      // Check if fileSettings are configured in YAML config
+      const pathResolver = PathResolver.getInstance();
+      const yamlConfigPath = pathResolver.getYamlConfigPath();
+      const yamlConfigManager = YamlConfigManager.createWithPath(yamlConfigPath, this.logger);
+      const config = yamlConfigManager?.getConfig?.();
+      const hasFileSettings = !!(config?.fileSettings && Object.keys(config.fileSettings).length > 0);
+      
       if (this.proxyManager) {
         const connectedServers = this.proxyManager.getConnectedServers();
-        // If we have external MCP servers, we probably don't need CLAUDE.md tools
-        hasLocalResources = connectedServers.length === 0;
+        // Include CLAUDE.md tools if no external servers OR if fileSettings are configured
+        hasLocalResources = connectedServers.length === 0 || hasFileSettings;
         this.logger.info(`[TOOL-HANDLER] Connected servers count: ${connectedServers.length}`);
+        this.logger.info(`[TOOL-HANDLER] FileSettings configured: ${hasFileSettings}`);
       } else {
         this.logger.info(`[TOOL-HANDLER] No proxy manager available - defaulting to local resources mode`);
       }

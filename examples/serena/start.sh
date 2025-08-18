@@ -27,6 +27,12 @@ echo ""
 # 2. Claude Code MCP Configuration
 echo -e "${YELLOW}2. Setting up Claude Code MCP Configuration...${NC}"
 
+# Get absolute paths
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+CONFIG_PATH="$SCRIPT_DIR/omni-config.yaml"
+INDEX_PATH="$PROJECT_ROOT/dist/index.js"
+
 MCP_CONFIG=".claude"
 
 if [ -f "$MCP_CONFIG" ]; then
@@ -43,9 +49,15 @@ with open(config_path, 'r') as f:
 if 'mcpServers' not in config:
     config['mcpServers'] = {}
 
+index_path = '$INDEX_PATH'
+omni_config_path = '$CONFIG_PATH'
+
 config['mcpServers']['omni-mcp-hub'] = {
     'command': 'node',
-    'args': ['../../dist/index.js'],
+    'args': [index_path],
+    'env': {
+        'OMNI_CONFIG_PATH': omni_config_path
+    },
     'description': 'Omni MCP Hub - Serena Integration'
 }
 
@@ -60,8 +72,11 @@ else
     "omni-mcp-hub": {
       "command": "node",
       "args": [
-        "../../dist/index.js"
+        "$INDEX_PATH"
       ],
+      "env": {
+        "OMNI_CONFIG_PATH": "$CONFIG_PATH"
+      },
       "description": "Omni MCP Hub - Serena Integration"
     }
   }
@@ -70,6 +85,8 @@ EOF
 fi
 
 echo -e "${GREEN}MCP configuration updated in .claude${NC}"
+echo "  - Index path: $INDEX_PATH"
+echo "  - Config path: $CONFIG_PATH"
 echo ""
 
 # 3. Display configuration
@@ -120,4 +137,4 @@ echo ""
 # Move to examples/serena directory and launch Claude Code
 cd "$(dirname "$0")"
 echo -e "${GREEN}Launching Claude Code with Serena...${NC}"
-exec claude --mcp-config .claude
+exec claude

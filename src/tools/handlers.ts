@@ -83,7 +83,12 @@ export class ToolHandlers {
         const connectedServers = this.proxyManager.getConnectedServers();
         // If we have external MCP servers, we probably don't need CLAUDE.md tools
         hasLocalResources = connectedServers.length === 0;
+        this.logger.info(`[TOOL-HANDLER] Connected servers count: ${connectedServers.length}`);
+      } else {
+        this.logger.info(`[TOOL-HANDLER] No proxy manager available - defaulting to local resources mode`);
       }
+      
+      this.logger.info(`[TOOL-HANDLER] hasLocalResources determined: ${hasLocalResources}`);
       
       this.logger.debug(`[TOOL-HANDLER] Local resources configured: ${hasLocalResources}`);
       
@@ -132,9 +137,9 @@ export class ToolHandlers {
           },
         ] : [];
 
-      this.logger.debug(`[TOOL-HANDLER] Base tools count: ${baseTools.length}`);
+      this.logger.info(`[TOOL-HANDLER] Base tools count: ${baseTools.length}`);
       baseTools.forEach((tool, i) => {
-        this.logger.debug(`[TOOL-HANDLER] Base tool ${i+1}: ${tool.name}`);
+        this.logger.info(`[TOOL-HANDLER] Base tool ${i+1}: ${tool.name}`);
       });
 
       // Add proxied tools from external MCP servers

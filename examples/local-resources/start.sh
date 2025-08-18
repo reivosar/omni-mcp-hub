@@ -45,7 +45,7 @@ if 'mcpServers' not in config:
 
 config['mcpServers']['omni-mcp-hub'] = {
     'command': 'node',
-    'args': ['$PROJECT_DIR/dist/index.js'],
+    'args': ['../../dist/index.js'],
     'description': 'Omni MCP Hub - Local Resources focused configuration'
 }
 
@@ -60,7 +60,7 @@ else
     "omni-mcp-hub": {
       "command": "node",
       "args": [
-        "$PROJECT_DIR/dist/index.js"
+        "../../dist/index.js"
       ],
       "description": "Omni MCP Hub - Local Resources focused configuration"
     }

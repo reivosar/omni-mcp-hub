@@ -3,11 +3,8 @@
     "omni-mcp-hub": {
       "command": "node",
       "args": [
-        "/Users/mac/workspace/omni-mcp-hub/dist/index.js"
+        "../../dist/index.js"
       ],
-      "env": {
-        "OMNI_CONFIG_PATH": "/Users/mac/workspace/omni-mcp-hub/examples/serena/omni-config.yaml"
-      },
       "description": "Omni MCP Hub - Serena Integration"
     }
   }

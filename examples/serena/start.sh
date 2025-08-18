@@ -137,4 +137,4 @@ echo ""
 # Move to examples/serena directory and launch Claude Code
 cd "$(dirname "$0")"
 echo -e "${GREEN}Launching Claude Code with Serena...${NC}"
-exec claude
+exec claude --strict-mcp-config --mcp-config .claude

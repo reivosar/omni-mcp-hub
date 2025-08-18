@@ -8,9 +8,9 @@ export interface ProcessErrorConfig {
 }
 
 export interface IProcessAdapter {
-  on(event: string, listener: (...args: any[]) => void): void;
+  on(event: string, listener: (...args: unknown[]) => void): void;
   exit(code: number): void;
-  emit(event: string, ...args: any[]): void;
+  emit(event: string, ...args: unknown[]): void;
   memoryUsage(): NodeJS.MemoryUsage;
   cpuUsage(): NodeJS.CpuUsage;
   uptime(): number;
@@ -25,7 +25,7 @@ export interface ITimerAdapter {
 }
 
 export interface IConsoleAdapter {
-  error(...args: any[]): void;
+  error(...args: unknown[]): void;
 }
 
 export class ProcessErrorHandler {

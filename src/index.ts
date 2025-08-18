@@ -202,7 +202,7 @@ const processErrorHandler = new ProcessErrorHandler(logger, process);
 processErrorHandler.setupGlobalErrorHandlers();
 
 // Start metrics collection
-const metricsInterval = processErrorHandler.startMetricsCollection(60000);
+const _metricsInterval = processErrorHandler.startMetricsCollection(60000);
 
 // Clean up on shutdown
 process.on('beforeExit', () => {

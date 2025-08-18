@@ -147,8 +147,10 @@ export class YamlConfigManager {
    * Auto-detect configuration file path
    */
   private findYamlConfigFile(): string {
-    // Always use examples/mcp directory
-    return path.join(process.cwd(), 'omni-config.yaml');
+    const configPath = path.join(process.cwd(), 'omni-config.yaml');
+    console.log(`[YAML-CONFIG] Looking for config file at: ${configPath}`);
+    console.log(`[YAML-CONFIG] Current working directory: ${process.cwd()}`);
+    return configPath;
   }
 
   /**

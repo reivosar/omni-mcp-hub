@@ -1,0 +1,57 @@
+# Omni MCP Hub Configuration - Serena Semantic Code Editing
+# This configuration integrates Serena and other code intelligence MCP servers
+
+externalServers:
+  enabled: true
+  autoConnect: true
+  
+  servers:
+    # Serena - Semantic code retrieval and editing
+    - name: "serena"
+      command: "uvx"
+      args: ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server"]
+      description: "Semantic code retrieval and editing for large codebases"
+    
+    # Optional semantic code tools (uncomment to use)
+    
+    # Codebase MCP Server - whole codebase search and analysis
+    # - name: "codebase"
+    #   command: "mcp-server-codebase"  
+    #   args: ["."]
+    #   description: "Codebase search and analysis"
+    
+    # DesktopCommander - execute complex desktop tasks
+    # - name: "desktop-commander"
+    #   command: "python"
+    #   args: ["-m", "desktop_commander_mcp"]
+    #   description: "Desktop automation and complex task execution"
+    
+    # Sourcegraph MCP Server - code intelligence
+    # - name: "sourcegraph"
+    #   command: "mcp-server-sourcegraph"
+    #   args: []
+    #   description: "Sourcegraph code intelligence and search"
+    #   env:
+    #     SOURCEGRAPH_TOKEN: "your-token"
+    
+    # CodeMCP - code analysis and manipulation
+    # - name: "codemcp"
+    #   command: "codemcp"
+    #   args: ["--workspace", "."]
+    #   description: "Advanced code analysis and manipulation"
+    
+    # Tree-sitter MCP - syntax tree analysis
+    # - name: "tree-sitter"
+    #   command: "mcp-server-tree-sitter"
+    #   args: []
+    #   description: "Syntax tree analysis for code understanding"
+  
+  retry:
+    maxAttempts: 3
+    delayMs: 1000
+
+# Logging configuration
+logging:
+  level: "info"
+  verboseFileLoading: false
+  verboseProfileSwitching: false

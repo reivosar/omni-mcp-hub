@@ -4,6 +4,8 @@ import { YamlConfigManager } from "../config/yaml-config.js";
 import { ILogger, SilentLogger } from "../utils/logger.js";
 import { ErrorHandler } from "../utils/error-handler.js";
 import { EventEmitter } from "events";
+import { exec } from "child_process";
+import { promisify } from "util";
 
 export class MCPProxyManager extends EventEmitter {
   private clients: Map<string, MCPProxyClient> = new Map();
@@ -28,6 +30,9 @@ export class MCPProxyManager extends EventEmitter {
       this.logger.info(`[PROXY-MGR] Server ${config.name} already exists`);
       return;
     }
+
+    // Check and auto-install dependencies if needed
+    await this.ensureServerDependencies(config);
 
     this.logger.info(`[PROXY-MGR] Creating MCPProxyClient for ${config.name}`);
     const client = new MCPProxyClient(config, this.logger);
@@ -66,6 +71,53 @@ export class MCPProxyManager extends EventEmitter {
     this.updateAggregatedCapabilities();
     
     this.logger.debug(`Removed MCP server: ${name}`);
+  }
+
+  private async ensureServerDependencies(config: ExternalServerConfig): Promise<void> {
+    const execAsync = promisify(exec);
+    
+    // Check if this is a Serena configuration
+    if (config.command === 'uvx' && 
+        config.args?.includes('git+https://github.com/oraios/serena')) {
+      
+      this.logger.info(`[PROXY-MGR] Detected Serena server: ${config.name}`);
+      
+      try {
+        // Check if uv is installed
+        await execAsync('uv --version');
+        this.logger.info(`[PROXY-MGR] uv is already installed`);
+      } catch (_error) {
+        this.logger.info(`[PROXY-MGR] uv not found, installing automatically...`);
+        
+        try {
+          // Auto-install uv
+          await execAsync('curl -LsSf https://astral.sh/uv/install.sh | sh');
+          this.logger.info(`[PROXY-MGR] uv installed successfully`);
+          
+          // Update PATH for current process
+          process.env.PATH = `${process.env.HOME}/.cargo/bin:${process.env.PATH}`;
+          
+          // Verify installation
+          await execAsync('uv --version');
+          this.logger.info(`[PROXY-MGR] uv verification successful`);
+        } catch (installError) {
+          this.logger.error(`[PROXY-MGR] Failed to install uv:`, installError);
+          throw new Error(`Failed to install uv dependency for ${config.name}. Please install manually: curl -LsSf https://astral.sh/uv/install.sh | sh`);
+        }
+      }
+      
+      // Pre-download Serena to improve startup time
+      try {
+        this.logger.info(`[PROXY-MGR] Pre-downloading Serena...`);
+        await execAsync('uvx --from git+https://github.com/oraios/serena serena --version', { timeout: 30000 });
+        this.logger.info(`[PROXY-MGR] Serena pre-download completed`);
+      } catch (error) {
+        this.logger.warn(`[PROXY-MGR] Serena pre-download failed (will be downloaded on first use):`, error);
+      }
+    }
+    
+    // Add other auto-install patterns here for different MCP servers
+    // Example: codebase, desktop-commander, etc.
   }
 
   private updateAggregatedCapabilities(): void {

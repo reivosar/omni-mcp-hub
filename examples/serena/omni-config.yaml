@@ -9,7 +9,7 @@ externalServers:
     # Serena - Semantic code retrieval and editing
     - name: "serena"
       command: "uvx"
-      args: ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server"]
+      args: ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server", "--no-dashboard"]
       description: "Semantic code retrieval and editing for large codebases"
     
     # Optional semantic code tools (uncomment to use)

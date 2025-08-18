@@ -115,13 +115,9 @@ echo "   - Serena: https://github.com/oraios/serena"
 echo "   - README: examples/serena/README.md"
 echo ""
 
-# Kill any existing MCP hub processes
-echo -e "${YELLOW}Cleaning up existing MCP processes...${NC}"
-pkill -f "dist/index.js" 2>/dev/null || true
-pkill -f "serena" 2>/dev/null || true
-sleep 1
+# Note: Not killing existing processes to allow MCP server to persist
 
 # Move to examples/serena directory and launch Claude Code
 cd "$(dirname "$0")"
 echo -e "${GREEN}Launching Claude Code with Serena...${NC}"
-exec claude
+exec claude --mcp-config .claude

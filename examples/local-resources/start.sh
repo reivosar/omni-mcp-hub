@@ -27,11 +27,13 @@ echo ""
 # 2. Claude Code MCP Configuration
 echo -e "${YELLOW}2. Setting up MCP Configuration...${NC}"
 
+# Move to examples/local-resources directory first
+cd "$(dirname "$0")"
+
 MCP_CONFIG=".claude"
 
 if [ -f "$MCP_CONFIG" ]; then
     echo "Updating existing MCP configuration..."
-    cp "$MCP_CONFIG" "$MCP_CONFIG.backup"
     
     python3 -c "
 import json
@@ -103,6 +105,5 @@ echo "   - Tsundere character - Classic anime personality"
 echo "   - Naruto (Naruto) - Enthusiastic and determined"
 echo ""
 
-# Move to examples/local-resources directory and launch Claude Code
-cd "$(dirname "$0")"
-exec claude
+# Launch Claude Code with explicit MCP config
+exec claude --mcp-config .claude

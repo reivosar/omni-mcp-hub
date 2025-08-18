@@ -8,6 +8,9 @@ export interface ProcessErrorConfig {
 }
 
 export interface IProcessAdapter {
+  on(event: 'uncaughtException', listener: (error: Error) => void): void;
+  on(event: 'unhandledRejection', listener: (reason: unknown, promise: Promise<unknown>) => void): void;
+  on(event: 'warning', listener: (warning: { name: string; message: string; stack?: string }) => void): void;
   on(event: string, listener: (...args: unknown[]) => void): void;
   exit(code: number): void;
   emit(event: string, ...args: unknown[]): void;

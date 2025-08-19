@@ -2,6 +2,43 @@
 
 This folder contains local CLAUDE.md configuration files and behavior profiles that demonstrate Claude Code's personality and behavior customization capabilities.
 
+## Quick Start
+
+```bash
+# Start with character behaviors
+./start.sh
+```
+
+## Usage Examples
+
+### Character Personalities
+```bash
+# Apply anime character behaviors
+/use apply_claude_config profileName:"lum"       # Lum (auto-loaded)
+/use apply_claude_config profileName:"zoro"      # Zoro personality
+/use apply_claude_config profileName:"tsundere"  # Tsundere character
+/use apply_claude_config profileName:"naruto"    # Naruto personality
+
+# List available characters
+/use list_claude_configs
+
+# Check current character
+/use get_applied_config
+```
+
+### Profile Management
+```bash
+# Load custom profile
+/use apply_claude_config filePath:"./custom-behavior.md"
+
+# Load without auto-applying
+/use apply_claude_config profileName:"zoro" autoApply:false
+
+# Switch between characters
+/use apply_claude_config profileName:"tsundere"
+/use apply_claude_config profileName:"lum"
+```
+
 ## Available Character Behaviors
 
 ### Anime Character Personalities

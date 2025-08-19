@@ -313,7 +313,77 @@ All tests are written using **Vitest** with TypeScript support and provide compr
 
 ## Architecture
 
-See [Architecture Documentation](docs/architecture.md) for detailed system design and flow diagrams.
+### System Overview
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        CC[Claude Code]
+    end
+
+    subgraph "Omni MCP Hub Core"
+        Server[OmniMCPServer]
+        Server --> Init[Initialize]
+        Init --> YamlConfig[YAML Config Manager]
+        Init --> ConfigLoader[Config Loader]
+        Init --> ProxyManager[MCP Proxy Manager]
+        
+        subgraph "Tool Handlers"
+            TH[ToolHandlers]
+            TH --> CLAUDE[CLAUDE.md Tools]
+            TH --> Proxy[Proxied Tools]
+        end
+
+        subgraph "Resource Handlers"
+            RH[ResourceHandlers]
+            RH --> ConfigRes[Config Resources]
+            RH --> InfoRes[Info Resources]
+        end
+    end
+
+    subgraph "External MCP Servers"
+        Serena[Serena MCP]
+        Filesystem[Filesystem MCP]
+        LocalFiles[Local-files MCP]
+    end
+
+    subgraph "Storage Layer"
+        YamlFile[omni-config.yaml]
+        ClaudeFiles[*.md Files]
+    end
+
+    CC -->|MCP Protocol| Server
+    Server --> TH
+    Server --> RH
+    ProxyManager --> Serena
+    ProxyManager --> Filesystem
+    ProxyManager --> LocalFiles
+    YamlConfig --> YamlFile
+    ConfigLoader --> ClaudeFiles
+```
+
+### Tool Request Flow
+
+```mermaid
+flowchart LR
+    User[User] -->|Command| Claude[Claude Code]
+    Claude -->|MCP Request| Hub[Omni MCP Hub]
+    
+    Hub --> Decision{Tool Type?}
+    
+    Decision -->|CLAUDE.md Tool| LocalHandler[Local Handler]
+    LocalHandler --> FileSystem[File System]
+    FileSystem -->|Profile Data| LocalHandler
+    LocalHandler -->|Response| Hub
+    
+    Decision -->|External Tool| ProxyManager[Proxy Manager]
+    ProxyManager --> ExtServer[External MCP Server]
+    ExtServer -->|Tool Result| ProxyManager
+    ProxyManager -->|Response| Hub
+    
+    Hub -->|MCP Response| Claude
+    Claude -->|Result| User
+```
 
 ## License
 

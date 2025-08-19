@@ -17,6 +17,44 @@ The Mixed configuration allows you to enable and configure multiple MCP servers 
 ## Quick Start
 
 ```bash
+# Start mixed MCP environment
+./start.sh
+```
+
+## Usage Examples
+
+### Development Profiles
+```bash
+# Switch to development mode
+/use apply_claude_config profileName:"dev-assistant"
+
+# Switch to code review mode  
+/use apply_claude_config profileName:"code-reviewer"
+
+# List available profiles
+/use list_claude_configs
+
+# Check current configuration
+/use get_applied_config
+```
+
+### Integrated MCP Tools
+```bash
+# Semantic code search (Serena)
+/use serena__find_symbol className:"UserController"
+/use serena__find_referencing_symbols symbol:"getUserById"
+
+# File operations (Filesystem)
+/use filesystem__read_file path:"README.md"
+/use filesystem__list_directory path:"src/"
+
+# Local documentation (Local-files)
+/use local-files__read_file path:"docs/api.md"
+```
+
+## Configuration
+
+```bash
 # Run from the examples/mixed directory
 ./start.sh
 ```

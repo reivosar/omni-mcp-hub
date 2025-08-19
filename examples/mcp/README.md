@@ -2,6 +2,39 @@
 
 This folder contains examples for integrating external MCP (Model Context Protocol) servers with the Omni MCP Hub.
 
+## Quick Start
+
+```bash
+# Start with external MCP servers
+./start.sh
+```
+
+## Usage Examples
+
+### External MCP Tools
+```bash
+# Use external MCP server tools (example)
+/use external_server__some_tool parameter:"value"
+
+# List all available tools (including external)
+/use list_tools
+
+# Test proxy functionality
+/use test_server__echo message:"Hello from external server"
+```
+
+### Configuration Management
+```bash
+# Apply configurations
+/use apply_claude_config profileName:"external-config"
+
+# List available configurations
+/use list_claude_configs
+
+# Check current setup
+/use get_applied_config
+```
+
 ## Files
 
 ### Configuration Files

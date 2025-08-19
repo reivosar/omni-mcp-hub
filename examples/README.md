@@ -2,6 +2,49 @@
 
 This directory contains examples and test configurations for the Omni MCP Hub.
 
+## Quick Start
+
+Choose your configuration and run:
+
+```bash
+# Mixed MCP servers (Recommended)
+./mixed/start.sh
+
+# Local resources only
+./local-resources/start.sh
+
+# External MCP servers
+./mcp/start.sh
+```
+
+## Usage Examples
+
+### Mixed MCP Environment
+```bash
+# Switch between development profiles
+/use apply_claude_config profileName:"dev-assistant"
+/use apply_claude_config profileName:"code-reviewer"
+
+# Use integrated MCP tools
+/use serena__find_symbol className:"UserController"
+/use filesystem__read_file path:"README.md"
+```
+
+### Character Behaviors
+```bash
+# Apply character personalities
+/use apply_claude_config profileName:"lum"
+/use apply_claude_config profileName:"zoro"
+/use apply_claude_config profileName:"tsundere"
+/use apply_claude_config profileName:"naruto"
+
+# List available configurations
+/use list_claude_configs
+
+# Check current configuration
+/use get_applied_config
+```
+
 ## Directory Structure
 
 ### `local-resources/`

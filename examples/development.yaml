@@ -1,8 +1,10 @@
-# Test configuration with external servers enabled
+# Development Configuration
+# Profile auto-loading + verbose logging + multiple MCP servers
+
 autoLoad:
   profiles:
-    - name: "lum"
-      path: "./examples/local-resources/lum-behavior.md"
+    - name: "dev-assistant"
+      path: "./dev-assistant.md"
       autoApply: true
 
 fileSettings:
@@ -10,11 +12,9 @@ fileSettings:
     claude: "CLAUDE.md"
     behavior: "*-behavior.md"
     custom: "*-config.md"
-  
   includePaths:
-    - "./"
-    - "./examples/"
-  
+    - "."
+    - "./profiles"
   excludePatterns:
     - "*.tmp"
     - "*.backup"
@@ -22,8 +22,6 @@ fileSettings:
     - ".git/**"
     - "node_modules/**"
     - "dist/**"
-    - "unloaded-behavior.md"
-  
   allowedExtensions:
     - ".md"
     - ".markdown"
@@ -38,25 +36,25 @@ directoryScanning:
 profileManagement:
   allowDuplicateNames: false
   autoNamePattern: "%filename%"
-  defaultProfile: "default"
+  defaultProfile: "dev-assistant"
 
 logging:
-  level: "info"
+  level: "debug"
   verboseFileLoading: true
   verboseProfileSwitching: true
 
-# External MCP Servers Configuration - ENABLED FOR TESTING
 externalServers:
   enabled: true
   autoConnect: true
-  
-  servers:
-    # Test server for proxy functionality
-    - name: "test-server"
-      command: "node"
-      args: ["./examples/mcp/test-server.js"]
-      description: "Test MCP server for proxy functionality testing"
-  
   retry:
     maxAttempts: 3
     delayMs: 1000
+  servers:
+    - name: "filesystem"
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+      description: "File system operations"
+    - name: "git"
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-git", "--repository", "."]
+      description: "Git repository operations"

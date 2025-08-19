@@ -1,96 +1,163 @@
-# Omni MCP Hub Configuration
-# Comprehensive configuration for CLAUDE.md file management, auto-loading, and scanning
+# ===============================================================================
+# OMNI MCP HUB - CONFIGURATION EXAMPLE
+# Configuration for CLAUDE.md profile management and external MCP server integration
+# ===============================================================================
 
-# Auto-loading configurations on server startup
-autoLoad:
-  # List of CLAUDE.md configurations to automatically load when the server starts
-  # This is useful for having your preferred configurations ready immediately
-  profiles:
-    # Example configuration entry (remove or modify as needed):
-    # - name: "my-config"              # Unique name for this configuration
-    #   path: "./path/to/config.md"    # Path to CLAUDE.md file (relative or absolute)
-    #   autoApply: true                # Whether to automatically apply this config
-    #                                  # true = load and apply immediately
-    #                                  # false = load but don't apply (manual activation needed)
+# ===============================================================================
+# 1. PROFILE AUTO-LOADING (Optional)
+# ===============================================================================
+# Automatically load CLAUDE.md profiles when the server starts
+# autoLoad:
+#   profiles:
+#     - name: "default"
+#       path: "./CLAUDE.md"
+#       autoApply: true
+#     - name: "code-reviewer"
+#       path: "./profiles/code-reviewer.md"
+#       autoApply: false
 
-# File scanning and filtering settings
-fileSettings:
-  # Custom file name patterns for different types of configuration files
-  # These patterns are used when auto-scanning directories for CLAUDE.md files
-  configFiles:
-    claude: "CLAUDE.md"        # Standard CLAUDE.md configuration files
-    behavior: "*-behavior.md"  # Files ending with -behavior.md (e.g., pirate-behavior.md)
-    custom: "*-config.md"      # Files ending with -config.md (e.g., my-config.md)
-  
-  # Directories to include when auto-scanning for configuration files
-  # Only files in these directories will be automatically discovered
-  includePaths:
-    - "./examples/"            # Example configurations
-    - "./configs/"             # Main configuration directory
-    - "./profiles/"            # User profile configurations
-  
-  # File and directory patterns to exclude from scanning
-  # Use glob patterns (* = any characters, ** = any directories)
-  excludePatterns:
-    - "*.tmp"                  # Temporary files
-    - "*.backup"               # Backup files
-    - "*~"                     # Editor backup files
-    - ".git/**"                # Git repository files
-    - "node_modules/**"        # Node.js dependencies
-    - "dist/**"                # Build output directory
-    - "*.log"                  # Log files
-  
-  # File extensions that are allowed for CLAUDE.md configuration files
-  # Files with other extensions will be ignored during scanning
-  allowedExtensions:
-    - ".md"                    # Markdown files (standard)
-    - ".markdown"              # Alternative markdown extension
-    - ".txt"                   # Plain text files
+# ===============================================================================
+# 2. FILE SCANNING SETTINGS (Optional)
+# ===============================================================================
+# Control how the server discovers and processes CLAUDE.md files
+# fileSettings:
+#   # File name patterns for different types of configuration files
+#   configFiles:
+#     claude: "CLAUDE.md"        # Standard CLAUDE.md files
+#     behavior: "*-behavior.md"  # Behavior files like pirate-behavior.md  
+#     custom: "*-config.md"      # Custom config files
+#   
+#   # Directories to scan for configuration files
+#   includePaths:
+#     - "./configs/"
+#     - "./profiles/"
+#   
+#   # Patterns to exclude from scanning
+#   excludePatterns:
+#     - "*.tmp"
+#     - "*.backup"
+#     - "*~"
+#     - ".git/**"
+#     - "node_modules/**"
+#     - "dist/**"
+#   
+#   # Allowed file extensions
+#   allowedExtensions:
+#     - ".md"
+#     - ".markdown"
+#     - ".txt"
 
-# Directory scanning behavior
-directoryScanning:
-  # Whether to scan subdirectories recursively
-  # true = scan all subdirectories, false = only scan top-level directory
-  recursive: true
-  
-  # Maximum directory depth to scan (prevents infinite recursion)
-  # 0 = unlimited depth, 1 = only top level, 2 = one level deep, etc.
-  maxDepth: 3
-  
-  # Whether to include hidden files and directories (starting with .)
-  # true = include .hidden-config.md, false = skip hidden files
-  includeHidden: false
-  
-  # Whether to follow symbolic links during scanning
-  # true = follow symlinks (can cause infinite loops), false = ignore symlinks
-  followSymlinks: false
+# ===============================================================================
+# 3. DIRECTORY SCANNING BEHAVIOR (Optional)
+# ===============================================================================
+# directoryScanning:
+#   recursive: true        # Scan subdirectories recursively
+#   maxDepth: 3           # Maximum directory depth to scan
+#   includeHidden: false  # Include hidden files/directories
+#   followSymlinks: false # Follow symbolic links
 
-# Profile and configuration management
-profileManagement:
-  # Whether to allow multiple configurations with the same name
-  # true = allow duplicates, false = reject duplicate names
-  allowDuplicateNames: false
-  
-  # Pattern for automatically generating profile names from file paths
-  # Available variables: %filename%, %dirname%, %path%
-  # Examples:
-  #   "%filename%" -> "my-config" (from my-config.md)
-  #   "%dirname%_%filename%" -> "profiles_my-config" (from profiles/my-config.md)
-  autoNamePattern: "%filename%"
-  
-  # Default profile name to use when none is specified
-  defaultProfile: "default"
+# ===============================================================================
+# 4. PROFILE MANAGEMENT (Optional)
+# ===============================================================================
+# profileManagement:
+#   allowDuplicateNames: false    # Allow profiles with same name
+#   autoNamePattern: "%filename%" # Pattern for auto-generating profile names
+#   defaultProfile: "default"     # Default profile name
 
-# Logging and debugging options
-logging:
-  # Log level for console output
-  # "debug" = all messages, "info" = normal messages, "warn" = warnings only, "error" = errors only
-  level: "info"
+# ===============================================================================
+# 5. LOGGING CONFIGURATION (Optional)
+# ===============================================================================
+# logging:
+#   level: "info"                    # Log level: debug, info, warn, error
+#   verboseFileLoading: true         # Show detailed file loading messages
+#   verboseProfileSwitching: false   # Show profile switching messages
+
+# ===============================================================================
+# 6. EXTERNAL MCP SERVERS (Required for MCP integrations)
+# ===============================================================================
+externalServers:
+  enabled: true
+  # autoConnect: true    # Automatically connect to servers on startup
   
-  # Show detailed messages when loading configuration files
-  # true = show "✅ Loaded config: path/to/file.md", false = silent loading
-  verboseFileLoading: true
+  # Connection retry settings (optional)
+  # retry:
+  #   maxAttempts: 3
+  #   delayMs: 1000
   
-  # Show detailed messages when switching between profiles
-  # true = show profile activation messages, false = silent switching
-  verboseProfileSwitching: true
+  servers:
+    # Essential: File system operations
+    - name: "filesystem"
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+      description: "Local file system operations"
+    
+    # Optional: Additional MCP servers (uncomment as needed)
+    
+    # - name: "git"
+    #   command: "npx"
+    #   args: ["-y", "@modelcontextprotocol/server-git", "--repository", "."]
+    #   description: "Git repository operations"
+    
+    # - name: "postgres"
+    #   command: "npx" 
+    #   args: ["-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/mydb"]
+    #   description: "PostgreSQL database operations"
+    #   env:
+    #     DATABASE_URL: "postgresql://localhost/mydb"
+    
+    # - name: "sqlite"
+    #   command: "npx"
+    #   args: ["-y", "@modelcontextprotocol/server-sqlite", "/path/to/database.db"]
+    #   description: "SQLite database operations"
+
+# ===============================================================================
+# QUICK START EXAMPLES
+# ===============================================================================
+
+# Minimal setup (just works):
+# externalServers:
+#   enabled: true
+#   servers:
+#     - name: "filesystem"
+#       command: "npx"
+#       args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+
+# Development setup (auto-load profiles + verbose logging):
+# autoLoad:
+#   profiles:
+#     - name: "dev"
+#       path: "./dev-profile.md"
+#       autoApply: true
+# logging:
+#   level: "debug"
+#   verboseFileLoading: true
+# externalServers:
+#   enabled: true
+#   servers:
+#     - name: "filesystem"
+#       command: "npx"
+#       args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+
+# Multi-server setup:
+# externalServers:
+#   enabled: true
+#   servers:
+#     - name: "filesystem"
+#       command: "npx"
+#       args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+#     - name: "git"
+#       command: "npx"
+#       args: ["-y", "@modelcontextprotocol/server-git", "--repository", "."]
+#     - name: "postgres"
+#       command: "npx"
+#       args: ["-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/mydb"]
+
+# ===============================================================================
+# NOTES
+# ===============================================================================
+# - This server runs over MCP protocol (stdio), not HTTP
+# - No authentication is implemented (runs as local process)
+# - Configuration is focused on CLAUDE.md management and MCP server proxying
+# - For production deployments, consider wrapping with authentication layer
+# - Server name and version are hardcoded in the application
+# ===============================================================================

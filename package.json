@@ -14,7 +14,11 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "lint": "eslint 'src/**/*.{ts,tsx}'",
-    "lint:fix": "eslint 'src/**/*.{ts,tsx}' --fix"
+    "lint:fix": "eslint 'src/**/*.{ts,tsx}' --fix",
+    "scan:secrets": "tsx src/cli/secrets-scan-cli.ts",
+    "scan:secrets:pre-commit": "tsx src/cli/secrets-scan-cli.ts --pre-commit --fail-on high",
+    "scan:secrets:ci": "tsx src/cli/secrets-scan-cli.ts --fail-on critical --output secrets-report.json",
+    "install:hooks": "git config core.hooksPath .githooks"
   },
   "repository": {
     "type": "git",
@@ -32,6 +36,8 @@
     "@modelcontextprotocol/sdk": "^1.17.2",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.2.1",
+    "chalk": "^5.3.0",
+    "commander": "^11.1.0",
     "js-yaml": "^4.1.0",
     "minimatch": "^9.0.3",
     "tsx": "^4.20.3",

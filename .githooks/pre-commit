@@ -1,0 +1,26 @@
+#!/bin/sh
+# Pre-commit hook for secrets scanning
+
+# Run secrets scan on staged files
+echo "🔍 Scanning for secrets in staged files..."
+
+# Get the directory of this script
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Run the secrets scanner
+cd "$PROJECT_ROOT"
+npm run scan:secrets:pre-commit
+
+# Capture the exit code
+RESULT=$?
+
+if [ $RESULT -ne 0 ]; then
+    echo "❌ Secrets detected in staged files. Commit blocked."
+    echo "Please remove sensitive information before committing."
+    echo "Run 'npm run scan:secrets' for detailed report."
+    exit 1
+fi
+
+echo "✅ No secrets detected in staged files."
+exit 0

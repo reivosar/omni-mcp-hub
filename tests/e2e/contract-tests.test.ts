@@ -154,7 +154,7 @@ main().catch(console.error);
     await cursorMockServer.startHttp(3002);
 
     // Start the Omni MCP Hub process with test configuration
-    const hubPath = path.join(process.cwd(), 'dist', 'src', 'index.js');
+    const hubPath = path.join(process.cwd(), 'dist', 'index.js');
     
     omniMcpProcess = spawn('node', [hubPath], {
       env: {
@@ -172,13 +172,16 @@ main().catch(console.error);
         reject(new Error('Hub process startup timeout'));
       }, 15000);
 
-      omniMcpProcess.stdout?.on('data', (data) => {
+      const checkOutput = (data: Buffer) => {
         const output = data.toString();
         if (output.includes('running on stdio') || output.includes('initialization complete')) {
           clearTimeout(timeout);
           resolve();
         }
-      });
+      };
+
+      omniMcpProcess.stdout?.on('data', checkOutput);
+      omniMcpProcess.stderr?.on('data', checkOutput);
 
       omniMcpProcess.on('error', (error) => {
         clearTimeout(timeout);

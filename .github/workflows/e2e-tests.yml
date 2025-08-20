@@ -9,6 +9,11 @@ on:
     # Run nightly at 2 AM UTC
     - cron: '0 2 * * *'
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 concurrency:
   group: e2e-${{ github.ref }}
   cancel-in-progress: true
@@ -532,17 +537,27 @@ jobs:
       - name: Comment PR with E2E results
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
+        continue-on-error: true
         with:
           script: |
             const fs = require('fs');
             
             if (fs.existsSync('e2e-report.md')) {
-              const report = fs.readFileSync('e2e-report.md', 'utf8');
-              
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: report
-              });
+              try {
+                const report = fs.readFileSync('e2e-report.md', 'utf8');
+                
+                await github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: report
+                });
+                
+                console.log('Successfully posted E2E test report to PR');
+              } catch (error) {
+                console.log('Failed to post comment to PR (insufficient permissions):', error.message);
+                console.log('E2E test report is available in artifacts instead');
+              }
+            } else {
+              console.log('No E2E report found to post');
             }

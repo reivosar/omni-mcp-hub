@@ -3,6 +3,7 @@ import * as path from 'path';
 import { YamlConfig, YamlConfigManager } from '../config/yaml-config.js';
 import { ILogger, SilentLogger } from './logger.js';
 import { PathResolver } from './path-resolver.js';
+import { safeJoin, validatePathExists, defaultPathValidator } from './path-security.js';
 
 export interface FileInfo {
   path: string;
@@ -98,8 +99,22 @@ export class FileScanner {
       const entries = await fs.readdir(dirPath, { withFileTypes: true });
 
       for (const entry of entries) {
-        const pathResolver = PathResolver.getInstance();
-        const fullPath = pathResolver.resolveAbsolutePath(path.join(dirPath, entry.name));
+        let fullPath: string;
+        
+        try {
+          // Use secure path joining to prevent path traversal
+          fullPath = safeJoin(dirPath, entry.name);
+          
+          // Additional validation with PathResolver
+          const pathResolver = PathResolver.getInstance();
+          fullPath = pathResolver.resolveAbsolutePath(fullPath);
+        } catch (error) {
+          // Skip entries that fail security validation
+          if (this.yamlConfig.getConfig().logging?.verboseFileLoading) {
+            this.logger.debug(`⚠️ Skipping entry due to security validation: ${entry.name}`, error);
+          }
+          continue;
+        }
 
         // Skip hidden files/directories
         if (!options.includeHidden && entry.name.startsWith('.')) {
@@ -137,10 +152,30 @@ export class FileScanner {
   }
 
   /**
-   * Create file info
+   * Create file info with security validation
    */
   private async createFileInfo(filePath: string, options: Required<ScanOptions>): Promise<FileInfo | null> {
     try {
+      // Validate path security first
+      if (!defaultPathValidator.isPathSafe(filePath)) {
+        if (this.yamlConfig.getConfig().logging?.verboseFileLoading) {
+          this.logger.debug(`⚠️ File path contains dangerous patterns: ${filePath}`);
+        }
+        return null;
+      }
+      
+      // Use secure path existence validation with flexible roots
+      const pathExists = await validatePathExists(filePath, {
+        allowAbsolutePaths: true,
+        allowedRoots: [process.cwd(), '/tmp', '/var/folders', '/private/var/folders'],
+        followSymlinks: options.followSymlinks,
+        maxDepth: 20
+      });
+      
+      if (!pathExists) {
+        return null;
+      }
+      
       const stats = await fs.stat(filePath);
       if (!stats.isFile()) return null;
 
@@ -262,30 +297,45 @@ export class FileScanner {
   }
 
   /**
-   * Normalize file path
+   * Normalize file path with security validation
    */
   static normalizePath(filePath: string): string {
+    // Validate path security
+    if (!defaultPathValidator.isPathSafe(filePath)) {
+      throw new Error(`File path contains dangerous patterns: ${filePath}`);
+    }
+    
     const pathResolver = PathResolver.getInstance();
     return pathResolver.resolveAbsolutePath(filePath);
   }
 
   /**
-   * Check if file exists
+   * Check if file exists with security validation
    */
   static async fileExists(filePath: string): Promise<boolean> {
     try {
-      const stats = await fs.stat(filePath);
-      return stats.isFile();
+      // Use secure path validation with flexible roots
+      return await validatePathExists(filePath, {
+        allowAbsolutePaths: true,
+        allowedRoots: [process.cwd(), '/tmp', '/var/folders', '/private/var/folders'],
+        followSymlinks: false,
+        maxDepth: 20
+      });
     } catch {
       return false;
     }
   }
 
   /**
-   * Check if directory exists
+   * Check if directory exists with security validation
    */
   static async directoryExists(dirPath: string): Promise<boolean> {
     try {
+      // Validate path security first
+      if (!defaultPathValidator.isPathSafe(dirPath)) {
+        return false;
+      }
+      
       const stats = await fs.stat(dirPath);
       return stats.isDirectory();
     } catch {

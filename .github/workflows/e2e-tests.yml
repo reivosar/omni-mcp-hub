@@ -46,7 +46,7 @@ jobs:
 
       - name: Run E2E Integration Tests
         run: |
-          npm run test -- tests/e2e/integration.test.ts
+          npm run test -- tests/e2e/integration.test.ts --reporter=verbose --outputFile=test-logs/integration-node${{ matrix.node-version }}.log
         env:
           NODE_ENV: test
           CI: true
@@ -59,6 +59,8 @@ jobs:
           path: |
             test-logs/
             test-integration/
+            coverage/
+          if-no-files-found: ignore
           retention-days: 7
 
   e2e-contract-mock:
@@ -150,7 +152,7 @@ jobs:
       - name: Run Contract Tests
         run: |
           # Run simplified contract tests since the full mock server tests are complex
-          npm run test -- tests/e2e/ --reporter=verbose
+          npm run test -- tests/e2e/ --reporter=verbose > test-logs/contract-tests.log 2>&1
         env:
           NODE_ENV: test
           CI: true
@@ -174,6 +176,7 @@ jobs:
           path: |
             test-logs/
             test-e2e/
+          if-no-files-found: ignore
           retention-days: 7
 
   e2e-smoke-tests:
@@ -319,6 +322,7 @@ jobs:
           path: |
             perf-results.txt
             final-stats.json
+          if-no-files-found: ignore
           retention-days: 30
 
   e2e-security:
@@ -342,7 +346,8 @@ jobs:
       - name: Run security-related E2E tests
         run: |
           # Test that security modules are working
-          npm run test -- tests/ --testNamePattern="security|audit|sanitization" --reporter=verbose
+          mkdir -p test-logs
+          npm run test -- tests/ --testNamePattern="security|audit|sanitization" --reporter=verbose > test-logs/security-tests.log 2>&1
         env:
           NODE_ENV: test
           CI: true
@@ -408,7 +413,8 @@ jobs:
 
       - name: Run cross-platform integration tests
         run: |
-          npm run test -- tests/e2e/integration.test.ts --reporter=verbose
+          mkdir -p test-logs
+          npm run test -- tests/e2e/integration.test.ts --reporter=verbose > test-logs/cross-platform-${{ matrix.os }}.log 2>&1
         env:
           NODE_ENV: test
           CI: true
@@ -520,6 +526,7 @@ jobs:
         with:
           name: e2e-test-report
           path: e2e-report.md
+          if-no-files-found: ignore
           retention-days: 30
 
       - name: Comment PR with E2E results

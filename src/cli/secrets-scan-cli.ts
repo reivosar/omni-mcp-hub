@@ -9,7 +9,7 @@ import { Command } from 'commander';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { execSync } from 'child_process';
-import { SecretsScanner } from '../security/secrets-scanner.js';
+import { SecretsScanner, type ScanResult, type SecretFinding } from '../security/secrets-scanner.js';
 
 interface CLIOptions {
   output?: string;
@@ -160,7 +160,7 @@ async function main() {
   }
 }
 
-function displayConsoleSummary(result: any) {
+function displayConsoleSummary(result: ScanResult) {
   console.log('\n=== Scan Summary ===');
   console.log(`Files scanned: ${result.filesScanned}`);
   console.log(`Time elapsed: ${result.timeElapsed}ms`);
@@ -207,8 +207,8 @@ function displayConsoleSummary(result: any) {
   }
 }
 
-function groupBySeverity(findings: any[]): Record<string, any[]> {
-  return findings.reduce((acc, finding) => {
+function groupBySeverity(findings: SecretFinding[]): Record<string, SecretFinding[]> {
+  return findings.reduce<Record<string, SecretFinding[]>>((acc, finding) => {
     if (!acc[finding.severity]) {
       acc[finding.severity] = [];
     }
@@ -232,7 +232,7 @@ async function getStagedFiles(): Promise<string[]> {
       .split('\n')
       .filter(file => file.length > 0)
       .map(file => path.resolve(process.cwd(), file));
-  } catch (error) {
+  } catch (_error) {
     console.error('Error getting staged files. Are you in a git repository?');
     return [];
   }

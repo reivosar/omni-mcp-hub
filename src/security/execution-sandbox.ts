@@ -25,7 +25,7 @@ export interface SandboxOptions {
 
 export interface ExecutionResult {
   success: boolean;
-  result?: any;
+  result?: unknown;
   error?: string;
   executionTimeMs: number;
   memoryUsedMB: number;
@@ -35,10 +35,10 @@ export interface ExecutionResult {
 
 export interface SandboxContext {
   console: {
-    log: (...args: any[]) => void;
-    error: (...args: any[]) => void;
-    warn: (...args: any[]) => void;
-    info: (...args: any[]) => void;
+    log: (...args: unknown[]) => void;
+    error: (...args: unknown[]) => void;
+    warn: (...args: unknown[]) => void;
+    info: (...args: unknown[]) => void;
   };
   setTimeout: typeof setTimeout;
   setInterval: typeof setInterval;
@@ -51,9 +51,9 @@ export interface SandboxContext {
     platform: string;
     version: string;
   };
-  require?: (id: string) => any;
-  exports: any;
-  module: { exports: any };
+  require?: (id: string) => unknown;
+  exports: Record<string, unknown>;
+  module: { exports: Record<string, unknown> };
   __filename: string;
   __dirname: string;
 }
@@ -75,7 +75,7 @@ export class ExecutionSandbox extends EventEmitter {
   private options: Required<SandboxOptions>;
   private logger: ILogger;
   private activeTasks: Set<string> = new Set();
-  private moduleCache: Map<string, any> = new Map();
+  private moduleCache: Map<string, unknown> = new Map();
 
   constructor(options?: SandboxOptions, logger?: ILogger) {
     super();
@@ -133,7 +133,7 @@ export class ExecutionSandbox extends EventEmitter {
       // Track memory usage
       const initialMemory = process.memoryUsage().heapUsed;
 
-      let result: any;
+      let result: unknown;
       let error: string | undefined;
       let success = true;
 
@@ -145,11 +145,11 @@ export class ExecutionSandbox extends EventEmitter {
             setTimeout(() => reject(new Error('Execution timeout')), this.options.timeoutMs)
           )
         ]);
-      } catch (err: any) {
+      } catch (err: unknown) {
         success = false;
-        error = err.message || 'Unknown execution error';
+        error = (err as Error).message || 'Unknown execution error';
         
-        if (err.message?.includes('timeout')) {
+        if ((err as Error).message?.includes('timeout')) {
           securityViolations.push('Execution timeout exceeded');
         }
       }
@@ -245,10 +245,10 @@ export class ExecutionSandbox extends EventEmitter {
       `;
 
       const worker = new Worker(workerScript, { eval: true });
-      let result: any;
+      let result: unknown;
       let error: string | undefined;
       let success = true;
-      const logs: any[] = [];
+      const logs: string[] = [];
 
       worker.on('message', (message) => {
         switch (message.type) {
@@ -262,7 +262,7 @@ export class ExecutionSandbox extends EventEmitter {
           case 'log':
           case 'warn':
           case 'info':
-            logs.push({type: message.type, args: message.args});
+            logs.push(JSON.stringify({type: message.type, args: message.args}));
             break;
         }
       });
@@ -322,7 +322,7 @@ export class ExecutionSandbox extends EventEmitter {
   /**
    * Execute profile file with sandboxing
    */
-  async executeProfile(profilePath: string, context?: any): Promise<ExecutionResult> {
+  async executeProfile(profilePath: string, context?: Record<string, unknown>): Promise<ExecutionResult> {
     try {
       // Validate file path
       const resolvedPath = path.resolve(profilePath);
@@ -372,10 +372,10 @@ export class ExecutionSandbox extends EventEmitter {
         return this.executeInVM(content, resolvedPath, context);
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.message,
+        error: (error as Error).message,
         executionTimeMs: 0,
         memoryUsedMB: 0,
         warnings: [],
@@ -388,30 +388,30 @@ export class ExecutionSandbox extends EventEmitter {
    * Create secure sandbox context
    */
   private createSandboxContext(filename: string, userContext?: Partial<SandboxContext>): SandboxContext {
-    const logs: any[] = [];
+    const logs: string[] = [];
     
     const sandboxContext: SandboxContext = {
       console: {
-        log: (...args: any[]) => {
-          logs.push({type: 'log', args});
+        log: (...args: unknown[]) => {
+          logs.push(JSON.stringify({type: 'log', args: args.map(a => String(a))}));
           if (this.options.enableLogging) {
             this.logger.info('[Sandbox]', ...args);
           }
         },
-        error: (...args: any[]) => {
-          logs.push({type: 'error', args});
+        error: (...args: unknown[]) => {
+          logs.push(JSON.stringify({type: 'error', args: args.map(a => String(a))}));
           if (this.options.enableLogging) {
             this.logger.error('[Sandbox]', ...args);
           }
         },
-        warn: (...args: any[]) => {
-          logs.push({type: 'warn', args});
+        warn: (...args: unknown[]) => {
+          logs.push(JSON.stringify({type: 'warn', args: args.map(a => String(a))}));
           if (this.options.enableLogging) {
             this.logger.warn('[Sandbox]', ...args);
           }
         },
-        info: (...args: any[]) => {
-          logs.push({type: 'info', args});
+        info: (...args: unknown[]) => {
+          logs.push(JSON.stringify({type: 'info', args: args.map(a => String(a))}));
           if (this.options.enableLogging) {
             this.logger.info('[Sandbox]', ...args);
           }
@@ -450,7 +450,7 @@ export class ExecutionSandbox extends EventEmitter {
   /**
    * Create safe require function with module restrictions
    */
-  private createSafeRequire(): (id: string) => any {
+  private createSafeRequire(): (id: string) => unknown {
     return (id: string) => {
       // Check if module is explicitly blocked
       if (this.options.blockedModules.includes(id)) {
@@ -472,8 +472,8 @@ export class ExecutionSandbox extends EventEmitter {
         const module = require(id);
         this.moduleCache.set(id, module);
         return module;
-      } catch (error: any) {
-        throw new Error(`Failed to load module '${id}': ${error.message}`);
+      } catch (error: unknown) {
+        throw new Error(`Failed to load module '${id}': ${(error as Error).message}`);
       }
     };
   }
@@ -481,7 +481,7 @@ export class ExecutionSandbox extends EventEmitter {
   /**
    * Execute code with memory monitoring
    */
-  private async executeWithMemoryLimit(code: string, context: vm.Context, filename: string): Promise<any> {
+  private async executeWithMemoryLimit(code: string, context: vm.Context, filename: string): Promise<unknown> {
     const memoryCheckInterval = 100; // Check every 100ms
     let memoryExceeded = false;
 

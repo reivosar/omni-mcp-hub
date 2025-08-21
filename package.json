@@ -10,7 +10,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "test": "vitest run --reporter=verbose; ./scripts/cleanup-test-processes.sh",
+    "test": "./scripts/test-runner.sh",
     "test:watch": "vitest",
     "test:ui": "vitest --ui; ./scripts/cleanup-test-processes.sh",
     "test:coverage": "vitest run --coverage --reporter=verbose; ./scripts/cleanup-test-processes.sh",

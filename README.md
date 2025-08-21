@@ -296,7 +296,7 @@ All tests are written using **Vitest** with TypeScript support and provide compr
 - MCP resource handlers
 - Integration between all components
 
-**Test Coverage**: 81.05% (927/928 tests passing)
+**Test Coverage**: 81.05% (923/928 tests passing, 5 skipped)
 
 ## Scripts
 

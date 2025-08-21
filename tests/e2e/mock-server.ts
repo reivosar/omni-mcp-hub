@@ -341,25 +341,88 @@ export class MockMCPServer extends EventEmitter {
     // This is a simplified MCP protocol implementation for HTTP testing
     const { method, params } = request;
     
-    // Create a mock request object that matches MCP schema expectations
-    const mockRequest = { params: params || {} };
+    // Log the HTTP request
+    this.logRequest(method, params);
     
+    // Simulate latency for HTTP requests too
+    await this.simulateLatency();
+    
+    // Simulate error if configured
+    if (this.shouldSimulateError()) {
+      throw new Error(`Simulated error for method ${method}`);
+    }
+    
+    // Handle methods directly without MCP schema validation
+    let response: any;
     switch (method) {
       case 'tools/list':
-        return await this.server['_requestHandlers'].get('tools/list')?.(mockRequest);
+        response = {
+          tools: this.config.tools.map(tool => ({
+            name: tool.name,
+            description: tool.description,
+            inputSchema: tool.inputSchema
+          }))
+        };
+        break;
       case 'tools/call':
-        return await this.server['_requestHandlers'].get('tools/call')?.(mockRequest);
+        {
+          const { name, arguments: args } = params as { name: string; arguments: Record<string, unknown> };
+          const tool = this.config.tools.find(t => t.name === name);
+          if (!tool) {
+            throw new Error(`Tool ${name} not found`);
+          }
+          const result = await tool.handler(args);
+          response = {
+            content: [{ type: 'text', text: JSON.stringify(result) }]
+          };
+        }
+        break;
       case 'resources/list':
-        return await this.server['_requestHandlers'].get('resources/list')?.(mockRequest);
+        response = {
+          resources: this.config.resources.map(resource => ({
+            uri: resource.uri,
+            name: resource.name,
+            description: resource.description,
+            mimeType: resource.mimeType
+          }))
+        };
+        break;
       case 'resources/read':
-        return await this.server['_requestHandlers'].get('resources/read')?.(mockRequest);
+        {
+          const { uri } = params as { uri: string };
+          const resource = this.config.resources.find(r => r.uri === uri);
+          if (!resource) {
+            throw new Error(`Resource ${uri} not found`);
+          }
+          response = await resource.handler();
+        }
+        break;
       case 'prompts/list':
-        return await this.server['_requestHandlers'].get('prompts/list')?.(mockRequest);
+        response = {
+          prompts: this.config.prompts.map(prompt => ({
+            name: prompt.name,
+            description: prompt.description,
+            arguments: prompt.arguments
+          }))
+        };
+        break;
       case 'prompts/get':
-        return await this.server['_requestHandlers'].get('prompts/get')?.(mockRequest);
+        {
+          const { name, arguments: args } = params as { name: string; arguments?: Record<string, unknown> };
+          const prompt = this.config.prompts.find(p => p.name === name);
+          if (!prompt) {
+            throw new Error(`Prompt ${name} not found`);
+          }
+          response = await prompt.handler(args || {});
+        }
+        break;
       default:
         throw new Error(`Unknown method: ${method}`);
     }
+    
+    // Log the response
+    this.logResponse(method, response);
+    return response;
   }
 
   async stop(): Promise<void> {
@@ -540,8 +603,47 @@ export class ContractTestRunner {
       throw new Error('No mock servers available');
     }
 
-    // This would be replaced with actual MCP client calls
-    return { result: 'mocked tool result', tool: name, params };
+    // Return realistic mock responses based on tool name
+    switch (name) {
+      case 'read_file':
+        return {
+          result: {
+            content: `Mock file content for ${params.path}`,
+            size: 1024
+          }
+        };
+      case 'write_file':
+        return {
+          result: {
+            success: true,
+            path: params.path,
+            bytesWritten: (params.content as string)?.length || 0
+          }
+        };
+      case 'search_code':
+        return {
+          result: {
+            matches: [`Mock search result for: ${params.query}`],
+            count: 1
+          }
+        };
+      case 'refactor_code':
+        return {
+          result: {
+            originalCode: params.code,
+            refactoredCode: `/* Refactored */ ${params.code}`,
+            explanation: `Mock refactoring: ${params.instruction}`
+          }
+        };
+      default:
+        return {
+          result: {
+            message: `Mock result for tool ${name}`,
+            tool: name,
+            params
+          }
+        };
+    }
   }
 
   private async getResource(uri: string): Promise<unknown> {
@@ -551,7 +653,12 @@ export class ContractTestRunner {
       throw new Error('No mock servers available');
     }
 
-    return { uri, content: 'mocked resource content' };
+    return { 
+      uri, 
+      content: `Mock resource content for ${uri}`,
+      mimeType: 'text/plain',
+      size: 256
+    };
   }
 
   private async getPrompt(name: string, params: Record<string, unknown>): Promise<unknown> {
@@ -561,19 +668,49 @@ export class ContractTestRunner {
       throw new Error('No mock servers available');
     }
 
-    return { name, params, messages: [{ role: 'user', content: { type: 'text', text: 'mocked prompt' } }] };
+    return { 
+      name, 
+      params, 
+      messages: [{ 
+        role: 'user', 
+        content: { 
+          type: 'text', 
+          text: `Please explain this code: ${params.code || 'sample code'}`
+        } 
+      }] 
+    };
   }
 
   private async listTools(): Promise<unknown> {
-    return { tools: [{ name: 'mock-tool', description: 'A mock tool' }] };
+    // Simulate aggregated tools from multiple agents (Claude + Cursor)
+    return { 
+      tools: [
+        { name: 'read_file', description: 'Read a file from the filesystem', agent: 'claude' },
+        { name: 'write_file', description: 'Write content to a file', agent: 'claude' },
+        { name: 'search_code', description: 'Search for code patterns', agent: 'cursor' },
+        { name: 'refactor_code', description: 'Refactor code using AI suggestions', agent: 'cursor' }
+      ] 
+    };
   }
 
   private async listResources(): Promise<unknown> {
-    return { resources: [{ uri: 'mock://resource', name: 'mock-resource' }] };
+    // Simulate aggregated resources from multiple agents
+    return { 
+      resources: [
+        { uri: 'file:///workspace', name: 'workspace', agent: 'claude' },
+        { uri: 'cursor://project', name: 'current-project', agent: 'cursor' }
+      ] 
+    };
   }
 
   private async listPrompts(): Promise<unknown> {
-    return { prompts: [{ name: 'mock-prompt', description: 'A mock prompt' }] };
+    // Simulate aggregated prompts from multiple agents  
+    return { 
+      prompts: [
+        { name: 'explain_code', description: 'Explain what a piece of code does', agent: 'claude' },
+        { name: 'optimize_code', description: 'Suggest code optimizations', agent: 'cursor' }
+      ] 
+    };
   }
 
   async runAllScenarios(): Promise<{ passed: number; failed: number; results: typeof this.results }> {

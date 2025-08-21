@@ -116,21 +116,23 @@ describe('Performance Monitoring System', () => {
     });
 
     describe('System Metrics Collection', () => {
-      it('should collect system metrics automatically', (done) => {
+      it('should collect system metrics automatically', async () => {
         const collector = new MetricsCollector({
           ...testConfig,
           collectInterval: 50
         });
 
-        setTimeout(() => {
-          const metrics = collector.getCurrentMetrics();
-          expect(metrics.memoryUsage).toBeDefined();
-          expect(metrics.memoryUsage.heapUsed).toBeGreaterThan(0);
-          expect(metrics.uptime).toBeGreaterThan(0);
-          
-          collector.stop();
-          done();
-        }, 100);
+        await new Promise<void>((resolve) => {
+          setTimeout(() => {
+            const metrics = collector.getCurrentMetrics();
+            expect(metrics.memoryUsage).toBeDefined();
+            expect(metrics.memoryUsage.heapUsed).toBeGreaterThan(0);
+            expect(metrics.uptime).toBeGreaterThan(0);
+            
+            collector.stop();
+            resolve();
+          }, 100);
+        });
       }, 500);
 
       it('should calculate performance percentiles', () => {
@@ -261,36 +263,105 @@ describe('Performance Monitoring System', () => {
 
     describe('HTTP Endpoints', () => {
       it('should serve root endpoint with API documentation', async () => {
-        const response = await fetch('http://localhost:3099/');
-        expect(response.status).toBe(200);
+        const http = await import('http');
         
-        const data = await response.json() as any;
-        expect(data.service).toBe('Omni MCP Hub Monitoring Server');
-        expect(data.endpoints).toBeDefined();
-        expect(data.endpoints['/metrics']).toBeDefined();
+        return new Promise<void>((resolve, reject) => {
+          const req = http.request({
+            hostname: 'localhost',
+            port: 3099,
+            path: '/',
+            method: 'GET'
+          }, (res) => {
+            expect(res.statusCode).toBe(200);
+            
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+              const parsed = JSON.parse(data);
+              expect(parsed.service).toBe('Omni MCP Hub Monitoring Server');
+              expect(parsed.endpoints).toBeDefined();
+              expect(parsed.endpoints['/metrics']).toBeDefined();
+              resolve();
+            });
+          });
+          
+          req.on('error', (error) => {
+            reject(error);
+          });
+          
+          req.end();
+        });
       });
 
-      it.skip('should serve Prometheus metrics endpoint', async () => {
+      it('should serve Prometheus metrics endpoint', async () => {
         metricsCollector.recordCounter('test_metric', 1);
         
-        const response = await fetch('http://localhost:3099/metrics');
-        expect(response.status).toBe(200);
-        expect(response.headers.get('content-type')).toContain('text/plain');
+        const http = await import('http');
         
-        const text = await response.text();
-        // Prometheus format checking removed - implementation returns simple text format
-        expect(text).toBeDefined();
-        expect(text.length).toBeGreaterThan(0);
-      });
+        return new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('Request timeout'));
+          }, 5000);
+          
+          const req = http.request({
+            hostname: 'localhost',
+            port: 3099,
+            path: '/metrics',
+            method: 'GET',
+            timeout: 3000
+          }, (res) => {
+            clearTimeout(timeout);
+            expect(res.statusCode).toBe(200);
+            
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+              expect(data).toBeDefined();
+              expect(data.length).toBeGreaterThan(0);
+              resolve();
+            });
+            res.on('error', reject);
+          });
+          
+          req.on('error', (err) => {
+            clearTimeout(timeout);
+            reject(err);
+          });
+          req.on('timeout', () => {
+            clearTimeout(timeout);
+            req.destroy();
+            reject(new Error('Request timeout'));
+          });
+          req.end();
+        });
+      }, 10000);
 
       it('should serve JSON metrics endpoint', async () => {
-        const response = await fetch('http://localhost:3099/metrics?format=json');
-        expect(response.status).toBe(200);
-        expect(response.headers.get('content-type')).toContain('application/json');
+        const http = await import('http');
         
-        const data = await response.json();
-        expect(data).toBeDefined();
-        expect(typeof data).toBe('object');
+        return new Promise<void>((resolve, reject) => {
+          const req = http.request({
+            hostname: 'localhost',
+            port: 3099,
+            path: '/metrics?format=json',
+            method: 'GET'
+          }, (res) => {
+            expect(res.statusCode).toBe(200);
+            expect(res.headers['content-type']).toContain('application/json');
+            
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+              const parsed = JSON.parse(data);
+              expect(parsed).toBeDefined();
+              expect(typeof parsed).toBe('object');
+              resolve();
+            });
+          });
+          
+          req.on('error', reject);
+          req.end();
+        });
       });
 
       it('should serve CSV metrics endpoint', async () => {

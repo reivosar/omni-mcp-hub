@@ -461,12 +461,7 @@ describe('Audit Logging System', () => {
     });
 
     describe('Error Handling', () => {
-      it('should emit events for logging errors', (done) => {
-        auditLogger.on('log-error', (data) => {
-          expect(data.error).toBeDefined();
-          done();
-        });
-
+      it('should emit events for logging errors', async () => {
         // Cause an error by making log path invalid
         const badConfig = {
           ...testConfig,
@@ -474,6 +469,14 @@ describe('Audit Logging System', () => {
         };
         
         const badLogger = new AuditLogger(badConfig);
+        
+        const errorPromise = new Promise<void>((resolve) => {
+          badLogger.on('log-error', (data) => {
+            expect(data.error).toBeDefined();
+            resolve();
+          });
+        });
+
         badLogger.logEvent({
           eventType: AuditEventType.SYSTEM_EVENT,
           action: 'test',
@@ -481,6 +484,8 @@ describe('Audit Logging System', () => {
           severity: AuditSeverity.LOW,
           source: 'test'
         });
+
+        await errorPromise;
       });
 
       it('should emit events for integrity violations', async () => {

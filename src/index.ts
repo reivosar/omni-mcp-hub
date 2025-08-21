@@ -198,21 +198,28 @@ export class OmniMCPServer {
 
 // Setup process-level error handling first
 const logger = Logger.getInstance();
-const processErrorHandler = new ProcessErrorHandler(logger, process);
-processErrorHandler.setupGlobalErrorHandlers();
-
-// Start metrics collection
-const _metricsInterval = processErrorHandler.startMetricsCollection(60000);
-
-// Clean up on shutdown
-process.on('beforeExit', () => {
-  processErrorHandler.stopMetricsCollection();
-  server.cleanup();
-});
 
 // Start the server
 const server = new OmniMCPServer();
+
+// Only set up process error handler in production
+if (process.env.NODE_ENV !== 'test') {
+  const processErrorHandler = new ProcessErrorHandler(logger, process);
+  processErrorHandler.setupGlobalErrorHandlers();
+  
+  // Start metrics collection
+  const _metricsInterval = processErrorHandler.startMetricsCollection(60000);
+  
+  // Clean up on shutdown
+  process.on('beforeExit', () => {
+    processErrorHandler.stopMetricsCollection();
+    server.cleanup();
+  });
+}
+
 server.run().catch((error) => {
   logger.error("Server startup error:", error);
-  process.exit(1);
+  if (process.env.NODE_ENV !== 'test') {
+    process.exit(1);
+  }
 });

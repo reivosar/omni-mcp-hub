@@ -81,19 +81,19 @@ describe('Integration Tests', () => {
       expect(tsconfig.compilerOptions.module).toBeTruthy();
     });
 
-    it('should have valid omni-config.yaml in local-resources', async () => {
-      const yamlConfigPath = path.join(rootDir, 'examples/local-resources/omni-config.yaml');
+    it('should have valid omni-config.yaml in minimal example', async () => {
+      const yamlConfigPath = path.join(rootDir, 'examples/minimal/omni-config.yaml');
       const content = await fs.readFile(yamlConfigPath, 'utf-8');
       
-      // Should be valid YAML and have expected structure
-      expect(content).toContain('autoLoad:');
+      // Should be valid YAML and have new simplified structure
       expect(content).toContain('profiles:');
-      expect(content).toContain('fileSettings:');
+      expect(content).toContain('logging:');
+      expect(content).toContain('level: "info"');
     });
   });
 
   describe('Example Files', () => {
-    it('should have valid example configuration files', async () => {
+    it('should have valid behavior profile files', async () => {
       const localResourcesDir = path.join(rootDir, 'examples/local-resources');
       const files = await fs.readdir(localResourcesDir);
       
@@ -110,6 +110,19 @@ describe('Integration Tests', () => {
         if (content.includes('Project Name:')) {
           expect(content).toMatch(/Project Name: .+/);
         }
+      }
+    });
+
+    it('should have valid standardized configuration examples', async () => {
+      const exampleTypes = ['minimal', 'standard', 'enterprise', 'docker'];
+      
+      for (const exampleType of exampleTypes) {
+        const configPath = path.join(rootDir, 'examples', exampleType, 'omni-config.yaml');
+        const content = await fs.readFile(configPath, 'utf-8');
+        
+        // All configs should have profiles and logging
+        expect(content).toContain('profiles:');
+        expect(content).toContain('logging:');
       }
     });
 

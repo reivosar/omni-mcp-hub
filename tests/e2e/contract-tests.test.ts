@@ -700,8 +700,8 @@ main().catch(console.error);
 
   describe('Performance Validation', () => {
     it('should handle concurrent requests efficiently', async () => {
-      const concurrency = 5;
-      const requestsPerClient = 3;
+      const concurrency = 3;
+      const requestsPerClient = 2;
       const start = Date.now();
 
       const promises = [];

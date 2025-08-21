@@ -148,60 +148,57 @@ Memory context and information to remember...
 
 ## YAML Configuration
 
-The server supports advanced configuration via `omni-config.yaml` in your working directory. This enables:
+The server supports configuration via `omni-config.yaml` in your working directory. Choose from 4 standardized examples:
 
-- **Auto-loading profiles** on startup
-- **File filtering** with exclude/include patterns
-- **Directory scanning** with depth control  
-- **Custom naming patterns** for profiles
-- **Logging control** for verbose output
+- **Minimal**: Single profile, basic logging (5 lines)
+- **Standard**: Multiple profiles, essential external servers (~15 lines)
+- **Enterprise**: Full security, advanced monitoring, multiple servers
+- **Docker**: Container-friendly configuration with health endpoints
 
 ### Example Configuration
 
 ```yaml
-# Auto-load profiles on startup
-autoLoad:
-  profiles:
-    - name: "lum"
-      path: "./examples/lum-behavior.md"
-      autoApply: true  # Note: See limitations below
+# Profile Management (Simplified)
+profiles:
+  - name: "default"
+    path: "CLAUDE.md"
+  - name: "assistant"
+    path: "./examples/assistant-behavior.md"
 
-# File scanning settings  
-fileSettings:
-  excludePatterns:
-    - "*.tmp"
-    - "node_modules/**"
-  allowedExtensions:
-    - ".md"
-    - ".txt"
+# External MCP Servers (Optional)
+externalServers:
+  - name: "filesystem"
+    command: "npx"
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    description: "File system operations"
 
-# Directory scanning
-directoryScanning:
-  recursive: true
-  maxDepth: 3
-
-# Logging
+# Basic Settings
 logging:
   level: "info"
-  verboseFileLoading: true
 ```
 
-See the `examples/` directory for ready-to-use character behaviors and `omni-config.yaml` for advanced configuration options.
+**See the `examples/` directory for 4 standardized configuration templates and migration guide.**
 
-### Auto-Apply Limitations
+### Configuration Usage
 
-**Important**: The `autoApply: true` setting has limitations due to MCP architecture:
+**Getting Started:**
 
-- **Profiles are loaded but not automatically applied**: When the MCP server starts, it loads profiles marked with `autoApply: true` into memory, but cannot directly modify Claude's behavior.
-- **Manual application required**: You must run `/use apply_claude_config <profile>` in Claude Code to actually apply the behavior.
-- **MCP constraint**: MCP tools cannot directly modify Claude's system prompts or behavior - they can only return instructions that Claude chooses to follow.
+1. **Choose a configuration**: Copy from `examples/` directory
+   ```bash
+   cp examples/minimal/omni-config.yaml .  # Recommended for beginners
+   cp examples/standard/omni-config.yaml . # Recommended for teams
+   ```
 
-To apply a profile after starting Claude Code:
-```
-/use apply_claude_config lum-behavior
-```
+2. **Create your profile**: Add a `CLAUDE.md` file with your instructions
 
-This is a fundamental limitation of the MCP protocol, not a bug in the implementation.
+3. **Apply profiles in Claude Code**:
+   ```
+   /use apply_claude_config default
+   /use list_claude_configs
+   /use get_applied_config
+   ```
+
+**Note**: MCP tools cannot automatically modify Claude's behavior - you must manually apply profiles using the commands above. This is a fundamental limitation of the MCP protocol.
 
 ## Development
 
@@ -299,7 +296,7 @@ All tests are written using **Vitest** with TypeScript support and provide compr
 - MCP resource handlers
 - Integration between all components
 
-**Test Coverage**: 89.66% (195 tests passing)
+**Test Coverage**: 81.05% (927/928 tests passing)
 
 ## Scripts
 

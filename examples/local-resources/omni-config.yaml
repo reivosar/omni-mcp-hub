@@ -1,0 +1,50 @@
+# Local Resources Configuration
+# Focus on CLAUDE.md profile management with minimal external servers
+
+autoLoad:
+  profiles:
+    - name: "lum"
+      path: "lum-behavior.md"
+      autoApply: true
+
+fileSettings:
+  configFiles:
+    claude: "CLAUDE.md"
+    behavior: "*-behavior.md"
+    custom: "*-config.md"
+  includePaths:
+    - "."
+  excludePatterns:
+    - "*.tmp"
+    - "*.backup"
+    - "*~"
+  allowedExtensions:
+    - ".md"
+    - ".markdown"
+    - ".txt"
+
+directoryScanning:
+  recursive: true
+  maxDepth: 3
+  includeHidden: false
+  followSymlinks: false
+
+profileManagement:
+  allowDuplicateNames: false
+  autoNamePattern: "%filename%"
+  defaultProfile: "lum"
+
+logging:
+  level: "info"
+  verboseFileLoading: true
+  verboseProfileSwitching: false
+
+# Minimal external servers for local development
+externalServers:
+  enabled: true
+  autoConnect: true
+  servers:
+    - name: "filesystem"
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+      description: "Local file operations"

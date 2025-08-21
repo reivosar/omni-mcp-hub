@@ -1,0 +1,57 @@
+# Mixed MCP Servers Configuration
+# Development setup with multiple external MCP servers
+
+autoLoad:
+  profiles:
+    - name: "dev-assistant"
+      path: "dev-assistant.md"
+      autoApply: false
+    - name: "code-reviewer"
+      path: "code-reviewer.md"
+      autoApply: false
+
+fileSettings:
+  configFiles:
+    claude: "CLAUDE.md"
+    behavior: "*-assistant.md"
+    custom: "*-reviewer.md"
+  includePaths:
+    - "."
+  excludePatterns:
+    - "*.tmp"
+    - "*.backup"
+    - "*~"
+  allowedExtensions:
+    - ".md"
+    - ".markdown"
+    - ".txt"
+
+logging:
+  level: "info"
+  verboseFileLoading: false
+  verboseProfileSwitching: false
+
+externalServers:
+  enabled: true
+  autoConnect: true
+  retry:
+    maxAttempts: 3
+    delayMs: 1000
+  servers:
+    # Semantic code retrieval and editing
+    - name: "serena"
+      command: "uvx"
+      args: ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server", "--enable-web-dashboard", "false"]
+      description: "Semantic code retrieval and editing for large codebases"
+    
+    # Filesystem operations
+    - name: "filesystem"
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+      description: "File system browsing and operations"
+    
+    # Local file reading for profiles and documentation  
+    - name: "local-files"
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+      description: "Read local markdown and text files for profile loading"

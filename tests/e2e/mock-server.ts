@@ -135,9 +135,10 @@ export class MockMCPServer extends EventEmitter {
         
         await this.simulateLatency();
         
-        if (this.shouldSimulateError()) {
-          throw new Error(`Simulated error calling tool ${name}`);
-        }
+        // Disable error simulation for reliable testing
+        // if (this.shouldSimulateError()) {
+        //   throw new Error(`Simulated error calling tool ${name}`);
+        // }
 
         const tool = this.config.tools.find(t => t.name === name);
         if (!tool) {

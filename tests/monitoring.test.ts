@@ -364,9 +364,32 @@ describe('Performance Monitoring System', () => {
         });
       });
 
-      it.skip('should serve CSV metrics endpoint', async () => {
-        // Skipping due to fetch API compatibility issues in test environment
-        expect(true).toBe(true);
+      it('should serve CSV metrics endpoint', async () => {
+        const http = await import('http');
+        const response = await new Promise<any>((resolve, reject) => {
+          const req = http.default.request({
+            hostname: 'localhost',
+            port: 3099,
+            path: '/metrics?format=csv',
+            method: 'GET',
+          }, (res) => {
+            let data = '';
+            res.on('data', (chunk) => data += chunk);
+            res.on('end', () => resolve({
+              status: res.statusCode,
+              headers: { get: (name: string) => res.headers[name.toLowerCase()] },
+              text: async () => data
+            }));
+          });
+          req.on('error', reject);
+          req.end();
+        });
+        
+        expect(response.status).toBe(200);
+        expect(response.headers.get('content-type')).toContain('text/csv');
+        
+        const text = await response.text();
+        expect(text).toContain('metric_name,value,timestamp');
       });
 
       it('should serve health check endpoint', async () => {

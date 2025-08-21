@@ -1,9 +1,0 @@
-# Minimal Configuration - Just Works
-# The absolute minimum to get Omni MCP Hub running
-
-externalServers:
-  enabled: true
-  servers:
-    - name: "filesystem"
-      command: "npx"
-      args: ["-y", "@modelcontextprotocol/server-filesystem", "."]

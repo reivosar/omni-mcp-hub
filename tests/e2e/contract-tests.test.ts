@@ -609,6 +609,12 @@ main().catch(console.error);
       });
 
       const readResult = await readResponse.json();
+      
+      // Check if response has content before accessing
+      if (!readResult.content || readResult.content.length === 0) {
+        throw new Error(`Mixed agent interaction failed: ${JSON.stringify(readResult)}`);
+      }
+      
       expect(readResult.content).toBeDefined();
       expect(readResult.content.length).toBeGreaterThan(0);
       

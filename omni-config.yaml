@@ -1,4 +1,18 @@
-autoLoad: true
-fileSettings:
-  configFiles:
-    claude: "CLAUDE.md"
+# Omni MCP Hub - Minimal Configuration
+# This is the recommended starting configuration for most users
+
+# Profile Management
+profiles:
+  - name: "default"
+    path: "CLAUDE.md"
+
+# External MCP Servers (optional)
+externalServers:
+  - name: "filesystem"
+    command: "npx"
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    description: "File system operations"
+
+# Basic Settings
+logging:
+  level: "info"

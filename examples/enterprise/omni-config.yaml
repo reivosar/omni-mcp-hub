@@ -1,0 +1,97 @@
+# Enterprise Configuration - Full Features
+# Perfect for: Large teams, security-conscious deployments, advanced users
+
+# Comprehensive profile management
+profiles:
+  - name: "default"
+    path: "CLAUDE.md"
+  - name: "assistant"
+    path: "profiles/dev-assistant.md"
+  - name: "reviewer"
+    path: "profiles/security-reviewer.md"
+  - name: "architect"
+    path: "profiles/tech-architect.md"
+
+# Advanced auto-loading with inheritance
+autoLoad:
+  enabled: true
+  profiles:
+    - name: "base-assistant"
+      path: "profiles/base-assistant.md"
+      autoApply: true
+
+# Production external servers
+externalServers:
+  enabled: true
+  autoConnect: true
+  retry:
+    maxAttempts: 5
+    delayMs: 1000
+    backoffMultiplier: 2
+  
+  servers:
+    - name: "filesystem"
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+      description: "Secure file system operations"
+    
+    - name: "database"
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-postgres", "${DATABASE_URL}"]
+      description: "Database operations"
+      environment:
+        DATABASE_URL: "${DATABASE_URL}"
+    
+    - name: "serena"
+      command: "uvx"
+      args: ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server"]
+      description: "Semantic code operations"
+
+# Enterprise logging
+logging:
+  level: "info"
+  structuredLogging: true
+  logFile: "/var/log/omni-mcp-hub/app.log"
+  verboseFileLoading: false
+  verboseProfileSwitching: true
+
+# Full monitoring suite
+monitoring:
+  enabled: true
+  port: 3099
+  healthEndpoints: true
+  prometheusMetrics: true
+
+# Enterprise security features
+security:
+  authentication:
+    enabled: true
+    jwtSecret: "${JWT_SECRET}"
+    tokenExpiry: "8h"
+  
+  rbac:
+    enabled: true
+    defaultRole: "user"
+  
+  rateLimit:
+    enabled: true
+    requestsPerMinute: 1000
+  
+  audit:
+    enabled: true
+    logPath: "/var/log/omni-mcp-hub/audit.log"
+
+# Advanced features
+inheritance:
+  enabled: true
+  baseProfiles:
+    - "profiles/base.md"
+
+secrets:
+  provider: "vault"
+  scanForLeaks: true
+
+performance:
+  cacheProfiles: true
+  maxConcurrentConnections: 50
+  requestTimeout: 30000

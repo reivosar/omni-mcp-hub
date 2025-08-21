@@ -1,0 +1,9 @@
+# Minimal Configuration - Start Here!
+# Perfect for: First-time users, simple setups, testing
+
+profiles:
+  - name: "default"
+    path: "CLAUDE.md"
+
+logging:
+  level: "info"

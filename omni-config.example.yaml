@@ -1,0 +1,168 @@
+# Omni MCP Hub - Complete Configuration Example
+# This file shows ALL available configuration options with descriptions
+# Most users should start with the minimal omni-config.yaml instead
+
+# ============================================================================
+# PROFILE MANAGEMENT
+# ============================================================================
+
+# Simple profile configuration (recommended)
+profiles:
+  - name: "default"
+    path: "CLAUDE.md"
+  - name: "assistant"
+    path: "profiles/assistant.md"
+  - name: "reviewer"
+    path: "profiles/code-reviewer.md"
+
+# Advanced profile auto-loading (optional)
+autoLoad:
+  enabled: true
+  profiles:
+    - name: "dev-assistant"
+      path: "dev-assistant.md"
+      autoApply: false
+    - name: "code-reviewer"  
+      path: "code-reviewer.md"
+      autoApply: false
+
+# ============================================================================
+# FILE SETTINGS (Advanced Users Only)
+# ============================================================================
+
+fileSettings:
+  # File patterns for auto-discovery
+  configFiles:
+    claude: "CLAUDE.md"              # Main Claude configuration
+    behavior: "*-behavior.md"        # Behavior profiles
+    custom: "*-config.md"           # Custom configurations
+  
+  # Directory scanning
+  includePaths:
+    - "."
+    - "./profiles"
+    - "./configs"
+  
+  excludePatterns:
+    - "*.tmp"
+    - "*.backup"
+    - "*~"
+    - "node_modules/*"
+  
+  allowedExtensions:
+    - ".md"
+    - ".markdown"
+    - ".txt"
+
+# Advanced directory scanning options
+directoryScanning:
+  recursive: true
+  maxDepth: 3
+  includeHidden: false
+  followSymlinks: false
+
+# Profile management options
+profileManagement:
+  allowDuplicateNames: false
+  autoNamePattern: "%filename%"
+  defaultProfile: "default"
+
+# ============================================================================
+# EXTERNAL MCP SERVERS
+# ============================================================================
+
+externalServers:
+  enabled: true
+  autoConnect: true
+  retry:
+    maxAttempts: 3
+    delayMs: 1000
+    backoffMultiplier: 2
+  
+  servers:
+    # File system operations
+    - name: "filesystem"
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+      description: "File system browsing and operations"
+    
+    # Semantic code operations
+    - name: "serena"
+      command: "uvx"
+      args: ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server"]
+      description: "Semantic code retrieval and editing"
+      environment:
+        NODE_ENV: "production"
+    
+    # Custom server example
+    - name: "custom-server"
+      command: "python"
+      args: ["./servers/custom-mcp-server.py"]
+      description: "Custom MCP server implementation"
+      workingDirectory: "./servers"
+
+# ============================================================================
+# LOGGING & MONITORING
+# ============================================================================
+
+logging:
+  level: "info"                    # debug, info, warn, error, fatal
+  verboseFileLoading: false
+  verboseProfileSwitching: false
+  structuredLogging: true
+  logFile: "./logs/omni-mcp-hub.log"
+
+monitoring:
+  enabled: true
+  port: 3099
+  healthEndpoints: true
+  prometheusMetrics: true
+
+# ============================================================================
+# SECURITY (Enterprise Features)
+# ============================================================================
+
+security:
+  authentication:
+    enabled: false
+    jwtSecret: "${JWT_SECRET}"
+    tokenExpiry: "24h"
+  
+  rbac:
+    enabled: false
+    defaultRole: "user"
+    
+  rateLimit:
+    enabled: false
+    requestsPerMinute: 100
+    
+  audit:
+    enabled: false
+    logPath: "./logs/audit.log"
+
+# ============================================================================
+# ADVANCED FEATURES
+# ============================================================================
+
+# Profile inheritance and composition
+inheritance:
+  enabled: false
+  baseProfiles:
+    - "base.md"
+  
+# Secrets management
+secrets:
+  provider: "environment"    # environment, vault, file
+  scanForLeaks: true
+  
+# Performance tuning
+performance:
+  cacheProfiles: true
+  maxConcurrentConnections: 10
+  requestTimeout: 30000
+  
+# Development options
+development:
+  hotReload: false
+  debugMode: false
+  verboseErrors: true

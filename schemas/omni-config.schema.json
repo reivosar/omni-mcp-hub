@@ -1,0 +1,188 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/reivosar/omni-mcp-hub/schemas/omni-config.schema.json",
+  "title": "Omni MCP Hub Configuration Schema",
+  "description": "Schema validation for Omni MCP Hub configuration files",
+  "type": "object",
+  "properties": {
+    "profiles": {
+      "type": "array",
+      "description": "List of profile configurations",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 }
+        },
+        "required": ["name", "path"]
+      }
+    },
+    "externalServers": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "command": { "type": "string", "minLength": 1 },
+              "args": { "type": "array", "items": { "type": "string" } },
+              "description": { "type": "string" },
+              "environment": { "type": "object" },
+              "workingDirectory": { "type": "string" }
+            },
+            "required": ["name", "command"]
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "autoConnect": { "type": "boolean" },
+            "retry": {
+              "type": "object",
+              "properties": {
+                "maxAttempts": { "type": "integer", "minimum": 1 },
+                "delayMs": { "type": "integer", "minimum": 0 },
+                "backoffMultiplier": { "type": "number", "minimum": 1 }
+              }
+            },
+            "servers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "minLength": 1 },
+                  "command": { "type": "string", "minLength": 1 },
+                  "args": { "type": "array", "items": { "type": "string" } },
+                  "description": { "type": "string" },
+                  "environment": { "type": "object" },
+                  "workingDirectory": { "type": "string" }
+                },
+                "required": ["name", "command"]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "logging": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["debug", "info", "warn", "error", "fatal"]
+        },
+        "verboseFileLoading": { "type": "boolean" },
+        "verboseProfileSwitching": { "type": "boolean" },
+        "structuredLogging": { "type": "boolean" },
+        "logFile": { "type": "string" }
+      }
+    },
+    "autoLoad": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "profiles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "path": { "type": "string", "minLength": 1 },
+              "autoApply": { "type": "boolean" }
+            },
+            "required": ["name", "path"]
+          }
+        }
+      }
+    },
+    "fileSettings": {
+      "type": "object",
+      "properties": {
+        "configFiles": {
+          "type": "object",
+          "properties": {
+            "claude": { "type": "string" },
+            "behavior": { "type": "string" },
+            "custom": { "type": "string" }
+          }
+        },
+        "includePaths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "excludePatterns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "allowedExtensions": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "directoryScanning": {
+      "type": "object",
+      "properties": {
+        "recursive": { "type": "boolean" },
+        "maxDepth": { "type": "integer", "minimum": 1 },
+        "includeHidden": { "type": "boolean" },
+        "followSymlinks": { "type": "boolean" }
+      }
+    },
+    "profileManagement": {
+      "type": "object",
+      "properties": {
+        "allowDuplicateNames": { "type": "boolean" },
+        "autoNamePattern": { "type": "string" },
+        "defaultProfile": { "type": "string" }
+      }
+    },
+    "monitoring": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "healthEndpoints": { "type": "boolean" },
+        "prometheusMetrics": { "type": "boolean" }
+      }
+    },
+    "security": {
+      "type": "object",
+      "properties": {
+        "authentication": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "jwtSecret": { "type": "string" },
+            "tokenExpiry": { "type": "string" }
+          }
+        },
+        "rbac": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "defaultRole": { "type": "string" }
+          }
+        },
+        "rateLimit": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "requestsPerMinute": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "audit": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "logPath": { "type": "string" }
+          }
+        }
+      }
+    }
+  },
+  "required": ["profiles"],
+  "additionalProperties": false
+}

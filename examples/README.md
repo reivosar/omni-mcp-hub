@@ -1,107 +1,153 @@
-# Omni MCP Hub Examples
+# Configuration Examples
 
-This directory contains examples and test configurations for the Omni MCP Hub.
+This directory contains standardized configuration examples for different use cases.
 
-## Quick Start
+## 🚀 Quick Start
 
-Choose your configuration and run:
+**New to Omni MCP Hub?** Start here:
 
 ```bash
-# Mixed MCP servers (Recommended)
-./mixed/start.sh
+# Copy the minimal configuration
+cp examples/minimal/omni-config.yaml .
 
-# Local resources only
-./local-resources/start.sh
+# Create your Claude profile
+echo "You are a helpful AI assistant." > CLAUDE.md
 
-# External MCP servers
-./mcp/start.sh
+# Run the hub
+npm start
 ```
 
-## Usage Examples
+## 📁 Example Types
 
-### Mixed MCP Environment
+### 1. **Minimal** (`examples/minimal/`) 
+**Perfect for:** First-time users, testing, learning
+
+- ✅ Single profile (`CLAUDE.md`)
+- ✅ Basic logging
+- ✅ 5 lines of config
+- ✅ Zero complexity
+
+### 2. **Standard** (`examples/standard/`) 
+**Perfect for:** Most users, development teams, production
+
+- ✅ Multiple profiles organized in folders
+- ✅ Essential external servers (filesystem, git)  
+- ✅ Production-ready logging
+- ✅ Health monitoring
+- ✅ ~15 lines of config
+
+### 3. **Enterprise** (`examples/enterprise/`)
+**Perfect for:** Large teams, security-conscious deployments
+
+- ✅ Full security features (JWT, RBAC, audit logging)
+- ✅ Advanced profile inheritance
+- ✅ Multiple external servers
+- ✅ Performance optimization
+- ✅ Comprehensive monitoring
+
+### 4. **Docker** (`examples/docker/`)  
+**Perfect for:** Containerized deployments, cloud environments
+
+- ✅ Container-friendly paths and logging
+- ✅ Health endpoints for orchestration
+- ✅ Environment variable integration
+- ✅ Security handled at ingress level
+
+## 🔧 Configuration Structure
+
+### Minimal Configuration (Recommended Start)
+```yaml
+profiles:
+  - name: "default"
+    path: "CLAUDE.md"
+
+logging:
+  level: "info"
+```
+
+### Adding External Servers
+```yaml
+externalServers:
+  - name: "filesystem"
+    command: "npx"
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    description: "File system operations"
+```
+
+### Adding Monitoring
+```yaml
+monitoring:
+  enabled: true
+  port: 3099
+  healthEndpoints: true
+```
+
+## 📋 Schema Validation
+
+All configurations are validated against the JSON schema:
+- **Schema:** `schemas/omni-config.schema.json`
+- **Validation:** Automatic on startup
+- **Editor Support:** VSCode, IntelliJ, etc.
+
+## 🔄 Migration Guide
+
+### From Old Configurations
+
+**If you have existing configs with:**
+
+- `fileSettings.configFiles.*` → Use simple `profiles` array
+- Complex `directoryScanning` → Use explicit `profiles` paths  
+- `autoLoad.profiles` → Move to main `profiles` array
+- Mixed structures → Choose one pattern from examples
+
+### Example Migration
+
+**Before (complex):**
+```yaml
+autoLoad:
+  profiles:
+    - name: "assistant"
+      path: "profiles/assistant.md"
+
+fileSettings:
+  configFiles:
+    claude: "CLAUDE.md"
+    behavior: "*-behavior.md"
+
+externalServers:
+  enabled: true
+  servers: [...]
+```
+
+**After (simple):**
+```yaml
+profiles:
+  - name: "default"
+    path: "CLAUDE.md"
+  - name: "assistant"  
+    path: "profiles/assistant.md"
+
+externalServers:
+  - name: "filesystem"
+    command: "npx"
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+```
+
+## 🆘 Help
+
+- **Can't decide?** → Start with `minimal/`
+- **Need external servers?** → Use `standard/`
+- **Enterprise deployment?** → Use `enterprise/`
+- **Docker/Kubernetes?** → Use `docker/`
+- **Migration issues?** → Check the migration guide above
+
+## ✅ Validation
+
+Test your configuration:
 ```bash
-# Switch between development profiles
-/use apply_claude_config profileName:"dev-assistant"
-/use apply_claude_config profileName:"code-reviewer"
+# Validate configuration
+npm run validate-config
 
-# Use integrated MCP tools
-/use serena__find_symbol className:"UserController"
-/use filesystem__read_file path:"README.md"
+# Test configuration 
+npm run test -- --grep "config"
 ```
-
-### Character Behaviors
-```bash
-# Apply character personalities
-/use apply_claude_config profileName:"lum"
-/use apply_claude_config profileName:"zoro"
-/use apply_claude_config profileName:"tsundere"
-/use apply_claude_config profileName:"naruto"
-
-# List available configurations
-/use list_claude_configs
-
-# Check current configuration
-/use get_applied_config
-```
-
-## Directory Structure
-
-### `local-resources/`
-Character behavior profiles and personality configurations for Claude Code.
-
-- **Character Behaviors**: Anime character personalities (Lum, Zoro, Tsundere, Naruto)
-- **CLAUDE.md Format**: Demonstration of configuration file structure
-- **Auto-loading**: Example profiles that load automatically
-
-### `mcp/`
-External MCP server integration examples and test configurations.
-
-- **Test Server**: Simple MCP server implementation (`test-server.js`)
-- **Configuration Examples**: Real-world MCP server integration patterns
-- **Proxy Testing**: Tools for testing MCP protocol functionality
-
-### `docker/`
-Docker-based test environments for different use cases.
-
-#### `docker/local-resources/`
-- Behavior profile testing in containerized environment
-- Auto-applies "lum" personality by default
-- Full CLAUDE.md configuration management
-
-#### `docker/mcp/`
-- External MCP server integration testing
-- Runs test MCP server with proxy functionality
-- Minimal configuration for focused testing
-
-## Quick Start
-
-### Test Character Behaviors
-```bash
-cd local-resources/
-# Files ready for use with apply_claude_config tool
-```
-
-### Test MCP Integration
-```bash
-cd mcp/
-node test-server.js  # Run standalone
-# Or use configuration files with main application
-```
-
-### Docker Testing
-```bash
-cd docker/local-resources/
-./start.sh  # Full behavior profile environment
-
-# Or
-cd docker/mcp/
-./start.sh  # MCP server integration testing
-```
-
-## Use Cases
-
-- **Development**: Test new personality profiles and behaviors
-- **Integration**: Validate external MCP server connections
-- **Demo**: Showcase different Claude Code personalities
-- **CI/CD**: Automated testing of configuration changes

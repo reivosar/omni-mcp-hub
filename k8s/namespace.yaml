@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: omni-mcp-hub
+  labels:
+    app: omni-mcp-hub
+    environment: production

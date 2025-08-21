@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omni-mcp-hub
+  namespace: omni-mcp-hub
+  labels:
+    app: omni-mcp-hub
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: omni-mcp-hub
+  template:
+    metadata:
+      labels:
+        app: omni-mcp-hub
+    spec:
+      containers:
+      - name: omni-mcp-hub
+        image: omni-mcp-hub:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "3000"
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: config
+          mountPath: /app/omni-config.yaml
+          subPath: omni-config.yaml
+      volumes:
+      - name: config
+        configMap:
+          name: omni-mcp-hub-config

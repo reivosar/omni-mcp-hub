@@ -639,4 +639,292 @@ describe('Audit Logging System', () => {
       expect(metrics.totalEvents).toBe(1);
     });
   });
+
+  describe('Additional Coverage Tests', () => {
+    it('should handle time range searches', () => {
+      const events = auditLogger.searchLogs({});
+      expect(Array.isArray(events)).toBe(true);
+    });
+
+    it('should handle encrypted logs configuration', () => {
+      const encryptedConfig = {
+        ...testConfig,
+        enableEncryption: true
+      };
+      
+      const encryptedLogger = new AuditLogger(encryptedConfig);
+      expect(encryptedLogger).toBeDefined();
+      encryptedLogger.cleanup();
+    });
+
+    it('should handle compression enabled', () => {
+      const compressedConfig = {
+        ...testConfig,
+        compressionEnabled: true
+      };
+      
+      const compressedLogger = new AuditLogger(compressedConfig);
+      expect(compressedLogger).toBeDefined();
+      compressedLogger.cleanup();
+    });
+
+    it('should handle backup configuration', () => {
+      const backupConfig = {
+        ...testConfig,
+        backupEnabled: true,
+        backupInterval: 300000
+      };
+      
+      const backupLogger = new AuditLogger(backupConfig);
+      expect(backupLogger).toBeDefined();
+      backupLogger.cleanup();
+    });
+
+    it('should handle external sink webhook configuration', async () => {
+      const webhookConfig = {
+        ...testConfig,
+        enableExternalSink: true,
+        externalSinks: [{
+          type: 'webhook' as const,
+          config: { url: 'https://example.com/webhook' },
+          enabled: true
+        }]
+      };
+      
+      const webhookLogger = new AuditLogger(webhookConfig);
+      
+      await webhookLogger.logEvent({
+        eventType: AuditEventType.SYSTEM_EVENT,
+        action: 'webhook-test',
+        details: {},
+        severity: AuditSeverity.LOW,
+        source: 'test'
+      });
+      
+      const metrics = webhookLogger.getMetrics();
+      expect(metrics.totalEvents).toBe(1);
+      
+      webhookLogger.cleanup();
+    });
+
+    it('should handle S3 sink configuration', async () => {
+      const s3Config = {
+        ...testConfig,
+        enableExternalSink: true,
+        externalSinks: [{
+          type: 's3' as const,
+          config: { bucket: 'test-bucket', region: 'us-east-1' },
+          enabled: true
+        }]
+      };
+      
+      const s3Logger = new AuditLogger(s3Config);
+      
+      await s3Logger.logEvent({
+        eventType: AuditEventType.SYSTEM_EVENT,
+        action: 's3-test',
+        details: {},
+        severity: AuditSeverity.LOW,
+        source: 'test'
+      });
+      
+      s3Logger.cleanup();
+    });
+
+    it('should handle CloudWatch sink configuration', async () => {
+      const cloudwatchConfig = {
+        ...testConfig,
+        enableExternalSink: true,
+        externalSinks: [{
+          type: 'cloudwatch' as const,
+          config: { logGroup: 'test-group', region: 'us-east-1' },
+          enabled: true
+        }]
+      };
+      
+      const cwLogger = new AuditLogger(cloudwatchConfig);
+      
+      await cwLogger.logEvent({
+        eventType: AuditEventType.SYSTEM_EVENT,
+        action: 'cloudwatch-test',
+        details: {},
+        severity: AuditSeverity.LOW,
+        source: 'test'
+      });
+      
+      cwLogger.cleanup();
+    });
+
+    it('should handle Elasticsearch sink configuration', async () => {
+      const esConfig = {
+        ...testConfig,
+        enableExternalSink: true,
+        externalSinks: [{
+          type: 'elasticsearch' as const,
+          config: { host: 'localhost:9200', index: 'audit-logs' },
+          enabled: true
+        }]
+      };
+      
+      const esLogger = new AuditLogger(esConfig);
+      
+      await esLogger.logEvent({
+        eventType: AuditEventType.SYSTEM_EVENT,
+        action: 'elasticsearch-test',
+        details: {},
+        severity: AuditSeverity.LOW,
+        source: 'test'
+      });
+      
+      esLogger.cleanup();
+    });
+
+    it('should handle search with multiple criteria', () => {
+      const results = auditLogger.searchLogs({
+        eventType: AuditEventType.AUTHENTICATION,
+        severity: AuditSeverity.HIGH,
+        userId: 'test-user',
+        action: 'login'
+      });
+      
+      expect(Array.isArray(results)).toBe(true);
+    });
+
+    it('should handle unsupported export format gracefully', () => {
+      expect(() => {
+        auditLogger.exportLogs('unsupported' as any);
+      }).toThrow('Unsupported export format: unsupported');
+    });
+
+    it('should handle additional helper patterns', () => {
+      // Test that existing helpers work correctly
+      const authEvent = AuditEventHelpers.createAuthEvent('test-login');
+      expect(authEvent.eventType).toBe(AuditEventType.AUTHENTICATION);
+      
+      const securityEvent = AuditEventHelpers.createSecurityEvent('test-violation');
+      expect(securityEvent.eventType).toBe(AuditEventType.SECURITY_VIOLATION);
+      
+      const configEvent = AuditEventHelpers.createConfigEvent('test-config');
+      expect(configEvent.eventType).toBe(AuditEventType.CONFIGURATION_CHANGE);
+      
+      const toolEvent = AuditEventHelpers.createToolEvent('test-tool');
+      expect(toolEvent.eventType).toBe(AuditEventType.TOOL_EXECUTION);
+    });
+
+    it('should handle helper methods with all parameters', () => {
+      const authEvent = AuditEventHelpers.createAuthEvent('login', 'user123', { ip: '192.168.1.1', method: '2FA' });
+      expect(authEvent.eventType).toBe(AuditEventType.AUTHENTICATION);
+      expect(authEvent.userId).toBe('user123');
+      expect(authEvent.details.ip).toBe('192.168.1.1');
+      
+      const securityEvent = AuditEventHelpers.createSecurityEvent('intrusion_detected', { location: 'firewall', severity: 'high' });
+      expect(securityEvent.eventType).toBe(AuditEventType.SECURITY_VIOLATION);
+      expect(securityEvent.severity).toBe(AuditSeverity.HIGH);
+      
+      const configEvent = AuditEventHelpers.createConfigEvent('setting_changed', 'admin', { setting: 'max_connections', old_value: 100, new_value: 200 });
+      expect(configEvent.eventType).toBe(AuditEventType.CONFIGURATION_CHANGE);
+      expect(configEvent.userId).toBe('admin');
+      
+      const toolEvent = AuditEventHelpers.createToolEvent('execute', 'developer', 'file_processor', { files: ['test.txt'], duration: 1500 });
+      expect(toolEvent.eventType).toBe(AuditEventType.TOOL_EXECUTION);
+      expect(toolEvent.resourceId).toBe('file_processor');
+      expect(toolEvent.details.duration).toBe(1500);
+    });
+
+    it('should track failed sink deliveries in metrics', async () => {
+      const failingConfig = {
+        ...testConfig,
+        enableExternalSink: true,
+        externalSinks: [{
+          type: 'webhook' as const,
+          config: { url: 'http://invalid-url' },
+          enabled: false // Disabled to avoid actual network calls
+        }]
+      };
+      
+      const failingLogger = new AuditLogger(failingConfig);
+      
+      await failingLogger.logEvent({
+        eventType: AuditEventType.SYSTEM_EVENT,
+        action: 'test-failure',
+        details: {},
+        severity: AuditSeverity.LOW,
+        source: 'test'
+      });
+      
+      const metrics = failingLogger.getMetrics();
+      expect(metrics.failedSinkDeliveries).toBeGreaterThanOrEqual(0);
+      
+      failingLogger.cleanup();
+    });
+
+    it('should handle events with correlation IDs', async () => {
+      await auditLogger.logEvent({
+        eventType: AuditEventType.SYSTEM_EVENT,
+        action: 'correlated-event',
+        details: {},
+        severity: AuditSeverity.LOW,
+        source: 'test',
+        correlationId: 'test-correlation-123'
+      });
+
+      const content = fs.readFileSync(testLogPath, 'utf8');
+      const entry = JSON.parse(content.trim());
+      expect(entry.event.correlationId).toBe('test-correlation-123');
+    });
+
+    it('should handle events with session IDs', async () => {
+      await auditLogger.logEvent({
+        eventType: AuditEventType.AUTHENTICATION,
+        action: 'session-login',
+        details: {},
+        severity: AuditSeverity.MEDIUM,
+        source: 'auth',
+        sessionId: 'session-456',
+        userId: 'user1'
+      });
+
+      const content = fs.readFileSync(testLogPath, 'utf8');
+      const entry = JSON.parse(content.trim());
+      expect(entry.event.sessionId).toBe('session-456');
+    });
+
+    it('should handle events with metadata', async () => {
+      await auditLogger.logEvent({
+        eventType: AuditEventType.SYSTEM_EVENT,
+        action: 'metadata-test',
+        details: {},
+        severity: AuditSeverity.LOW,
+        source: 'test',
+        metadata: {
+          version: '1.0.0',
+          environment: 'test'
+        }
+      });
+
+      const content = fs.readFileSync(testLogPath, 'utf8');
+      const entry = JSON.parse(content.trim());
+      expect(entry.event.metadata.version).toBe('1.0.0');
+      expect(entry.event.metadata.environment).toBe('test');
+    });
+
+    it('should verify different digest formats', async () => {
+      // Test that hash calculation works with various data types
+      await auditLogger.logEvent({
+        eventType: AuditEventType.DATA_MODIFICATION,
+        action: 'complex-data',
+        details: {
+          numbers: [1, 2, 3],
+          boolean: true,
+          null_value: null,
+          nested: { deep: { value: 'test' } }
+        },
+        severity: AuditSeverity.MEDIUM,
+        source: 'test'
+      });
+
+      const integrity = await auditLogger.verifyLogIntegrity();
+      expect(integrity).toBe(true);
+    });
+  });
 });

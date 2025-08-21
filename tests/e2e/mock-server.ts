@@ -5,6 +5,14 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport, StdioClientTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import {
+  ListToolsRequestSchema,
+  CallToolRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema
+} from '@modelcontextprotocol/sdk/types.js';
 import { EventEmitter } from 'events';
 import * as net from 'net';
 import * as http from 'http';
@@ -85,7 +93,12 @@ export class MockMCPServer extends EventEmitter {
         version: config.version,
       },
       {
-        capabilities: config.capabilities,
+        capabilities: {
+          tools: config.tools.length > 0 ? {} : undefined,
+          resources: config.resources.length > 0 ? {} : undefined,
+          prompts: config.prompts.length > 0 ? {} : undefined,
+          ...config.capabilities
+        },
       }
     );
 
@@ -93,146 +106,152 @@ export class MockMCPServer extends EventEmitter {
   }
 
   private setupHandlers(): void {
-    // Setup tool handlers
-    this.server.setRequestHandler('tools/list', async () => {
-      this.logRequest('tools/list');
-      
-      await this.simulateLatency();
-      
-      if (this.shouldSimulateError()) {
-        throw new Error('Simulated tool list error');
-      }
-
-      const tools = this.config.tools.map(tool => ({
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.inputSchema
-      }));
-
-      const response = { tools };
-      this.logResponse('tools/list', response);
-      return response;
-    });
-
-    this.server.setRequestHandler('tools/call', async (request) => {
-      const { name, arguments: args } = request.params as { name: string; arguments: Record<string, unknown> };
-      
-      this.logRequest('tools/call', { name, arguments: args });
-      
-      await this.simulateLatency();
-      
-      if (this.shouldSimulateError()) {
-        throw new Error(`Simulated error calling tool ${name}`);
-      }
-
-      const tool = this.config.tools.find(t => t.name === name);
-      if (!tool) {
-        throw new Error(`Tool ${name} not found`);
-      }
-
-      try {
-        const result = await tool.handler(args);
-        const response = {
-          content: [{ type: 'text', text: JSON.stringify(result) }]
-        };
+    // Setup tool handlers if tools are available
+    if (this.config.tools.length > 0) {
+      this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+        this.logRequest('tools/list');
         
-        this.logResponse('tools/call', response);
+        await this.simulateLatency();
+        
+        if (this.shouldSimulateError()) {
+          throw new Error('Simulated tool list error');
+        }
+
+        const tools = this.config.tools.map(tool => ({
+          name: tool.name,
+          description: tool.description,
+          inputSchema: tool.inputSchema
+        }));
+
+        const response = { tools };
+        this.logResponse('tools/list', response);
         return response;
-      } catch (error) {
-        const errorResponse = {
-          isError: true,
-          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}` }]
-        };
+      });
+
+      this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+        const { name, arguments: args } = request.params as { name: string; arguments: Record<string, unknown> };
         
-        this.logResponse('tools/call', errorResponse);
-        throw error;
-      }
-    });
+        this.logRequest('tools/call', { name, arguments: args });
+        
+        await this.simulateLatency();
+        
+        if (this.shouldSimulateError()) {
+          throw new Error(`Simulated error calling tool ${name}`);
+        }
 
-    // Setup resource handlers
-    this.server.setRequestHandler('resources/list', async () => {
-      this.logRequest('resources/list');
-      
-      await this.simulateLatency();
-      
-      if (this.shouldSimulateError()) {
-        throw new Error('Simulated resource list error');
-      }
+        const tool = this.config.tools.find(t => t.name === name);
+        if (!tool) {
+          throw new Error(`Tool ${name} not found`);
+        }
 
-      const resources = this.config.resources.map(resource => ({
-        uri: resource.uri,
-        name: resource.name,
-        description: resource.description,
-        mimeType: resource.mimeType
-      }));
+        try {
+          const result = await tool.handler(args);
+          const response = {
+            content: [{ type: 'text', text: JSON.stringify(result) }]
+          };
+          
+          this.logResponse('tools/call', response);
+          return response;
+        } catch (error) {
+          const errorResponse = {
+            isError: true,
+            content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}` }]
+          };
+          
+          this.logResponse('tools/call', errorResponse);
+          throw error;
+        }
+      });
+    }
 
-      const response = { resources };
-      this.logResponse('resources/list', response);
-      return response;
-    });
+    // Setup resource handlers if resources are available
+    if (this.config.resources.length > 0) {
+      this.server.setRequestHandler(ListResourcesRequestSchema, async () => {
+        this.logRequest('resources/list');
+        
+        await this.simulateLatency();
+        
+        if (this.shouldSimulateError()) {
+          throw new Error('Simulated resource list error');
+        }
 
-    this.server.setRequestHandler('resources/read', async (request) => {
-      const { uri } = request.params as { uri: string };
-      
-      this.logRequest('resources/read', { uri });
-      
-      await this.simulateLatency();
-      
-      if (this.shouldSimulateError()) {
-        throw new Error(`Simulated error reading resource ${uri}`);
-      }
+        const resources = this.config.resources.map(resource => ({
+          uri: resource.uri,
+          name: resource.name,
+          description: resource.description,
+          mimeType: resource.mimeType
+        }));
 
-      const resource = this.config.resources.find(r => r.uri === uri);
-      if (!resource) {
-        throw new Error(`Resource ${uri} not found`);
-      }
+        const response = { resources };
+        this.logResponse('resources/list', response);
+        return response;
+      });
 
-      const contents = await resource.handler();
-      this.logResponse('resources/read', contents);
-      return contents;
-    });
+      this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+        const { uri } = request.params as { uri: string };
+        
+        this.logRequest('resources/read', { uri });
+        
+        await this.simulateLatency();
+        
+        if (this.shouldSimulateError()) {
+          throw new Error(`Simulated error reading resource ${uri}`);
+        }
 
-    // Setup prompt handlers
-    this.server.setRequestHandler('prompts/list', async () => {
-      this.logRequest('prompts/list');
-      
-      await this.simulateLatency();
-      
-      if (this.shouldSimulateError()) {
-        throw new Error('Simulated prompt list error');
-      }
+        const resource = this.config.resources.find(r => r.uri === uri);
+        if (!resource) {
+          throw new Error(`Resource ${uri} not found`);
+        }
 
-      const prompts = this.config.prompts.map(prompt => ({
-        name: prompt.name,
-        description: prompt.description,
-        arguments: prompt.arguments
-      }));
+        const contents = await resource.handler();
+        this.logResponse('resources/read', contents);
+        return contents;
+      });
+    }
 
-      const response = { prompts };
-      this.logResponse('prompts/list', response);
-      return response;
-    });
+    // Setup prompt handlers only if prompts are available
+    if (this.config.prompts.length > 0) {
+      this.server.setRequestHandler(ListPromptsRequestSchema, async () => {
+        this.logRequest('prompts/list');
+        
+        await this.simulateLatency();
+        
+        if (this.shouldSimulateError()) {
+          throw new Error('Simulated prompt list error');
+        }
 
-    this.server.setRequestHandler('prompts/get', async (request) => {
-      const { name, arguments: args } = request.params as { name: string; arguments?: Record<string, unknown> };
-      
-      this.logRequest('prompts/get', { name, arguments: args });
-      
-      await this.simulateLatency();
-      
-      if (this.shouldSimulateError()) {
-        throw new Error(`Simulated error getting prompt ${name}`);
-      }
+        const prompts = this.config.prompts.map(prompt => ({
+          name: prompt.name,
+          description: prompt.description,
+          arguments: prompt.arguments
+        }));
 
-      const prompt = this.config.prompts.find(p => p.name === name);
-      if (!prompt) {
-        throw new Error(`Prompt ${name} not found`);
-      }
+        const response = { prompts };
+        this.logResponse('prompts/list', response);
+        return response;
+      });
 
-      const result = await prompt.handler(args || {});
-      this.logResponse('prompts/get', result);
-      return result;
-    });
+      this.server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+        const { name, arguments: args } = request.params as { name: string; arguments?: Record<string, unknown> };
+        
+        this.logRequest('prompts/get', { name, arguments: args });
+        
+        await this.simulateLatency();
+        
+        if (this.shouldSimulateError()) {
+          throw new Error(`Simulated error getting prompt ${name}`);
+        }
+
+        const prompt = this.config.prompts.find(p => p.name === name);
+        if (!prompt) {
+          throw new Error(`Prompt ${name} not found`);
+        }
+
+        const result = await prompt.handler(args || {});
+        this.logResponse('prompts/get', result);
+        return result;
+      });
+    }
   }
 
   private logRequest(action: string, params?: unknown): void {
@@ -322,19 +341,22 @@ export class MockMCPServer extends EventEmitter {
     // This is a simplified MCP protocol implementation for HTTP testing
     const { method, params } = request;
     
+    // Create a mock request object that matches MCP schema expectations
+    const mockRequest = { params: params || {} };
+    
     switch (method) {
       case 'tools/list':
-        return await this.server['handlers'].get('tools/list')?.({ params: {} });
+        return await this.server['_requestHandlers'].get('tools/list')?.(mockRequest);
       case 'tools/call':
-        return await this.server['handlers'].get('tools/call')?.({ params });
+        return await this.server['_requestHandlers'].get('tools/call')?.(mockRequest);
       case 'resources/list':
-        return await this.server['handlers'].get('resources/list')?.({ params: {} });
+        return await this.server['_requestHandlers'].get('resources/list')?.(mockRequest);
       case 'resources/read':
-        return await this.server['handlers'].get('resources/read')?.({ params });
+        return await this.server['_requestHandlers'].get('resources/read')?.(mockRequest);
       case 'prompts/list':
-        return await this.server['handlers'].get('prompts/list')?.({ params: {} });
+        return await this.server['_requestHandlers'].get('prompts/list')?.(mockRequest);
       case 'prompts/get':
-        return await this.server['handlers'].get('prompts/get')?.({ params });
+        return await this.server['_requestHandlers'].get('prompts/get')?.(mockRequest);
       default:
         throw new Error(`Unknown method: ${method}`);
     }

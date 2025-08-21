@@ -10,6 +10,7 @@ import { PathResolver } from "../utils/path-resolver.js";
 import { MCPProxyManager } from "../mcp-proxy/manager.js";
 import { ILogger, SilentLogger } from "../utils/logger.js";
 import { ErrorHandler } from "../utils/error-handler.js";
+import { GitHubResourceManager } from "../utils/github-client.js";
 
 export class ResourceHandlers {
   private server: Server;
@@ -18,6 +19,7 @@ export class ResourceHandlers {
   private proxyManager?: MCPProxyManager;
   private logger: ILogger;
   private errorHandler: ErrorHandler;
+  private githubResourceManager: GitHubResourceManager;
 
   constructor(server: Server, activeProfiles: Map<string, ClaudeConfig>, proxyManager?: MCPProxyManager, logger?: ILogger) {
     this.server = server;
@@ -29,6 +31,9 @@ export class ResourceHandlers {
     const pathResolver = PathResolver.getInstance();
     const yamlConfigPath = pathResolver.getYamlConfigPath();
     this.fileScanner = new FileScanner(YamlConfigManager.createWithPath(yamlConfigPath, this.logger), this.logger);
+    
+    // Initialize GitHub resource manager
+    this.githubResourceManager = new GitHubResourceManager(this.logger);
   }
 
   /**
@@ -70,6 +75,35 @@ export class ResourceHandlers {
           description: `Automatically apply ${autoApplyProfiles.length} profile(s) marked for auto-application`,
           mimeType: "text/plain",
         });
+      }
+
+      // Add engineering guide resources
+      baseResources.push({
+        uri: "engineering-guide://files",
+        name: "📚 Engineering Guide - All Files",
+        description: "All markdown files from Claude Code Engineering Guide",
+        mimeType: "application/json",
+      });
+      
+      baseResources.push({
+        uri: "engineering-guide://combined",
+        name: "📘 Engineering Guide - Combined",
+        description: "Combined content from all engineering guide files",
+        mimeType: "text/markdown",
+      });
+
+      // Try to add individual engineering guide file resources
+      try {
+        const engineeringFiles = await this.githubResourceManager.getEngineeringGuide();
+        const fileResources = engineeringFiles.map(file => ({
+          uri: `engineering-guide://file/${encodeURIComponent(file.path)}`,
+          name: `📄 ${file.name}`,
+          description: `Engineering guide: ${file.path} (${Math.round(file.size / 1024)}KB)`,
+          mimeType: "text/markdown",
+        }));
+        baseResources.push(...fileResources);
+      } catch (error) {
+        this.logger.warn('Failed to load engineering guide file list for resources:', error);
       }
 
       // Add dynamic resources for each loaded profile (active/assigned profiles)
@@ -193,6 +227,81 @@ export class ResourceHandlers {
             ],
           };
 
+        case "engineering-guide://files":
+          try {
+            const files = await this.githubResourceManager.getEngineeringGuide();
+            const fileList = files.map(file => ({
+              name: file.name,
+              path: file.path,
+              size: file.size,
+              uri: `engineering-guide://file/${encodeURIComponent(file.path)}`
+            }));
+            
+            return {
+              contents: [
+                {
+                  uri,
+                  mimeType: "application/json",
+                  text: JSON.stringify({
+                    totalFiles: fileList.length,
+                    repository: "reivosar/claude-code-engineering-guide",
+                    branch: "master",
+                    path: "markdown",
+                    files: fileList
+                  }, null, 2),
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              contents: [
+                {
+                  uri,
+                  mimeType: "application/json",
+                  text: JSON.stringify({ 
+                    error: `Failed to fetch engineering guide files: ${error}`,
+                    repository: "reivosar/claude-code-engineering-guide"
+                  }, null, 2),
+                },
+              ],
+            };
+          }
+
+        case "engineering-guide://combined":
+          try {
+            const files = await this.githubResourceManager.getEngineeringGuide();
+            let combinedContent = "# Claude Code Engineering Guide\n\n";
+            combinedContent += "This is a combined view of all engineering guide documents.\n\n";
+            combinedContent += "---\n\n";
+            
+            for (const file of files) {
+              combinedContent += `## ${file.name}\n\n`;
+              combinedContent += `**Path:** ${file.path}\n\n`;
+              combinedContent += file.content;
+              combinedContent += "\n\n---\n\n";
+            }
+            
+            return {
+              contents: [
+                {
+                  uri,
+                  mimeType: "text/markdown",
+                  text: combinedContent,
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              contents: [
+                {
+                  uri,
+                  mimeType: "text/markdown",
+                  text: `# Engineering Guide Error\n\nFailed to fetch engineering guide content: ${error}`,
+                },
+              ],
+            };
+          }
+
         default:
           // Handle config://profile/active/{name} resources
           const profileMatch = uri.match(/^config:\/\/profile\/active\/(.+)$/);
@@ -207,6 +316,38 @@ export class ResourceHandlers {
                     uri,
                     mimeType: "application/json",
                     text: JSON.stringify(config, null, 2),
+                  },
+                ],
+              };
+            }
+          }
+          
+          // Handle individual engineering guide files
+          const fileMatch = uri.match(/^engineering-guide:\/\/file\/(.+)$/);
+          if (fileMatch) {
+            try {
+              const filePath = decodeURIComponent(fileMatch[1]);
+              const files = await this.githubResourceManager.getEngineeringGuide();
+              const file = files.find(f => f.path === filePath);
+              
+              if (file) {
+                return {
+                  contents: [
+                    {
+                      uri,
+                      mimeType: "text/markdown",
+                      text: file.content,
+                    },
+                  ],
+                };
+              }
+            } catch (error) {
+              return {
+                contents: [
+                  {
+                    uri,
+                    mimeType: "text/markdown",
+                    text: `# Error\n\nFailed to fetch file: ${error}`,
                   },
                 ],
               };

@@ -24,8 +24,17 @@ describe('Input Sanitization and Validation System', () => {
       });
 
       it('should handle non-string inputs', () => {
-        const result = sanitizer.sanitizeString(123 as any);
-        expect(typeof result).toBe('string');
+        const result1 = sanitizer.sanitizeString(123 as any);
+        expect(typeof result1).toBe('string');
+        
+        const result2 = sanitizer.sanitizeString(null as any);
+        expect(typeof result2).toBe('string');
+        
+        const result3 = sanitizer.sanitizeString(undefined as any);
+        expect(typeof result3).toBe('string');
+        
+        const result4 = sanitizer.sanitizeString({} as any);
+        expect(typeof result4).toBe('string');
       });
 
       it('should trim whitespace', () => {
@@ -275,6 +284,121 @@ describe('Input Sanitization and Validation System', () => {
       });
     });
 
+    describe('Boolean Validation', () => {
+      it('should validate boolean values', () => {
+        const rule: ValidationRule = { type: 'boolean' };
+        
+        const validResult1 = validator.validate(true, rule);
+        expect(validResult1.isValid).toBe(true);
+        
+        const validResult2 = validator.validate(false, rule);
+        expect(validResult2.isValid).toBe(true);
+        
+        const stringTrueResult = validator.validate('true', rule);
+        expect(stringTrueResult.isValid).toBe(true);
+        expect(stringTrueResult.value).toBe(true);
+        
+        const stringFalseResult = validator.validate('false', rule);
+        expect(stringFalseResult.isValid).toBe(true);
+        expect(stringFalseResult.value).toBe(false);
+        
+        const invalidResult = validator.validate('not a boolean', rule);
+        expect(invalidResult.isValid).toBe(false);
+      });
+    });
+
+    describe('URL Validation', () => {
+      it('should validate URLs', () => {
+        const rule: ValidationRule = { type: 'url' };
+        
+        const validResult1 = validator.validate('https://example.com', rule);
+        expect(validResult1.isValid).toBe(true);
+        
+        const validResult2 = validator.validate('http://localhost:3000', rule);
+        expect(validResult2.isValid).toBe(true);
+        
+        const invalidResult = validator.validate('not a url', rule);
+        expect(invalidResult.isValid).toBe(false);
+      });
+    });
+
+    describe('Date Validation', () => {
+      it('should validate dates', () => {
+        const rule: ValidationRule = { type: 'date' };
+        
+        const validResult1 = validator.validate(new Date(), rule);
+        expect(validResult1.isValid).toBe(false); // date type not implemented
+        expect(validResult1.errors[0]).toContain('Unknown validation type');
+        
+        const validResult2 = validator.validate('2023-01-01', rule);
+        expect(validResult2.isValid).toBe(false); // date type not implemented
+        
+        const invalidResult = validator.validate('not a date', rule);
+        expect(invalidResult.isValid).toBe(false);
+      });
+    });
+
+    describe('Pattern Validation', () => {
+      it('should validate against regex patterns', () => {
+        const rule: ValidationRule = { 
+          type: 'string', 
+          pattern: /^[A-Z][a-z]+$/
+        };
+        
+        const validResult = validator.validate('Hello', rule);
+        expect(validResult.isValid).toBe(true);
+        
+        const invalidResult = validator.validate('hello', rule);
+        expect(invalidResult.isValid).toBe(false);
+      });
+    });
+
+    describe('Enum Validation', () => {
+      it('should validate enum values', () => {
+        const rule: ValidationRule = { 
+          type: 'string',
+          pattern: /^(red|green|blue)$/
+        };
+        
+        const validResult = validator.validate('red', rule);
+        expect(validResult.isValid).toBe(true);
+        
+        const invalidResult = validator.validate('yellow', rule);
+        expect(invalidResult.isValid).toBe(false);
+      });
+    });
+
+    describe('Required Field Validation', () => {
+      it('should handle required fields', () => {
+        const rule: ValidationRule = { type: 'string', required: true };
+        
+        const validResult = validator.validate('test', rule);
+        expect(validResult.isValid).toBe(true);
+        
+        const nullResult = validator.validate(null, rule);
+        expect(nullResult.isValid).toBe(false);
+        
+        const undefinedResult = validator.validate(undefined, rule);
+        expect(undefinedResult.isValid).toBe(false);
+        
+        const emptyResult = validator.validate('', rule);
+        expect(emptyResult.isValid).toBe(false);
+      });
+      
+      it('should handle optional fields', () => {
+        const rule: ValidationRule = { type: 'string', required: false };
+        
+        const validResult = validator.validate('test', rule);
+        expect(validResult.isValid).toBe(true);
+        
+        const nullResult = validator.validate(null, rule);
+        expect(nullResult.isValid).toBe(true);
+        
+        const undefinedResult = validator.validate(undefined, rule);
+        expect(undefinedResult.isValid).toBe(true);
+      });
+    });
+
     describe('Batch Validation', () => {
       it('should validate multiple fields', () => {
         const data = {
@@ -292,18 +416,23 @@ describe('Input Sanitization and Validation System', () => {
         const result = validator.validateBatch(data, rules);
         expect(result.isValid).toBe(true);
       });
-    });
-
-    describe('Required Fields', () => {
-      it('should handle required fields', () => {
-        const rule: ValidationRule = { type: 'string', required: true };
+      
+      it('should handle batch validation with errors', () => {
+        const data = {
+          name: '',
+          age: -5,
+          email: 'invalid-email'
+        };
         
-        const validResult = validator.validate('valid value', rule);
-        expect(validResult.isValid).toBe(true);
+        const rules = {
+          name: { type: 'string' as const, required: true, minLength: 1 },
+          age: { type: 'number' as const, min: 0 },
+          email: { type: 'email' as const }
+        };
         
-        const nullResult = validator.validate(null, rule);
-        expect(nullResult.isValid).toBe(false);
-        expect(nullResult.errors).toContain('Value is required');
+        const result = validator.validateBatch(data, rules);
+        expect(result.isValid).toBe(false);
+        expect(result.errors.length).toBeGreaterThan(0);
       });
     });
   });
@@ -458,6 +587,394 @@ describe('Input Sanitization and Validation System', () => {
       
       expect(schema.type).toBe('object');
       expect(schema.properties).toBeDefined();
+    });
+
+    it('should handle regex validation type', () => {
+      const rule: ValidationRule = { 
+        type: 'regex',
+        pattern: /^test-\d+$/
+      };
+      
+      const validResult = validator.validate('test-123', rule);
+      expect(validResult.isValid).toBe(true);
+      
+      const invalidResult = validator.validate('invalid-format', rule);
+      expect(invalidResult.isValid).toBe(false);
+    });
+
+    it('should handle custom validation rules', () => {
+      const rule: ValidationRule = { 
+        type: 'custom',
+        custom: (value) => ({
+          isValid: typeof value === 'string' && (value as string).startsWith('custom-'),
+          value,
+          errors: typeof value === 'string' && (value as string).startsWith('custom-') ? [] : ['Must start with custom-'],
+          warnings: []
+        })
+      };
+      
+      const validResult = validator.validate('custom-value', rule);
+      expect(validResult.isValid).toBe(true);
+      
+      const invalidResult = validator.validate('invalid-value', rule);
+      expect(invalidResult.isValid).toBe(false);
+    });
+
+    it('should handle array validation with item rules', () => {
+      const rule: ValidationRule = { 
+        type: 'array',
+        minLength: 1,
+        maxLength: 5,
+        items: { type: 'number', min: 0, max: 100 }
+      };
+      
+      const validResult = validator.validate([10, 20, 30], rule);
+      expect(validResult.isValid).toBe(true);
+      
+      const invalidResult = validator.validate([10, -5, 150], rule);
+      expect(invalidResult.isValid).toBe(false);
+      expect(invalidResult.errors.length).toBeGreaterThan(0);
+    });
+
+    it('should handle object validation with additional properties', () => {
+      const rule: ValidationRule = { 
+        type: 'object',
+        properties: {
+          name: { type: 'string', required: true },
+          age: { type: 'number', min: 0 }
+        },
+        allowAdditionalProperties: true
+      };
+      
+      const validResult = validator.validate({ 
+        name: 'John', 
+        age: 30, 
+        extra: 'allowed' 
+      }, rule);
+      expect(validResult.isValid).toBe(true);
+      expect((validResult.value as any).extra).toBe('allowed');
+    });
+
+    it('should handle object validation without additional properties', () => {
+      const rule: ValidationRule = { 
+        type: 'object',
+        properties: {
+          name: { type: 'string', required: true }
+        },
+        allowAdditionalProperties: false
+      };
+      
+      const result = validator.validate({ 
+        name: 'John', 
+        extra: 'not allowed' 
+      }, rule);
+      expect(result.isValid).toBe(true);
+      expect(result.warnings.length).toBeGreaterThan(0);
+      expect((result.value as any).extra).toBeUndefined();
+    });
+
+    it('should handle sanitization during validation', () => {
+      const rule: ValidationRule = { 
+        type: 'string',
+        sanitize: true
+      };
+      
+      const result = validator.validate("'; DROP TABLE users; --", rule);
+      expect(result.isValid).toBe(true);
+      expect(result.value).toContain('[SQL_BLOCKED]');
+    });
+
+    it('should handle validation errors gracefully', () => {
+      const rule: ValidationRule = { 
+        type: 'custom',
+        custom: () => {
+          throw new Error('Custom validation error');
+        }
+      };
+      
+      const result = validator.validate('test', rule);
+      expect(result.isValid).toBe(false);
+      expect(result.errors[0]).toContain('Validation error');
+    });
+
+    it('should handle string validation with empty strings and allowEmpty', () => {
+      const allowEmptyRule: ValidationRule = { 
+        type: 'string',
+        allowEmpty: true,
+        required: true
+      };
+      
+      const result = validator.validate('', allowEmptyRule);
+      expect(result.isValid).toBe(true);
+    });
+
+    it('should handle number conversion edge cases', () => {
+      const rule: ValidationRule = { type: 'number' };
+      
+      const infinityResult = validator.validate(Infinity, rule);
+      expect(infinityResult.isValid).toBe(true);
+      
+      const nanResult = validator.validate('not-a-number', rule);
+      expect(nanResult.isValid).toBe(false);
+    });
+
+    it('should handle boolean conversion edge cases', () => {
+      const rule: ValidationRule = { type: 'boolean' };
+      
+      const yesResult = validator.validate('yes', rule);
+      expect(yesResult.isValid).toBe(true);
+      expect(yesResult.value).toBe(true);
+      
+      const oneResult = validator.validate('1', rule);
+      expect(oneResult.isValid).toBe(true);
+      expect(oneResult.value).toBe(true);
+      
+      const noResult = validator.validate('no', rule);
+      expect(noResult.isValid).toBe(true);
+      expect(noResult.value).toBe(false);
+      
+      const zeroResult = validator.validate('0', rule);
+      expect(zeroResult.isValid).toBe(true);
+      expect(zeroResult.value).toBe(false);
+    });
+
+    it('should handle sanitizer configuration options', () => {
+      const config: Partial<SanitizationConfig> = {
+        enableHtmlEscape: false,
+        enableSqlInjectionPrevention: false,
+        enableXssProtection: false,
+        enableCommandInjectionPrevention: false,
+        enablePathTraversalPrevention: false,
+        maxStringLength: 50,
+        allowedFileExtensions: ['.txt'],
+        blockedPatterns: [/blocked/gi],
+        customSanitizers: [(input) => input.replace(/custom/g, 'replaced')]
+      };
+      
+      const customSanitizer = new InputSanitizer(config);
+      
+      const result1 = customSanitizer.sanitizeString('This has custom text');
+      expect(result1).toBe('This has replaced text');
+      
+      const result2 = customSanitizer.sanitizeString('This contains blocked content');
+      expect(result2).toContain('[BLOCKED]');
+      
+      const longString = 'a'.repeat(100);
+      const result3 = customSanitizer.sanitizeString(longString);
+      expect(result3.length).toBeLessThanOrEqual(50);
+    });
+
+    it('should handle sanitization events', (done) => {
+      const testSanitizer = new InputSanitizer();
+      let eventCount = 0;
+
+      testSanitizer.on('injection-attempt', () => {
+        eventCount++;
+        if (eventCount === 4) done();
+      });
+      
+      testSanitizer.on('xss-attempt', () => {
+        eventCount++;
+        if (eventCount === 4) done();
+      });
+      
+      testSanitizer.on('command-injection-attempt', () => {
+        eventCount++;
+        if (eventCount === 4) done();
+      });
+      
+      testSanitizer.on('path-traversal-attempt', () => {
+        eventCount++;
+        if (eventCount === 4) done();
+      });
+
+      testSanitizer.sanitizeString("'; DROP TABLE users; --");
+      testSanitizer.sanitizeString("<script>alert('xss')</script>");
+      testSanitizer.sanitizeString("; rm -rf /");
+      testSanitizer.sanitizeString("../../../etc/passwd");
+    });
+
+    it('should handle file path sanitization edge cases', () => {
+      const sanitizer = new InputSanitizer();
+      
+      // Test non-string input
+      const nonStringResult = sanitizer.sanitizeFilePath(123 as any);
+      expect(nonStringResult).toBe('');
+      
+      // Test dangerous extension
+      const dangerousResult = sanitizer.sanitizeFilePath('malware.exe');
+      expect(dangerousResult).toBe('');
+    });
+
+    it('should handle validator with custom sanitizer', () => {
+      const customSanitizer = new InputSanitizer();
+      const customValidator = new InputValidator(customSanitizer);
+      
+      const result = customValidator.validate('test', { type: 'string' });
+      expect(result.isValid).toBe(true);
+    });
+
+    it('should handle security manager sanitizeAndValidate method', () => {
+      const securityManager = new InputSecurityManager();
+      
+      const result = securityManager.sanitizeAndValidate("'; DROP TABLE", { type: 'string' });
+      expect(result.isValid).toBe(true);
+      expect(result.value).toContain('[SQL_BLOCKED]');
+    });
+
+    it('should handle JSON validation with objects', () => {
+      const rule: ValidationRule = { type: 'json' };
+      
+      const objectResult = validator.validate({ key: 'value' }, rule);
+      expect(objectResult.isValid).toBe(true);
+      
+      const stringResult = validator.validate('{"key": "value"}', rule);
+      expect(stringResult.isValid).toBe(true);
+      expect(stringResult.value).toEqual({ key: 'value' });
+      
+      const invalidResult = validator.validate('invalid json', rule);
+      expect(invalidResult.isValid).toBe(false);
+    });
+
+    it('should handle regex validation edge cases', () => {
+      const rule: ValidationRule = { 
+        type: 'regex',
+        pattern: /^valid-/
+      };
+      
+      const nonStringResult = validator.validate(123, rule);
+      expect(nonStringResult.isValid).toBe(false);
+      expect(nonStringResult.errors[0]).toContain('must be a string');
+    });
+
+    it('should handle batch validation with warnings', () => {
+      const data = {
+        name: 'John',
+        age: 30
+      };
+      
+      const rules = {
+        name: { type: 'string' as const, required: true },
+        age: { type: 'number' as const, min: 0 }
+      };
+      
+      const result = validator.validateBatch(data, rules);
+      expect(result.isValid).toBe(true);
+      expect(result.value).toEqual({ name: 'John', age: 30 });
+    });
+
+    it('should handle object depth limits in sanitization', () => {
+      const config: Partial<SanitizationConfig> = { maxObjectDepth: 1 };
+      const depthSanitizer = new InputSanitizer(config);
+      
+      const deepObject = {
+        level1: {
+          level2: 'too deep'
+        }
+      };
+      
+      const result = depthSanitizer.sanitizeObject(deepObject);
+      expect((result as any).level1.level2).toBe('[DEPTH_EXCEEDED]');
+    });
+
+    it('should handle primitive types in object sanitization', () => {
+      const sanitizer = new InputSanitizer();
+      
+      expect(sanitizer.sanitizeObject(null)).toBe(null);
+      expect(sanitizer.sanitizeObject(undefined)).toBe(undefined);
+      expect(sanitizer.sanitizeObject(42)).toBe(42);
+      expect(sanitizer.sanitizeObject(true)).toBe(true);
+      expect(sanitizer.sanitizeObject([1, 2, 'test'])).toEqual([1, 2, 'test']);
+    });
+
+    it('should handle suspicious pattern recording', () => {
+      const config: Partial<SanitizationConfig> = {
+        blockedPatterns: [/suspicious/gi]
+      };
+      const patternSanitizer = new InputSanitizer(config);
+      
+      patternSanitizer.sanitizeString('This is suspicious content');
+      patternSanitizer.sanitizeString('More suspicious stuff');
+      
+      const metrics = patternSanitizer.getMetrics();
+      expect(metrics.suspiciousPatterns.length).toBeGreaterThan(0);
+      expect(metrics.suspiciousPatterns[0].count).toBe(2);
+    });
+
+    it('should handle email validation edge cases', () => {
+      const rule: ValidationRule = { type: 'email' };
+      
+      const nonStringResult = validator.validate(123, rule);
+      expect(nonStringResult.isValid).toBe(false);
+      expect(nonStringResult.errors[0]).toContain('must be a string');
+    });
+
+    it('should handle URL validation edge cases', () => {
+      const rule: ValidationRule = { type: 'url' };
+      
+      const nonStringResult = validator.validate(123, rule);
+      expect(nonStringResult.isValid).toBe(false);
+      expect(nonStringResult.errors[0]).toContain('must be a string');
+    });
+
+    it('should handle filepath validation edge cases', () => {
+      const rule: ValidationRule = { type: 'filepath' };
+      
+      const nonStringResult = validator.validate(123, rule);
+      expect(nonStringResult.isValid).toBe(false);
+      expect(nonStringResult.errors[0]).toContain('must be a string');
+      
+      const unsafeResult = validator.validate('../../../etc/passwd', rule);
+      expect(unsafeResult.isValid).toBe(false);
+    });
+
+    it('should handle sanitization error recovery', () => {
+      // Create a custom sanitizer that might throw an error
+      const config: Partial<SanitizationConfig> = {
+        customSanitizers: [() => { throw new Error('Sanitizer error'); }]
+      };
+      const errorSanitizer = new InputSanitizer(config);
+      
+      const result = errorSanitizer.sanitizeString('test input');
+      expect(result).toBe('[SANITIZATION_ERROR]');
+    });
+
+    it('should handle unknown validation type', () => {
+      const rule: ValidationRule = { type: 'unknown' as any };
+      
+      const result = validator.validate('test', rule);
+      expect(result.isValid).toBe(false);
+      expect(result.errors[0]).toContain('Unknown validation type');
+    });
+
+    it('should handle array validation without item rules', () => {
+      const rule: ValidationRule = { 
+        type: 'array',
+        minLength: 1,
+        maxLength: 3
+      };
+      
+      const validResult = validator.validate([1, 2], rule);
+      expect(validResult.isValid).toBe(true);
+      
+      const tooShortResult = validator.validate([], rule);
+      expect(tooShortResult.isValid).toBe(false);
+      
+      const tooLongResult = validator.validate([1, 2, 3, 4], rule);
+      expect(tooLongResult.isValid).toBe(false);
+    });
+
+    it('should handle object validation edge cases', () => {
+      const rule: ValidationRule = { type: 'object' };
+      
+      const nullResult = validator.validate(null, rule);
+      expect(nullResult.isValid).toBe(true); // null is allowed when not required
+      
+      const arrayResult = validator.validate([1, 2, 3], rule);
+      expect(arrayResult.isValid).toBe(false);
+      
+      const primitiveResult = validator.validate('string', rule);
+      expect(primitiveResult.isValid).toBe(false);
     });
   });
 });

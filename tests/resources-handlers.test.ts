@@ -67,22 +67,33 @@ describe('ResourceHandlers', () => {
       
       const result = await handler!({} as any);
       
-      expect(result).toEqual({
-        resources: [
-          {
-            uri: "config://files/scannable",
-            name: "Scannable Config Files",
-            description: "All configuration files that can be loaded (not yet active)",
-            mimeType: "application/json",
-          },
-          {
-            uri: "config://profiles/active",
-            name: "Active Profiles List",
-            description: "List of currently loaded/active profile names",
-            mimeType: "application/json",
-          },
-        ]
-      });
+      expect(result.resources.length).toBeGreaterThanOrEqual(4);
+      expect(result.resources).toEqual(expect.arrayContaining([
+        {
+          uri: "config://files/scannable",
+          name: "Scannable Config Files",
+          description: "All configuration files that can be loaded (not yet active)",
+          mimeType: "application/json",
+        },
+        {
+          uri: "config://profiles/active",
+          name: "Active Profiles List",
+          description: "List of currently loaded/active profile names",
+          mimeType: "application/json",
+        },
+        {
+          uri: "engineering-guide://files",
+          name: "📚 Engineering Guide - All Files",
+          description: "All markdown files from Claude Code Engineering Guide",
+          mimeType: "application/json",
+        },
+        {
+          uri: "engineering-guide://combined", 
+          name: "📘 Engineering Guide - Combined",
+          description: "Combined content from all engineering guide files",
+          mimeType: "text/markdown",
+        },
+      ]));
     });
 
     it('should return base resources plus profile resources when profiles exist', async () => {
@@ -93,19 +104,21 @@ describe('ResourceHandlers', () => {
       const handler = server.requestHandlers.get('resources/list');
       const result = await handler!({} as any);
       
-      expect(result.resources).toHaveLength(4); // 2 base + 2 profiles
-      expect(result.resources[2]).toEqual({
-        uri: "config://profile/active/profile1",
-        name: "Active: profile1",
-        description: "Configuration details for active profile 'profile1'",
-        mimeType: "application/json",
-      });
-      expect(result.resources[3]).toEqual({
-        uri: "config://profile/active/profile2",
-        name: "Active: profile2", 
-        description: "Configuration details for active profile 'profile2'",
-        mimeType: "application/json",
-      });
+      expect(result.resources.length).toBeGreaterThanOrEqual(6); // 4+ base + 2 profiles
+      expect(result.resources).toEqual(expect.arrayContaining([
+        {
+          uri: "config://profile/active/profile1",
+          name: "Active: profile1",
+          description: "Configuration details for active profile 'profile1'",
+          mimeType: "application/json",
+        },
+        {
+          uri: "config://profile/active/profile2",
+          name: "Active: profile2", 
+          description: "Configuration details for active profile 'profile2'",
+          mimeType: "application/json",
+        },
+      ]));
     });
   });
 
@@ -242,6 +255,263 @@ describe('ResourceHandlers', () => {
     });
   });
 
+  describe('GitHub Engineering Guide Integration', () => {
+    it('should include engineering guide resources in list', async () => {
+      // Mock GitHub resource manager
+      const mockGitHubManager = {
+        getEngineeringGuide: vi.fn().mockResolvedValue([
+          { name: 'intro.md', path: 'markdown/intro.md', content: '# Intro' },
+          { name: 'guide.md', path: 'markdown/guide.md', content: '# Guide' }
+        ]),
+        getEngineeringGuideFile: vi.fn(),
+        getCombinedEngineeringGuide: vi.fn().mockResolvedValue('# Combined\nContent')
+      };
+      (resourceHandlers as any).githubResourceManager = mockGitHubManager;
+      
+      const handler = server.requestHandlers.get('resources/list');
+      const result = await handler!({} as any);
+      
+      const engineeringResources = result.resources.filter(r => r.uri.startsWith('engineering-guide://'));
+      expect(engineeringResources.length).toBeGreaterThan(2);
+      
+      const filesResource = result.resources.find(r => r.uri === 'engineering-guide://files');
+      expect(filesResource).toBeDefined();
+      expect(filesResource!.name).toBe('📚 Engineering Guide - All Files');
+      
+      const combinedResource = result.resources.find(r => r.uri === 'engineering-guide://combined');
+      expect(combinedResource).toBeDefined();
+      expect(combinedResource!.name).toBe('📘 Engineering Guide - Combined');
+    });
+
+    it('should handle GitHub API errors gracefully', async () => {
+      const mockGitHubManager = {
+        getEngineeringGuide: vi.fn().mockRejectedValue(new Error('GitHub API error')),
+        getEngineeringGuideFile: vi.fn(),
+        getCombinedEngineeringGuide: vi.fn()
+      };
+      (resourceHandlers as any).githubResourceManager = mockGitHubManager;
+      
+      const handler = server.requestHandlers.get('resources/list');
+      const result = await handler!({} as any);
+      
+      // Should still include base engineering guide resources even if API fails
+      const engineeringResources = result.resources.filter(r => r.uri.startsWith('engineering-guide://'));
+      expect(engineeringResources.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe('Auto-Apply Profiles', () => {
+    it('should include auto-apply resource when profiles are marked for auto-apply', async () => {
+      // Add profiles with auto-apply flag
+      const autoApplyProfile = { title: 'Auto Apply Profile', _autoApply: true } as ClaudeConfig & { _autoApply: boolean };
+      activeProfiles.set('auto-profile', autoApplyProfile);
+      activeProfiles.set('normal-profile', { title: 'Normal Profile' } as ClaudeConfig);
+      
+      const handler = server.requestHandlers.get('resources/list');
+      const result = await handler!({} as any);
+      
+      const autoApplyResource = result.resources.find(r => r.uri === 'config://auto-apply');
+      expect(autoApplyResource).toBeDefined();
+      expect(autoApplyResource!.name).toBe('🚀 Auto-Apply Instructions');
+      expect(autoApplyResource!.description).toContain('1 profile(s)');
+    });
+
+    it('should not include auto-apply resource when no profiles are marked', async () => {
+      activeProfiles.set('profile1', { title: 'Profile 1' } as ClaudeConfig);
+      
+      const handler = server.requestHandlers.get('resources/list');
+      const result = await handler!({} as any);
+      
+      const autoApplyResource = result.resources.find(r => r.uri === 'config://auto-apply');
+      expect(autoApplyResource).toBeUndefined();
+    });
+  });
+
+  describe('Engineering Guide Read Resources', () => {
+    it('should read engineering guide files list', async () => {
+      const mockFiles = [
+        { name: 'intro.md', path: 'markdown/intro.md', content: '# Introduction' },
+        { name: 'guide.md', path: 'markdown/guide.md', content: '# Guide' }
+      ];
+      
+      const mockGitHubManager = {
+        getEngineeringGuide: vi.fn().mockResolvedValue(mockFiles),
+        getEngineeringGuideFile: vi.fn(),
+        getCombinedEngineeringGuide: vi.fn()
+      };
+      (resourceHandlers as any).githubResourceManager = mockGitHubManager;
+      
+      const handler = server.requestHandlers.get('resources/read');
+      const result = await handler!({ params: { uri: 'engineering-guide://files' } } as any);
+      
+      expect(result.contents).toHaveLength(1);
+      expect(result.contents[0].mimeType).toBe('application/json');
+      
+      const data = JSON.parse(result.contents[0].text);
+      expect(data.files).toHaveLength(2);
+      expect(data.files[0].name).toBe('intro.md');
+    });
+
+    it('should read combined engineering guide', async () => {
+      const mockFiles = [
+        { name: 'intro.md', path: 'markdown/intro.md', content: '# Introduction', size: 100 },
+        { name: 'guide.md', path: 'markdown/guide.md', content: '# Guide Content', size: 200 }
+      ];
+      
+      const mockGitHubManager = {
+        getEngineeringGuide: vi.fn().mockResolvedValue(mockFiles),
+        getEngineeringGuideFile: vi.fn(),
+        getCombinedEngineeringGuide: vi.fn()
+      };
+      (resourceHandlers as any).githubResourceManager = mockGitHubManager;
+      
+      const handler = server.requestHandlers.get('resources/read');
+      const result = await handler!({ params: { uri: 'engineering-guide://combined' } } as any);
+      
+      expect(result.contents).toHaveLength(1);
+      expect(result.contents[0].mimeType).toBe('text/markdown');
+      expect(result.contents[0].text).toContain('# Claude Code Engineering Guide');
+      expect(result.contents[0].text).toContain('intro.md');
+      expect(result.contents[0].text).toContain('# Introduction');
+    });
+
+    it('should read individual engineering guide file', async () => {
+      const mockFiles = [
+        { name: 'intro.md', path: 'markdown/intro.md', content: '# Introduction to Engineering', size: 100 }
+      ];
+      
+      const mockGitHubManager = {
+        getEngineeringGuide: vi.fn().mockResolvedValue(mockFiles),
+        getEngineeringGuideFile: vi.fn(),
+        getCombinedEngineeringGuide: vi.fn()
+      };
+      (resourceHandlers as any).githubResourceManager = mockGitHubManager;
+      
+      const handler = server.requestHandlers.get('resources/read');
+      const result = await handler!({ params: { uri: 'engineering-guide://file/markdown%2Fintro.md' } } as any);
+      
+      expect(result.contents).toHaveLength(1);
+      expect(result.contents[0].mimeType).toBe('text/markdown');
+      expect(result.contents[0].text).toBe('# Introduction to Engineering');
+    });
+
+    it('should handle engineering guide file not found', async () => {
+      const mockFiles = [
+        { name: 'intro.md', path: 'markdown/intro.md', content: '# Introduction', size: 100 }
+      ];
+      
+      const mockGitHubManager = {
+        getEngineeringGuide: vi.fn().mockResolvedValue(mockFiles),
+        getEngineeringGuideFile: vi.fn(),
+        getCombinedEngineeringGuide: vi.fn()
+      };
+      (resourceHandlers as any).githubResourceManager = mockGitHubManager;
+      
+      const handler = server.requestHandlers.get('resources/read');
+      
+      // When file is not found, it should throw an error
+      await expect(handler!({ params: { uri: 'engineering-guide://file/nonexistent.md' } } as any))
+        .rejects.toThrow('Unknown resource: engineering-guide://file/nonexistent.md');
+    });
+
+    it('should handle engineering guide API errors', async () => {
+      const mockGitHubManager = {
+        getEngineeringGuide: vi.fn().mockRejectedValue(new Error('GitHub API rate limit')),
+        getEngineeringGuideFile: vi.fn(),
+        getCombinedEngineeringGuide: vi.fn()
+      };
+      (resourceHandlers as any).githubResourceManager = mockGitHubManager;
+      
+      const handler = server.requestHandlers.get('resources/read');
+      const result = await handler!({ params: { uri: 'engineering-guide://files' } } as any);
+      
+      expect(result.contents).toHaveLength(1);
+      expect(result.contents[0].mimeType).toBe('application/json');
+      
+      const data = JSON.parse(result.contents[0].text);
+      expect(data.error).toContain('Failed to fetch engineering guide files');
+      expect(data.error).toContain('GitHub API rate limit');
+    });
+  });
+
+  describe('Auto-Apply Profile Resource Reading', () => {
+    it('should read auto-apply instructions', async () => {
+      const autoApplyProfile1 = { 
+        title: 'Auto Profile 1', 
+        instructions: 'Auto instructions 1',
+        _autoApply: true 
+      } as ClaudeConfig & { _autoApply: boolean };
+      const autoApplyProfile2 = { 
+        title: 'Auto Profile 2', 
+        instructions: 'Auto instructions 2',
+        _autoApply: true 
+      } as ClaudeConfig & { _autoApply: boolean };
+      
+      activeProfiles.set('auto1', autoApplyProfile1);
+      activeProfiles.set('auto2', autoApplyProfile2);
+      activeProfiles.set('normal', { title: 'Normal' } as ClaudeConfig);
+      
+      const handler = server.requestHandlers.get('resources/read');
+      const result = await handler!({ params: { uri: 'config://auto-apply' } } as any);
+      
+      expect(result.contents).toHaveLength(1);
+      expect(result.contents[0].mimeType).toBe('text/plain');
+      
+      const content = result.contents[0].text;
+      expect(content).toContain('Auto instructions 1');
+      expect(content).toContain('Auto instructions 2');
+      expect(content).not.toContain('Normal');
+    });
+
+    it('should handle empty auto-apply profiles', async () => {
+      activeProfiles.set('normal', { title: 'Normal Profile' } as ClaudeConfig);
+      
+      const handler = server.requestHandlers.get('resources/read');
+      const result = await handler!({ params: { uri: 'config://auto-apply' } } as any);
+      
+      expect(result.contents).toHaveLength(1);
+      expect(result.contents[0].mimeType).toBe('text/plain');
+      expect(result.contents[0].text).toBe('No profiles marked for auto-apply');
+    });
+  });
+
+  describe('Error Handling and Edge Cases', () => {
+    it('should handle malformed URIs', async () => {
+      const handler = server.requestHandlers.get('resources/read');
+      
+      await expect(handler!({ params: { uri: 'invalid://malformed/uri' } } as any))
+        .rejects.toThrow('Unknown resource: invalid://malformed/uri');
+    });
+
+    it('should handle file scanner errors gracefully', async () => {
+      mockFileScanner.scanForClaudeFiles.mockRejectedValue(new Error('Permission denied'));
+      
+      const handler = server.requestHandlers.get('resources/read');
+      const result = await handler!({ params: { uri: 'config://files/scannable' } } as any);
+      
+      expect(result.contents[0].text).toContain('error');
+      expect(result.contents[0].text).toContain('Permission denied');
+    });
+
+    it('should handle missing profile gracefully', async () => {
+      const handler = server.requestHandlers.get('resources/read');
+      
+      await expect(handler!({ params: { uri: 'config://profile/active/missing-profile' } } as any))
+        .rejects.toThrow('Unknown resource: config://profile/active/missing-profile');
+    });
+
+    it('should handle empty active profiles list', async () => {
+      activeProfiles.clear();
+      
+      const handler = server.requestHandlers.get('resources/read');
+      const result = await handler!({ params: { uri: 'config://profiles/active' } } as any);
+      
+      const data = JSON.parse(result.contents[0].text);
+      expect(data.totalActiveProfiles).toBe(0);
+      expect(data.activeProfiles).toEqual([]);
+    });
+  });
+
   describe('Integration', () => {
     it('should handle complex profile scenarios', async () => {
       // Setup complex scenario
@@ -256,7 +526,7 @@ describe('ResourceHandlers', () => {
       // Test list resources
       const listHandler = server.requestHandlers.get('resources/list');
       const listResult = await listHandler!({} as any);
-      expect(listResult.resources).toHaveLength(4); // 2 base + 2 profiles
+      expect(listResult.resources.length).toBeGreaterThanOrEqual(6); // 4+ base + 2 profiles
       
       // Test read active profiles
       const readHandler = server.requestHandlers.get('resources/read');

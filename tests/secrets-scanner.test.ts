@@ -63,8 +63,8 @@ describe('SecretsScanner', () => {
 
     it('should detect Slack tokens and webhooks', () => {
       const content = `
-        SLACK_TOKEN=TEST_TOKEN_FORMAT_XOXB_FOR_TESTING
-        SLACK_WEBHOOK=https://hooks.slack.com/services/TFAKETEST/BFAKETEST/fakefakefakefakefakefake
+        SLACK_TOKEN=xoxb-test-test-test-testtesttesttest
+        SLACK_WEBHOOK=https://hooks.slack.com/services/TTEST/BTEST/testtesttesttesttest
       `;
       
       const findings = scanner.scanContent(content, 'test.config');

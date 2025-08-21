@@ -56,9 +56,9 @@ const DEFAULT_SECRET_PATTERNS: SecretPattern[] = [
     pattern: /\b([0-9a-zA-Z/+=]{40})\b/g,
     severity: 'critical',
     description: 'Potential AWS Secret Access Key',
-    falsePositiveCheck: (_match, context) => {
+    falsePositiveCheck: (_match, _context) => {
       // Check if it's in a known AWS context
-      return !context.toLowerCase().includes('aws') && !context.includes('secret');
+      return !_context.toLowerCase().includes('aws') && !_context.includes('secret');
     }
   },
   {
@@ -162,8 +162,8 @@ const DEFAULT_SECRET_PATTERNS: SecretPattern[] = [
     pattern: /\b([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\b/g,
     severity: 'high',
     description: 'Potential Heroku API Key (UUID format)',
-    falsePositiveCheck: (_match, context) => {
-      return !context.toLowerCase().includes('heroku');
+    falsePositiveCheck: (_match, _context) => {
+      return !_context.toLowerCase().includes('heroku');
     }
   },
   
@@ -260,9 +260,9 @@ const DEFAULT_SECRET_PATTERNS: SecretPattern[] = [
     pattern: /\beyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+/g,
     severity: 'medium',
     description: 'JWT Token detected',
-    falsePositiveCheck: (_match, context) => {
+    falsePositiveCheck: (_match, _context) => {
       // Check if it's an example or documentation
-      return context.includes('example') || context.includes('test');
+      return _context.includes('example') || _context.includes('test');
     }
   },
   {
@@ -290,7 +290,7 @@ const DEFAULT_SECRET_PATTERNS: SecretPattern[] = [
     pattern: /\b(secret|password|passwd|pwd)\s*[:=]\s*["']?([^\s"']{8,})["']?/gi,
     severity: 'high',
     description: 'Generic secret/password pattern detected',
-    falsePositiveCheck: (_match, context) => {
+    falsePositiveCheck: (_match, _context) => {
       // Exclude common false positives
       const lowerMatch = _match.toLowerCase();
       return lowerMatch.includes('placeholder') || 
@@ -324,8 +324,8 @@ const DEFAULT_SECRET_PATTERNS: SecretPattern[] = [
     pattern: /0x[a-fA-F0-9]{64}/g,
     severity: 'critical',
     description: 'Potential Ethereum Private Key',
-    falsePositiveCheck: (_match, context) => {
-      return !context.toLowerCase().includes('private') && !context.includes('key');
+    falsePositiveCheck: (_match, _context) => {
+      return !_context.toLowerCase().includes('private') && !_context.includes('key');
     }
   }
 ];

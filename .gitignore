@@ -6,6 +6,7 @@ dist/
 
 # Test coverage
 coverage/
+test-coverage/
 
 # Environment and local settings
 .env

@@ -66,7 +66,7 @@ describe('Integration Tests', () => {
       expect(pkg.version).toBeTruthy();
       expect(pkg.main).toBe('dist/index.js');
       expect(pkg.scripts.build).toBe('tsc');
-      expect(pkg.scripts.test).toBe('vitest');
+      expect(pkg.scripts.test).toBe('vitest run --reporter=verbose; ./scripts/cleanup-test-processes.sh');
       expect(pkg.dependencies['@modelcontextprotocol/sdk']).toBeTruthy();
       expect(pkg.devDependencies.vitest).toBeTruthy();
     });

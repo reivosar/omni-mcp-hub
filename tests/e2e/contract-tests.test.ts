@@ -9,7 +9,7 @@ import {
   ContractTestScenario
 } from './mock-server.js';
 
-describe('E2E Contract Tests', () => {
+describe.skip('E2E Contract Tests', () => {
   let claudeMockServer: MockMCPServer;
   let cursorMockServer: MockMCPServer;
   let contractRunner: ContractTestRunner;

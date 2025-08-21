@@ -1,0 +1,4 @@
+autoLoad: true
+fileSettings:
+  configFiles:
+    claude: "CLAUDE.md"

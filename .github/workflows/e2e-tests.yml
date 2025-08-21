@@ -56,6 +56,16 @@ jobs:
           NODE_ENV: test
           CI: true
 
+      - name: Cleanup test processes
+        if: always()
+        run: |
+          echo "🧹 Cleaning up test processes..."
+          pkill -f vitest || true
+          pkill -f "node.*test" || true
+          pkill -f "npm.*test" || true
+          sleep 2
+          echo "✅ Process cleanup completed"
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -172,6 +182,17 @@ jobs:
           
           # Kill any remaining processes on our ports
           pkill -f "node test-e2e/simple-mock.js" || true
+
+      - name: Cleanup all test processes
+        if: always()
+        run: |
+          echo "🧹 Comprehensive test process cleanup..."
+          pkill -f vitest || true
+          pkill -f "node.*test" || true
+          pkill -f "npm.*test" || true
+          pkill -f "tsx.*test" || true
+          sleep 2
+          echo "✅ All test processes cleaned up"
 
       - name: Upload contract test results
         if: always()

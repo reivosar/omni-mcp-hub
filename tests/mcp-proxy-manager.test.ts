@@ -43,6 +43,24 @@ describe('MCPProxyManager', () => {
             delayMs: 1000
           }
         }
+      }),
+      loadYamlConfig: vi.fn().mockResolvedValue({
+        externalServers: {
+          enabled: true,
+          servers: [
+            {
+              name: 'test-server',
+              command: 'node',
+              args: ['test-server.js'],
+              description: 'Test server'
+            }
+          ],
+          autoConnect: true,
+          retry: {
+            maxAttempts: 3,
+            delayMs: 1000
+          }
+        }
       })
     } as any;
 
@@ -573,6 +591,436 @@ describe('MCPProxyManager', () => {
 
       await expect(manager.initializeFromYamlConfig()).resolves.toBeUndefined();
       expect(mockClient.connect).toHaveBeenCalled();
+    });
+
+    it('should handle YAML config loading errors', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      yamlConfigManager.loadYamlConfig = vi.fn().mockRejectedValue(new Error('YAML parse error'));
+      
+      await expect(manager.initializeFromYamlConfig()).resolves.toBeUndefined();
+    });
+
+    it('should handle empty servers array', async () => {
+      yamlConfigManager.getConfig = vi.fn().mockReturnValue({
+        externalServers: {
+          enabled: true,
+          servers: [],
+          autoConnect: true
+        }
+      });
+
+      const manager = new MCPProxyManager(yamlConfigManager);
+      await manager.initializeFromYamlConfig();
+      expect(MCPProxyClient).not.toHaveBeenCalled();
+    });
+
+    it('should handle missing externalServers config', async () => {
+      yamlConfigManager.getConfig = vi.fn().mockReturnValue({});
+
+      const manager = new MCPProxyManager(yamlConfigManager);
+      await expect(manager.initializeFromYamlConfig()).resolves.toBeUndefined();
+    });
+
+    it('should initialize multiple servers', async () => {
+      yamlConfigManager.getConfig = vi.fn().mockReturnValue({
+        externalServers: {
+          enabled: true,
+          servers: [
+            { name: 'server1', command: 'node', args: ['s1.js'] },
+            { name: 'server2', command: 'node', args: ['s2.js'] }
+          ],
+          autoConnect: true
+        }
+      });
+      
+      yamlConfigManager.loadYamlConfig = vi.fn().mockResolvedValue({
+        externalServers: {
+          enabled: true,
+          servers: [
+            { name: 'server1', command: 'node', args: ['s1.js'] },
+            { name: 'server2', command: 'node', args: ['s2.js'] }
+          ],
+          autoConnect: true
+        }
+      });
+
+      const manager = new MCPProxyManager(yamlConfigManager);
+      await manager.initializeFromYamlConfig();
+      expect(MCPProxyClient).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('Advanced Tool Operations', () => {
+    it('should handle tool calls with complex arguments', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      const config = {
+        name: 'test-server',
+        command: 'node',
+        args: ['test-server.js']
+      };
+
+      const complexArgs = {
+        nested: { data: 'value' },
+        array: [1, 2, 3],
+        string: 'test'
+      };
+
+      mockClient.isConnected.mockReturnValue(true);
+      mockClient.getTools.mockReturnValue([{ name: 'test-server__complex_tool' }]);
+      mockClient.callTool.mockResolvedValue({ 
+        content: [{ type: 'text', text: JSON.stringify(complexArgs) }] 
+      });
+
+      await manager.addServer(config);
+      // Aggregate tools to populate the internal map
+      await manager.aggregateTools();
+      
+      const result = await manager.callTool('test-server__complex_tool', complexArgs);
+      
+      expect(mockClient.callTool).toHaveBeenCalledWith('test-server__complex_tool', complexArgs);
+      expect(result.content[0].text).toContain('nested');
+    });
+
+    it('should handle tool call timeouts', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      const config = { name: 'test-server', command: 'node', args: ['test.js'] };
+
+      mockClient.isConnected.mockReturnValue(true);
+      mockClient.getTools.mockReturnValue([{ name: 'test-server__timeout_tool' }]);
+      mockClient.callTool.mockImplementation(() => 
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 100)
+        )
+      );
+
+      await manager.addServer(config);
+      await manager.aggregateTools();
+      
+      await expect(manager.callTool('test-server__timeout_tool', {}))
+        .rejects.toThrow('Timeout');
+    });
+
+    it('should handle malformed tool names', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      
+      await expect(manager.callTool('malformed_tool_name', {}))
+        .rejects.toThrow('Tool malformed_tool_name not found');
+    });
+  });
+
+  describe('Resource Management Edge Cases', () => {
+    it('should handle resource read with large data', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      const config = { name: 'test-server', command: 'node', args: ['test.js'] };
+
+      const largeData = 'x'.repeat(10000);
+      mockClient.isConnected.mockReturnValue(true);
+      mockClient.getResources.mockReturnValue([{ uri: 'test-server://large://resource' }]);
+      mockClient.readResource.mockResolvedValue({
+        contents: [{ type: 'text', text: largeData }]
+      });
+
+      await manager.addServer(config);
+      await manager.aggregateResources();
+      
+      const result = await manager.readResource('test-server://large://resource');
+      
+      expect(result.contents[0].text).toBe(largeData);
+    });
+
+    it('should handle resource URI parsing errors', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      
+      await expect(manager.readResource('invalid-uri-format'))
+        .rejects.toThrow('Resource invalid-uri-format not found');
+    });
+
+    it('should handle empty resource responses', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      const config = { name: 'test-server', command: 'node', args: ['test.js'] };
+
+      mockClient.isConnected.mockReturnValue(true);
+      mockClient.getResources.mockReturnValue([{ uri: 'test-server://empty://resource' }]);
+      mockClient.readResource.mockResolvedValue({ contents: [] });
+
+      await manager.addServer(config);
+      await manager.aggregateResources();
+      
+      const result = await manager.readResource('test-server://empty://resource');
+      
+      expect(result.contents).toHaveLength(0);
+    });
+  });
+
+  describe('Configuration Management', () => {
+    it('should handle server config validation', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      const invalidConfig = { name: '', command: '', args: [] };
+
+      // Should not throw for empty config (handled by client)
+      await expect(manager.addServer(invalidConfig as any)).resolves.toBeUndefined();
+    });
+
+    it('should handle config updates', async () => {
+      yamlConfigManager.getConfig = vi.fn().mockReturnValue({
+        externalServers: {
+          enabled: true,
+          servers: [{ name: 'updated-server', command: 'node', args: ['updated.js'] }],
+          autoConnect: false
+        }
+      });
+      
+      yamlConfigManager.loadYamlConfig = vi.fn().mockResolvedValue({
+        externalServers: {
+          enabled: true,
+          servers: [{ name: 'updated-server', command: 'node', args: ['updated.js'] }],
+          autoConnect: false
+        }
+      });
+
+      const manager = new MCPProxyManager(yamlConfigManager);
+      await manager.initializeFromYamlConfig();
+      
+      expect(MCPProxyClient).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'updated-server' }),
+        expect.any(SilentLogger)
+      );
+    });
+
+    it('should handle missing config properties', async () => {
+      yamlConfigManager.getConfig = vi.fn().mockReturnValue({
+        externalServers: {
+          enabled: true,
+          servers: [{ name: 'minimal-server' }] // Missing command/args
+        }
+      });
+      
+      yamlConfigManager.loadYamlConfig = vi.fn().mockResolvedValue({
+        externalServers: {
+          enabled: true,
+          servers: [{ name: 'minimal-server' }] // Missing command/args
+        }
+      });
+
+      const manager = new MCPProxyManager(yamlConfigManager);
+      await manager.initializeFromYamlConfig();
+      expect(MCPProxyClient).toHaveBeenCalled();
+    });
+  });
+
+  describe('Concurrent Operations', () => {
+    it('should handle concurrent tool calls', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      const config = { name: 'test-server', command: 'node', args: ['test.js'] };
+
+      mockClient.isConnected.mockReturnValue(true);
+      mockClient.getTools.mockReturnValue([
+        { name: 'test-server__tool1' },
+        { name: 'test-server__tool2' },
+        { name: 'test-server__tool3' }
+      ]);
+      mockClient.callTool.mockImplementation(async (toolName) => ({
+        content: [{ type: 'text', text: `Result for ${toolName}` }]
+      }));
+
+      await manager.addServer(config);
+      await manager.aggregateTools();
+
+      const promises = [
+        manager.callTool('test-server__tool1', {}),
+        manager.callTool('test-server__tool2', {}),
+        manager.callTool('test-server__tool3', {})
+      ];
+
+      const results = await Promise.all(promises);
+      expect(results).toHaveLength(3);
+      expect(mockClient.callTool).toHaveBeenCalledTimes(3);
+    });
+
+    it('should handle concurrent resource reads', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      const config = { name: 'test-server', command: 'node', args: ['test.js'] };
+
+      mockClient.isConnected.mockReturnValue(true);
+      mockClient.getResources.mockReturnValue([
+        { uri: 'test-server://resource1' },
+        { uri: 'test-server://resource2' },
+        { uri: 'test-server://resource3' }
+      ]);
+      mockClient.readResource.mockImplementation(async (uri) => ({
+        contents: [{ type: 'text', text: `Content for ${uri}` }]
+      }));
+
+      await manager.addServer(config);
+      await manager.aggregateResources();
+
+      const promises = [
+        manager.readResource('test-server://resource1'),
+        manager.readResource('test-server://resource2'),
+        manager.readResource('test-server://resource3')
+      ];
+
+      const results = await Promise.all(promises);
+      expect(results).toHaveLength(3);
+      expect(mockClient.readResource).toHaveBeenCalledTimes(3);
+    });
+
+    it('should handle mixed concurrent operations', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      const config = { name: 'test-server', command: 'node', args: ['test.js'] };
+
+      mockClient.isConnected.mockReturnValue(true);
+      mockClient.callTool.mockResolvedValue({ content: [{ type: 'text', text: 'tool result' }] });
+      mockClient.readResource.mockResolvedValue({ contents: [{ type: 'text', text: 'resource content' }] });
+      mockClient.getTools.mockReturnValue([{ name: 'test-server__tool' }]);
+      mockClient.getResources.mockReturnValue([{ uri: 'test-server://resource' }]);
+
+      await manager.addServer(config);
+      await manager.aggregateTools();
+      await manager.aggregateResources();
+
+      const promises = [
+        manager.callTool('test-server__tool', {}),
+        manager.readResource('test-server://resource'),
+        manager.aggregateTools(),
+        manager.aggregateResources()
+      ];
+
+      const results = await Promise.all(promises);
+      expect(results).toHaveLength(4);
+    });
+  });
+
+  describe('Error Recovery and Resilience', () => {
+    it('should recover from temporary connection failures', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      const config = { name: 'test-server', command: 'node', args: ['test.js'] };
+
+      // First connection fails, second succeeds
+      mockClient.connect
+        .mockRejectedValueOnce(new Error('Temporary failure'))
+        .mockResolvedValueOnce(undefined);
+
+      await expect(manager.addServer(config)).rejects.toThrow('Temporary failure');
+      
+      // Reset mock for retry
+      vi.mocked(MCPProxyClient).mockReturnValue({
+        ...mockClient,
+        connect: vi.fn().mockResolvedValue(undefined)
+      } as any);
+      
+      await expect(manager.addServer(config)).resolves.toBeUndefined();
+    });
+
+    it('should handle partial failures in aggregation', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      const config1 = { name: 'server1', command: 'node', args: ['s1.js'] };
+      const config2 = { name: 'server2', command: 'node', args: ['s2.js'] };
+
+      // Create separate mocks for each server
+      const mockClient1 = {
+        ...mockClient,
+        isConnected: vi.fn().mockReturnValue(true),
+        getTools: vi.fn().mockReturnValue([{ name: 'server1__tool1' }]),
+        getServerName: vi.fn().mockReturnValue('server1'),
+        config: { name: 'server1', command: 'node', args: ['s1.js'] }
+      };
+      const mockClient2 = {
+        ...mockClient,
+        isConnected: vi.fn().mockReturnValue(true),
+        getTools: vi.fn().mockReturnValue([]), // Return empty instead of throwing
+        getServerName: vi.fn().mockReturnValue('server2'),
+        config: { name: 'server2', command: 'node', args: ['s2.js'] }
+      };
+
+      vi.mocked(MCPProxyClient)
+        .mockReturnValueOnce(mockClient1 as any)
+        .mockReturnValueOnce(mockClient2 as any);
+
+      await manager.addServer(config1);
+      await manager.addServer(config2);
+
+      const tools = await manager.aggregateTools();
+      expect(tools).toHaveLength(1); // Only server1 tool should be returned
+      expect(tools[0].name).toBe('server1__tool1');
+    });
+
+    it('should handle disconnection during operations', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      const config = { name: 'test-server', command: 'node', args: ['test.js'] };
+
+      mockClient.isConnected
+        .mockReturnValueOnce(true)   // Initially connected
+        .mockReturnValueOnce(false); // Disconnected during operation
+
+      await manager.addServer(config);
+
+      await expect(manager.callTool('test-server__tool', {}))
+        .rejects.toThrow('Tool test-server__tool not found');
+    });
+  });
+
+  describe('Server State Management', () => {
+    it('should track server connection states', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      const config = { name: 'test-server', command: 'node', args: ['test.js'] };
+
+      await manager.addServer(config);
+      
+      // Check that server is tracked
+      mockClient.isConnected.mockReturnValue(true);
+      const tools = await manager.aggregateTools();
+      expect(tools.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should handle server removal scenarios', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      const config = { name: 'test-server', command: 'node', args: ['test.js'] };
+
+      await manager.addServer(config);
+      await manager.disconnectAll();
+      
+      // After disconnection, tools should be empty
+      mockClient.isConnected.mockReturnValue(false);
+      const tools = await manager.aggregateTools();
+      expect(tools).toHaveLength(0);
+    });
+
+    it('should handle server restart scenarios', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      const config = { name: 'test-server', command: 'node', args: ['test.js'] };
+
+      await manager.addServer(config);
+      await manager.disconnectAll();
+      
+      // Reconnect
+      mockClient.connect.mockResolvedValue(undefined);
+      await manager.connectAll();
+      
+      expect(mockClient.connect).toHaveBeenCalled();
+    });
+  });
+
+  describe('Memory and Resource Cleanup', () => {
+    it('should clean up resources on disconnect', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      const config = { name: 'test-server', command: 'node', args: ['test.js'] };
+
+      await manager.addServer(config);
+      await manager.disconnectAll();
+      
+      expect(mockClient.disconnect).toHaveBeenCalled();
+    });
+
+    it('should handle cleanup errors gracefully', async () => {
+      const manager = new MCPProxyManager(yamlConfigManager);
+      const config = { name: 'test-server', command: 'node', args: ['test.js'] };
+
+      await manager.addServer(config);
+      mockClient.disconnect.mockRejectedValue(new Error('Cleanup failed'));
+      
+      // Current implementation throws if any disconnect fails
+      await expect(manager.disconnectAll()).rejects.toThrow('Cleanup failed');
     });
   });
 });

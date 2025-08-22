@@ -519,11 +519,15 @@ export class ToolHandlers {
       }));
       
       const result = {
-        loaded: loadedConfigNames.map(name => ({
-          name,
-          status: "loaded",
-          path: (this.activeProfiles.get(name) as Record<string, unknown>)?._filePath as string || "unknown"
-        })),
+        loaded: loadedConfigNames.map(name => {
+          const filePath = (this.activeProfiles.get(name) as Record<string, unknown>)?._filePath as string || "unknown";
+          const fileName = filePath !== "unknown" ? filePath.split('/').pop() : "unknown";
+          return {
+            name,
+            status: "loaded",
+            file: fileName
+          };
+        }),
         available: unloadedFiles.map(file => ({
           path: file.path,
           status: "available",

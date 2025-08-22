@@ -155,26 +155,36 @@ export class ConfigLoader {
         
         try {
           let fullPath: string;
+          let downloadedFiles: Map<string, string> = new Map();
           
           // Check if URL is provided - use recursive download
           if (profile.url) {
             this.logger.info(`[CONFIG-LOADER] Downloading recursively from URL: ${profile.url}`);
-            fullPath = await this.downloadAndCacheRecursively(profile.url);
-            this.logger.info(`[CONFIG-LOADER] Downloaded and cached to: ${fullPath}`);
+            const result = await this.downloadAndCacheRecursively(profile.url);
+            fullPath = result.mainFile;
+            downloadedFiles = result.allFiles;
+            this.logger.info(`[CONFIG-LOADER] Downloaded and cached main file: ${fullPath}`);
+            this.logger.info(`[CONFIG-LOADER] Downloaded ${downloadedFiles.size} files total`);
           } else if (profile.path) {
             // Use local path
             const pathResolver = PathResolver.getInstance();
             fullPath = pathResolver.resolveProfilePath(profile.path);
+            downloadedFiles.set(profile.url || profile.path || '', fullPath);
           } else {
             throw new Error('Neither url nor path specified');
           }
           
+          // Load only the main profile file (specified in config)
           const loadedConfig = await this.claudeConfigManager.loadClaudeConfig(fullPath);
-          // Mark config with autoApply flag for later use
-          (loadedConfig as { _autoApply?: boolean; _filePath?: string })._autoApply = profile.autoApply === true;
-          (loadedConfig as { _autoApply?: boolean; _filePath?: string })._filePath = fullPath;
+          // Mark config with metadata and downloaded files info
+          (loadedConfig as { _autoApply?: boolean; _filePath?: string; _sourceUrl?: string; _downloadedFiles?: Map<string, string> })._autoApply = profile.autoApply === true;
+          (loadedConfig as { _autoApply?: boolean; _filePath?: string; _sourceUrl?: string; _downloadedFiles?: Map<string, string> })._filePath = fullPath;
+          (loadedConfig as { _autoApply?: boolean; _filePath?: string; _sourceUrl?: string; _downloadedFiles?: Map<string, string> })._sourceUrl = profile.url || '';
+          (loadedConfig as { _autoApply?: boolean; _filePath?: string; _sourceUrl?: string; _downloadedFiles?: Map<string, string> })._downloadedFiles = downloadedFiles;
+          
           activeProfiles.set(profile.name, loadedConfig);
           this.logger.info(`[CONFIG-LOADER] Successfully loaded profile '${profile.name}' from ${fullPath}`);
+          this.logger.info(`[CONFIG-LOADER] Downloaded ${downloadedFiles.size} supporting files`);
           
           // If autoApply is true, apply the behavior immediately
           if (profile.autoApply === true) {
@@ -241,7 +251,9 @@ export class ConfigLoader {
   /**
    * Download and cache files recursively from GitHub URL
    */
-  private async downloadAndCacheRecursively(url: string): Promise<string> {
+  private async downloadAndCacheRecursively(url: string): Promise<{ mainFile: string; allFiles: Map<string, string> }> {
+    // Convert GitHub page URL to raw URL if needed
+    url = this.convertToRawUrl(url);
     const visitedUrls = new Set<string>();
     const downloadedFiles = new Map<string, string>();
 
@@ -289,8 +301,9 @@ export class ConfigLoader {
 
     await processFile(url);
     
-    // Return the local path of the main file
-    return downloadedFiles.get(url) || this.urlToLocalPath(url);
+    // Return both the main file path and all downloaded files
+    const mainFile = downloadedFiles.get(url) || this.urlToLocalPath(url);
+    return { mainFile, allFiles: downloadedFiles };
   }
 
   /**
@@ -306,13 +319,19 @@ export class ConfigLoader {
       links.push(match[2]);
     }
     
-    // Pattern 2: docs/FILE.md (direct references)
+    // Pattern 2: `FILE.md` (backtick references) - includes docs/ prefix
+    const backtickLinkRegex = /`((?:docs\/)?[A-Z_]+\.md)`/g;
+    while ((match = backtickLinkRegex.exec(content)) !== null) {
+      links.push(match[1]);
+    }
+    
+    // Pattern 3: docs/FILE.md (direct references)
     const directLinkRegex = /(?:^|\s)(docs\/[A-Z_]+\.md)(?:\s|$)/g;
     while ((match = directLinkRegex.exec(content)) !== null) {
       links.push(match[1]);
     }
     
-    // Pattern 3: ](docs/FILE.md) (bracket references)
+    // Pattern 4: ](docs/FILE.md) (bracket references)
     const bracketLinkRegex = /\]\((docs\/[A-Z_]+\.md)\)/g;
     while ((match = bracketLinkRegex.exec(content)) !== null) {
       links.push(match[1]);
@@ -349,14 +368,31 @@ export class ConfigLoader {
   }
 
   /**
+   * Convert GitHub page URL to raw URL
+   */
+  private convertToRawUrl(url: string): string {
+    // Convert https://github.com/user/repo/blob/branch/path to 
+    // https://raw.githubusercontent.com/user/repo/branch/path
+    if (url.includes('github.com') && url.includes('/blob/')) {
+      return url
+        .replace('github.com', 'raw.githubusercontent.com')
+        .replace('/blob/', '/');
+    }
+    return url;
+  }
+
+  /**
    * Resolve relative URL to absolute URL
    */
   private resolveRelativeUrl(baseUrl: string, relativePath: string): string | null {
     try {
-      // If already absolute URL, return as-is
+      // If already absolute URL, convert to raw URL if needed
       if (relativePath.startsWith('http')) {
-        return relativePath;
+        return this.convertToRawUrl(relativePath);
       }
+      
+      // Ensure baseUrl is raw URL
+      baseUrl = this.convertToRawUrl(baseUrl);
       
       // Extract base directory from URL
       const urlParts = baseUrl.split('/');
@@ -374,7 +410,7 @@ export class ConfigLoader {
       
       return `${baseMarkdownUrl}/${relativePath}`;
       
-    } catch (error) {
+    } catch (_error) {
       this.logger.debug(`[CONFIG-LOADER] Failed to resolve relative URL: ${baseUrl} + ${relativePath}`);
       return null;
     }

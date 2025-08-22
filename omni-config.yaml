@@ -6,7 +6,7 @@
 autoLoad:
   profiles:
     - name: "claude-guide"
-      url: "https://raw.githubusercontent.com/reivosar/claude-code-engineering-guide/master/markdown/CLAUDE.md"
+      url: "https://github.com/reivosar/claude-code-engineering-guide/blob/master/markdown/CLAUDE.md"
       description: "Main entry point - MANDATORY read at task start"
       autoApply: true
       required: true

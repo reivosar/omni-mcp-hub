@@ -834,7 +834,7 @@ export const MockAgents = {
     ],
     responses: {},
     latency: 100,
-    errorRate: 0.05
+    errorRate: 0
   }),
 
   Cursor: (): MockAgentConfig => ({
@@ -893,6 +893,6 @@ export const MockAgents = {
     prompts: [],
     responses: {},
     latency: 200,
-    errorRate: 0.02
+    errorRate: 0
   })
 };

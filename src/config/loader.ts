@@ -136,27 +136,38 @@ export class ConfigLoader {
    * Load profiles from YAML configuration
    */
   private async loadProfilesFromYaml(
-    profiles: Array<{ name: string; path: string; autoApply?: boolean }>, 
+    profiles: Array<{ name: string; path?: string; url?: string; autoApply?: boolean }>, 
     activeProfiles: Map<string, ClaudeConfig>
   ): Promise<void> {
     const config = this.yamlConfigManager.getConfig();
     this.logger.info(`[CONFIG-LOADER] Processing ${profiles.length} YAML profiles`);
     
     for (const profile of profiles) {
-      this.logger.info(`[CONFIG-LOADER] Loading profile '${profile.name}' from path: ${profile.path}, autoApply: ${profile.autoApply}`);
-      if (profile.path && profile.name) {
+      this.logger.info(`[CONFIG-LOADER] Loading profile '${profile.name}' from ${profile.url || profile.path}, autoApply: ${profile.autoApply}`);
+      if ((profile.path || profile.url) && profile.name) {
         // Skip if autoApply is explicitly set to false
         if (profile.autoApply === false) {
           if (this.yamlConfigManager.isVerboseProfileSwitching()) {
-            this.yamlConfigManager.log('info', `Skipping profile '${profile.name}' (autoApply: false): ${profile.path}`);
+            this.yamlConfigManager.log('info', `Skipping profile '${profile.name}' (autoApply: false): ${profile.url || profile.path}`);
           }
           continue;
         }
         
         try {
-          // Use PathResolver for consistent path handling
-          const pathResolver = PathResolver.getInstance();
-          const fullPath = pathResolver.resolveProfilePath(profile.path);
+          let fullPath: string;
+          
+          // Check if URL is provided - use recursive download
+          if (profile.url) {
+            this.logger.info(`[CONFIG-LOADER] Downloading recursively from URL: ${profile.url}`);
+            fullPath = await this.downloadAndCacheRecursively(profile.url);
+            this.logger.info(`[CONFIG-LOADER] Downloaded and cached to: ${fullPath}`);
+          } else if (profile.path) {
+            // Use local path
+            const pathResolver = PathResolver.getInstance();
+            fullPath = pathResolver.resolveProfilePath(profile.path);
+          } else {
+            throw new Error('Neither url nor path specified');
+          }
           
           const loadedConfig = await this.claudeConfigManager.loadClaudeConfig(fullPath);
           // Mark config with autoApply flag for later use
@@ -177,10 +188,10 @@ export class ConfigLoader {
           
           if (this.yamlConfigManager.isVerboseProfileSwitching()) {
             const applyStatus = profile.autoApply === true ? ' (APPLIED)' : '';
-            this.yamlConfigManager.log('info', `Auto-loaded profile '${profile.name}': ${profile.path}${applyStatus}`);
+            this.yamlConfigManager.log('info', `Auto-loaded profile '${profile.name}': ${profile.url || profile.path}${applyStatus}`);
           }
         } catch (error) {
-          this.logger.info(`[CONFIG-LOADER] Failed to load profile '${profile.name}' from ${profile.path}: ${error}`);
+          this.logger.info(`[CONFIG-LOADER] Failed to load profile '${profile.name}' from ${profile.url || profile.path}: ${error}`);
           if (config.logging?.verboseFileLoading) {
             this.logger.debug(`Profile '${profile.name}' loading failed: ${error}`);
           }
@@ -225,5 +236,147 @@ export class ConfigLoader {
    */
   getFileScanner(): FileScanner {
     return this.fileScanner;
+  }
+
+  /**
+   * Download and cache files recursively from GitHub URL
+   */
+  private async downloadAndCacheRecursively(url: string): Promise<string> {
+    const visitedUrls = new Set<string>();
+    const downloadedFiles = new Map<string, string>();
+
+    const processFile = async (currentUrl: string): Promise<void> => {
+      if (visitedUrls.has(currentUrl)) return;
+      visitedUrls.add(currentUrl);
+
+      this.logger.info(`[CONFIG-LOADER] Downloading: ${currentUrl}`);
+
+      try {
+        // 1. Download file content
+        const response = await fetch(currentUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        const content = await response.text();
+
+        // 2. Convert URL to local cache path
+        const localPath = this.urlToLocalPath(currentUrl);
+        
+        // 3. Ensure directory exists
+        await fs.mkdir(path.dirname(localPath), { recursive: true });
+        
+        // 4. Save file locally
+        await fs.writeFile(localPath, content, 'utf-8');
+        downloadedFiles.set(currentUrl, localPath);
+        
+        this.logger.info(`[CONFIG-LOADER] Cached: ${localPath}`);
+
+        // 5. Extract markdown links from content
+        const links = this.extractMarkdownLinks(content);
+        
+        // 6. Process each link recursively
+        for (const link of links) {
+          const absoluteUrl = this.resolveRelativeUrl(currentUrl, link);
+          if (absoluteUrl) {
+            await processFile(absoluteUrl);
+          }
+        }
+
+      } catch (error) {
+        this.logger.debug(`[CONFIG-LOADER] Failed to download ${currentUrl}: ${error}`);
+      }
+    };
+
+    await processFile(url);
+    
+    // Return the local path of the main file
+    return downloadedFiles.get(url) || this.urlToLocalPath(url);
+  }
+
+  /**
+   * Extract markdown links from content
+   */
+  private extractMarkdownLinks(content: string): string[] {
+    const links: string[] = [];
+    
+    // Pattern 1: [text](file.md)
+    const markdownLinkRegex = /\[([^\]]*)\]\(([^)]+\.md)\)/g;
+    let match;
+    while ((match = markdownLinkRegex.exec(content)) !== null) {
+      links.push(match[2]);
+    }
+    
+    // Pattern 2: docs/FILE.md (direct references)
+    const directLinkRegex = /(?:^|\s)(docs\/[A-Z_]+\.md)(?:\s|$)/g;
+    while ((match = directLinkRegex.exec(content)) !== null) {
+      links.push(match[1]);
+    }
+    
+    // Pattern 3: ](docs/FILE.md) (bracket references)
+    const bracketLinkRegex = /\]\((docs\/[A-Z_]+\.md)\)/g;
+    while ((match = bracketLinkRegex.exec(content)) !== null) {
+      links.push(match[1]);
+    }
+
+    this.logger.debug(`[CONFIG-LOADER] Found ${links.length} markdown links: ${links.join(', ')}`);
+    return [...new Set(links)]; // Remove duplicates
+  }
+
+  /**
+   * Convert GitHub raw URL to local cache path
+   */
+  private urlToLocalPath(url: string): string {
+    // https://raw.githubusercontent.com/reivosar/claude-code-engineering-guide/master/markdown/CLAUDE.md
+    // → ./cache/claude-guide/CLAUDE.md
+    
+    const urlParts = url.split('/');
+    const repoIndex = urlParts.findIndex(part => part === 'claude-code-engineering-guide');
+    
+    if (repoIndex === -1) {
+      throw new Error(`Invalid GitHub URL format: ${url}`);
+    }
+    
+    // Extract path after 'markdown/'
+    const markdownIndex = urlParts.findIndex(part => part === 'markdown');
+    if (markdownIndex === -1) {
+      throw new Error(`URL must contain 'markdown' directory: ${url}`);
+    }
+    
+    const relativePath = urlParts.slice(markdownIndex + 1).join('/');
+    const cacheDir = path.join(process.cwd(), 'cache', 'claude-guide');
+    
+    return path.join(cacheDir, relativePath);
+  }
+
+  /**
+   * Resolve relative URL to absolute URL
+   */
+  private resolveRelativeUrl(baseUrl: string, relativePath: string): string | null {
+    try {
+      // If already absolute URL, return as-is
+      if (relativePath.startsWith('http')) {
+        return relativePath;
+      }
+      
+      // Extract base directory from URL
+      const urlParts = baseUrl.split('/');
+      const markdownIndex = urlParts.findIndex(part => part === 'markdown');
+      
+      if (markdownIndex === -1) return null;
+      
+      // Build base URL up to markdown directory
+      const baseMarkdownUrl = urlParts.slice(0, markdownIndex + 1).join('/');
+      
+      // Handle relative paths
+      if (relativePath.startsWith('./')) {
+        relativePath = relativePath.substring(2);
+      }
+      
+      return `${baseMarkdownUrl}/${relativePath}`;
+      
+    } catch (error) {
+      this.logger.debug(`[CONFIG-LOADER] Failed to resolve relative URL: ${baseUrl} + ${relativePath}`);
+      return null;
+    }
   }
 }

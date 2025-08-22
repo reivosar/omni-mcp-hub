@@ -81,8 +81,8 @@ describe('Integration Tests', () => {
       expect(tsconfig.compilerOptions.module).toBeTruthy();
     });
 
-    it('should have valid omni-config.yaml in minimal example', async () => {
-      const yamlConfigPath = path.join(rootDir, 'examples/minimal/omni-config.yaml');
+    it('should have valid omni-config.yaml in local-resources example', async () => {
+      const yamlConfigPath = path.join(rootDir, 'examples/local-resources/omni-config.yaml');
       const content = await fs.readFile(yamlConfigPath, 'utf-8');
       
       // Should be valid YAML and have new simplified structure
@@ -114,16 +114,22 @@ describe('Integration Tests', () => {
     });
 
     it('should have valid standardized configuration examples', async () => {
-      const exampleTypes = ['minimal', 'standard', 'enterprise', 'docker'];
+      const exampleTypes = ['local-resources', 'mixed', 'docker'];
       
       for (const exampleType of exampleTypes) {
         const configPath = path.join(rootDir, 'examples', exampleType, 'omni-config.yaml');
         const content = await fs.readFile(configPath, 'utf-8');
         
-        // All configs should have profiles and logging
-        expect(content).toContain('profiles:');
+        // All configs should have profiles and logging (or autoLoad)
+        expect(content).toMatch(/(profiles:|autoLoad:)/);
         expect(content).toContain('logging:');
       }
+      
+      // Test MCP-only config separately as it has different structure
+      const mcpConfigPath = path.join(rootDir, 'examples/mcp/omni-config.yaml');
+      const mcpContent = await fs.readFile(mcpConfigPath, 'utf-8');
+      expect(mcpContent).toContain('externalServers:');
+      expect(mcpContent).toContain('logging:');
     });
 
     it('should have executable start script', async () => {

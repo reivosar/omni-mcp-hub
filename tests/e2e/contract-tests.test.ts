@@ -337,19 +337,41 @@ main().catch(console.error);
 
   describe('Mock Agent Integration', () => {
     it('should connect to Claude mock agent', async () => {
-      const response = await fetch('http://localhost:3001/health');
-      const health = await response.json();
-      
-      expect(health.status).toBe('healthy');
-      expect(health.agent).toBe('claude-desktop');
+      try {
+        const response = await fetch('http://localhost:3001/health');
+        if (!response) {
+          throw new Error('No response received from mock server');
+        }
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        const health = await response.json();
+        
+        expect(health.status).toBe('healthy');
+        expect(health.agent).toBe('claude-desktop');
+      } catch (error) {
+        console.error('Mock server connection failed:', error);
+        throw error;
+      }
     });
 
     it('should connect to Cursor mock agent', async () => {
-      const response = await fetch('http://localhost:3002/health');
-      const health = await response.json();
-      
-      expect(health.status).toBe('healthy');
-      expect(health.agent).toBe('cursor');
+      try {
+        const response = await fetch('http://localhost:3002/health');
+        if (!response) {
+          throw new Error('No response received from mock server');
+        }
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        const health = await response.json();
+        
+        expect(health.status).toBe('healthy');
+        expect(health.agent).toBe('cursor');
+      } catch (error) {
+        console.error('Mock server connection failed:', error);
+        throw error;
+      }
     });
 
     it('should handle MCP protocol requests', async () => {

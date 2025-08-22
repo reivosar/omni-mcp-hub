@@ -146,50 +146,50 @@ Your main system instructions here...
 Memory context and information to remember...
 ```
 
-## YAML Configuration
+## Configuration
 
-The server supports configuration via `omni-config.yaml` in your working directory. Choose from 4 standardized examples:
+### Quick Start (< 10 lines)
 
-- **Minimal**: Single profile, basic logging (5 lines)
-- **Standard**: Multiple profiles, essential external servers (~15 lines)
-- **Enterprise**: Full security, advanced monitoring, multiple servers
-- **Docker**: Container-friendly configuration with health endpoints
-
-### Example Configuration
+The simplest configuration to get started:
 
 ```yaml
-# Profile Management (Simplified)
+# omni-config.yaml
 profiles:
   - name: "default"
-    path: "CLAUDE.md"
-  - name: "assistant"
-    path: "./examples/assistant-behavior.md"
+    path: "./profiles/default.md"
 
-# External MCP Servers (Optional)
 externalServers:
   - name: "filesystem"
     command: "npx"
     args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
-    description: "File system operations"
-
-# Basic Settings
-logging:
-  level: "info"
 ```
 
-**See the `examples/` directory for 4 standardized configuration templates and migration guide.**
+That's it! You're ready to use Claude Code with MCP.
 
-### Configuration Usage
+### Configuration Levels
 
-**Getting Started:**
+Choose the configuration that fits your needs:
 
-1. **Choose a configuration**: Copy from `examples/` directory
+| Level | Lines | Use Case | Location |
+|-------|-------|----------|----------|
+| **Minimal** | < 10 | Getting started, prototypes | `omni-config.minimal.yaml` |
+| **Standard** | ~30 | Development teams | `/examples/standard/` |
+| **Advanced** | ~50 | Power users | `omni-config.advanced.yaml` |
+| **Enterprise** | 100+ | Production deployments | `/examples/enterprise/` |
+
+### Getting Started
+
+1. **Start with minimal config**:
    ```bash
-   cp examples/minimal/omni-config.yaml .  # Recommended for beginners
-   cp examples/standard/omni-config.yaml . # Recommended for teams
+   cp omni-config.minimal.yaml omni-config.yaml
    ```
 
-2. **Create your profile**: Add a `CLAUDE.md` file with your instructions
+2. **Or choose from examples**:
+   ```bash
+   cp examples/minimal/omni-config.yaml .   # Simplest
+   cp examples/standard/omni-config.yaml .  # Recommended
+   cp examples/enterprise/omni-config.yaml . # Full features
+   ```
 
 3. **Apply profiles in Claude Code**:
    ```
@@ -197,6 +197,13 @@ logging:
    /use list_claude_configs
    /use get_applied_config
    ```
+
+### Documentation
+
+- **Configuration Guide**: [docs/CONFIGURATION_GUIDE.md](./docs/CONFIGURATION_GUIDE.md)
+- **Migration Guide**: [docs/CONFIGURATION_MIGRATION.md](./docs/CONFIGURATION_MIGRATION.md)
+- **Schema**: [schemas/omni-config.schema.json](./schemas/omni-config.schema.json)
+- **Examples**: [examples/](./examples/) directory
 
 **Note**: MCP tools cannot automatically modify Claude's behavior - you must manually apply profiles using the commands above. This is a fundamental limitation of the MCP protocol.
 

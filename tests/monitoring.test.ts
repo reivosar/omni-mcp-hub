@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MetricsCollector, MonitoringConfig } from '../src/monitoring/metrics-collector.js';
 import { MonitoringServer, createMonitoringSetup } from '../src/monitoring/monitoring-server.js';
-// Using built-in fetch instead of node-fetch
 
 describe('Performance Monitoring System', () => {
   let metricsCollector: MetricsCollector;

@@ -57,6 +57,6 @@ export abstract class BaseSecretProvider implements SecretProvider {
   abstract list(pattern?: string): Promise<string[]>;
 
   protected sanitizeReference(reference: string): string {
-    return reference.replace(/[^a-zA-Z0-9-_/]/g, '_');
+    return reference.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^_+|_+$/g, '');
   }
 }

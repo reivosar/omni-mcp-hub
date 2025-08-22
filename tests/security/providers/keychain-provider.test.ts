@@ -9,15 +9,12 @@ const mockKeytar = {
   findCredentials: vi.fn()
 };
 
-// Mock the require call for keytar
-vi.mock('keytar', () => mockKeytar);
-
 describe('KeychainSecretProvider', () => {
   let provider: KeychainSecretProvider;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    provider = new KeychainSecretProvider('test-service');
+    provider = new KeychainSecretProvider('test-service', mockKeytar as any);
   });
 
   describe('constructor', () => {
@@ -26,12 +23,12 @@ describe('KeychainSecretProvider', () => {
     });
 
     it('should use default service name when not provided', () => {
-      const defaultProvider = new KeychainSecretProvider();
+      const defaultProvider = new KeychainSecretProvider(undefined, mockKeytar as any);
       expect(defaultProvider.getName()).toBe('KEYCHAIN');
     });
 
     it('should use custom service name', () => {
-      const customProvider = new KeychainSecretProvider('custom-service');
+      const customProvider = new KeychainSecretProvider('custom-service', mockKeytar as any);
       expect(customProvider.getName()).toBe('KEYCHAIN');
     });
   });
@@ -315,17 +312,18 @@ describe('KeychainSecretProvider', () => {
     it('should handle multiple slashes in reference', async () => {
       mockKeytar.getPassword.mockResolvedValue('slash-value');
 
-      const result = await provider.resolve('account/with/slashes');
-
       // Should only split on first slash for account/field separation
+      await expect(provider.resolve('account/with/slashes'))
+        .rejects.toThrow('Cannot extract field from non-JSON secret');
+      
       expect(mockKeytar.getPassword).toHaveBeenCalledWith('test-service', 'account');
     });
   });
 
   describe('service configuration', () => {
     it('should use different service names for different instances', async () => {
-      const service1Provider = new KeychainSecretProvider('service1');
-      const service2Provider = new KeychainSecretProvider('service2');
+      const service1Provider = new KeychainSecretProvider('service1', mockKeytar as any);
+      const service2Provider = new KeychainSecretProvider('service2', mockKeytar as any);
 
       mockKeytar.getPassword.mockResolvedValue('value1').mockResolvedValueOnce('value2');
 

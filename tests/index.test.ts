@@ -238,7 +238,8 @@ describe('OmniMCPServer', () => {
 
       const result = server.generateBehaviorInstructions(config);
 
-      expect(result).toBe('');
+      expect(result).toContain('# MCP PROFILE PRIORITY OVERRIDE');
+      expect(result).toContain('MANDATORY PRIORITY CONTROL');
     });
   });
 

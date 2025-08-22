@@ -7,45 +7,54 @@ interface KeytarModule {
   findCredentials(service: string): Promise<Array<{ account: string; password: string }>>;
 }
 
-let keytar: KeytarModule | null = null;
-try {
-  keytar = require('keytar') as KeytarModule;
-} catch {
-  console.warn('Keytar not available - keychain provider disabled');
+// Use a function that can be mocked by tests
+function loadKeytar(): KeytarModule | null {
+  try {
+    return require('keytar') as KeytarModule;
+  } catch {
+    console.warn('Keytar not available - keychain provider disabled');
+    return null;
+  }
 }
 
 export class KeychainSecretProvider extends BaseSecretProvider {
   private service: string;
+  private keytar: KeytarModule | null;
 
-  constructor(service: string = 'omni-mcp-hub') {
+  constructor(service: string = 'omni-mcp-hub', keytarInstance?: KeytarModule) {
     super('KEYCHAIN');
     this.service = service;
+    this.keytar = keytarInstance || loadKeytar();
   }
 
   async isAvailable(): Promise<boolean> {
-    return !!keytar;
+    return !!this.keytar;
   }
 
   async resolve(reference: string): Promise<string> {
-    if (!keytar) {
+    if (!this.keytar) {
       throw new Error('Keychain provider not available');
     }
 
-    const [account, field] = reference.split('/');
-    const password = await keytar.getPassword(this.service, account);
+    const [account, field] = reference.split('/', 2);
+    const password = await this.keytar.getPassword(this.service, account);
     
-    if (!password) {
+    if (password === null || password === undefined) {
       throw new Error(`Secret not found in keychain: ${account}`);
     }
 
     if (field) {
       try {
         const parsed = JSON.parse(password) as Record<string, unknown>;
-        if (parsed[field]) {
+        if (field in parsed) {
           return String(parsed[field]);
         }
         throw new Error(`Field ${field} not found in secret`);
-      } catch {
+      } catch (error) {
+        // Only catch JSON parsing errors, not our intentional field-not-found errors
+        if (error instanceof Error && error.message.includes('Field') && error.message.includes('not found')) {
+          throw error; // Re-throw our intentional error
+        }
         throw new Error(`Cannot extract field from non-JSON secret`);
       }
     }
@@ -54,29 +63,29 @@ export class KeychainSecretProvider extends BaseSecretProvider {
   }
 
   async store(reference: string, value: string): Promise<void> {
-    if (!keytar) {
+    if (!this.keytar) {
       throw new Error('Keychain provider not available');
     }
 
     const [account] = reference.split('/');
-    await keytar.setPassword(this.service, account, value);
+    await this.keytar.setPassword(this.service, account, value);
   }
 
   async delete(reference: string): Promise<void> {
-    if (!keytar) {
+    if (!this.keytar) {
       throw new Error('Keychain provider not available');
     }
 
     const [account] = reference.split('/');
-    await keytar.deletePassword(this.service, account);
+    await this.keytar.deletePassword(this.service, account);
   }
 
   async list(pattern?: string): Promise<string[]> {
-    if (!keytar) {
+    if (!this.keytar) {
       throw new Error('Keychain provider not available');
     }
 
-    const credentials = await keytar.findCredentials(this.service);
+    const credentials = await this.keytar.findCredentials(this.service);
     const accounts = credentials.map(c => c.account);
     
     if (!pattern) {

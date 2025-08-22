@@ -37,7 +37,7 @@ describe('VaultSecretProvider', () => {
       endpoint: 'https://vault.example.com',
       token: 'vault-token-123'
     };
-    provider = new VaultSecretProvider(config);
+    provider = new VaultSecretProvider(config, mockVault as any);
   });
 
   describe('constructor', () => {
@@ -59,7 +59,7 @@ describe('VaultSecretProvider', () => {
         apiVersion: 'v2'
       };
 
-      new VaultSecretProvider(customConfig);
+      new VaultSecretProvider(customConfig, mockVault as any);
 
       expect(mockVault).toHaveBeenCalledWith({
         endpoint: 'https://vault.example.com',
@@ -73,7 +73,7 @@ describe('VaultSecretProvider', () => {
         namespace: 'dev'
       };
 
-      new VaultSecretProvider(namespacedConfig);
+      new VaultSecretProvider(namespacedConfig, mockVault as any);
 
       expect(mockVault).toHaveBeenCalledWith({
         endpoint: 'https://vault.example.com',
@@ -133,7 +133,7 @@ describe('VaultSecretProvider', () => {
         secretId: 'secret-456'
       };
 
-      const approleProvider = new VaultSecretProvider(approleConfig);
+      const approleProvider = new VaultSecretProvider(approleConfig, mockVault as any);
       
       mockVaultClient.approleLogin.mockResolvedValue({
         auth: { client_token: 'new-token-123' }
@@ -156,7 +156,7 @@ describe('VaultSecretProvider', () => {
         endpoint: 'https://vault.example.com'
       };
 
-      const noAuthProvider = new VaultSecretProvider(noAuthConfig);
+      const noAuthProvider = new VaultSecretProvider(noAuthConfig, mockVault as any);
 
       await expect(noAuthProvider.resolve('secret/path'))
         .rejects.toThrow('No authentication method configured for Vault');
@@ -376,7 +376,7 @@ describe('VaultSecretProvider', () => {
         secretId: 'invalid-secret'
       };
 
-      const approleProvider = new VaultSecretProvider(approleConfig);
+      const approleProvider = new VaultSecretProvider(approleConfig, mockVault as any);
       
       mockVaultClient.approleLogin.mockRejectedValue(new Error('Authentication failed'));
 
@@ -402,7 +402,7 @@ describe('VaultSecretProvider', () => {
   describe('edge cases', () => {
     it('should handle paths with special characters', async () => {
       mockVaultClient.read.mockResolvedValue({
-        data: { data: { key: 'special-value' } }
+        data: { data: { field: 'special-value' } }
       });
 
       const result = await provider.resolve('secret/path@with#special:field');
@@ -456,7 +456,7 @@ describe('VaultSecretProvider', () => {
         endpoint: 'https://vault.minimal.com'
       };
 
-      const minimalProvider = new VaultSecretProvider(minimalConfig);
+      const minimalProvider = new VaultSecretProvider(minimalConfig, mockVault as any);
 
       expect(minimalProvider.getName()).toBe('VAULT');
       expect(mockVault).toHaveBeenCalledWith({
@@ -475,7 +475,7 @@ describe('VaultSecretProvider', () => {
         apiVersion: 'v2'
       };
 
-      new VaultSecretProvider(fullConfig);
+      new VaultSecretProvider(fullConfig, mockVault as any);
 
       expect(mockVault).toHaveBeenCalledWith({
         endpoint: 'https://vault.full.com',

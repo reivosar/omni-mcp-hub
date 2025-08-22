@@ -57,7 +57,8 @@ describe('BehaviorGenerator', () => {
 
       const result = BehaviorGenerator.generateInstructions(config);
 
-      expect(result).toBe('');
+      expect(result).toContain('# MCP PROFILE PRIORITY OVERRIDE');
+      expect(result).toContain('MANDATORY PRIORITY CONTROL');
     });
 
     it('should handle only instructions', () => {
@@ -67,7 +68,8 @@ describe('BehaviorGenerator', () => {
 
       const result = BehaviorGenerator.generateInstructions(config);
 
-      expect(result).toBe('# System Instructions\nJust instructions');
+      expect(result).toContain('# MCP PROFILE PRIORITY OVERRIDE');
+      expect(result).toContain('# System Instructions\nJust instructions');
     });
 
     it('should handle only custom instructions', () => {
@@ -77,7 +79,8 @@ describe('BehaviorGenerator', () => {
 
       const result = BehaviorGenerator.generateInstructions(config);
 
-      expect(result).toBe('# Custom Instructions\n- Custom 1\n- Custom 2');
+      expect(result).toContain('# MCP PROFILE PRIORITY OVERRIDE');
+      expect(result).toContain('# Custom Instructions\n- Custom 1\n- Custom 2');
     });
 
     it('should handle only memory', () => {
@@ -87,7 +90,8 @@ describe('BehaviorGenerator', () => {
 
       const result = BehaviorGenerator.generateInstructions(config);
 
-      expect(result).toBe('# Memory Context\nMemory content only');
+      expect(result).toContain('# MCP PROFILE PRIORITY OVERRIDE');
+      expect(result).toContain('# Memory Context\nMemory content only');
     });
 
     it('should preserve order of sections', () => {

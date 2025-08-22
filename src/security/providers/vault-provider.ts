@@ -14,11 +14,14 @@ interface VaultModule {
   (options: VaultConfig): VaultClient;
 }
 
-let vault: VaultModule | null = null;
-try {
-  vault = require('node-vault') as VaultModule;
-} catch {
-  console.warn('node-vault not available - Vault provider disabled');
+// Use a function that can be mocked by tests
+function loadVault(): VaultModule | null {
+  try {
+    return require('node-vault') as VaultModule;
+  } catch {
+    console.warn('node-vault not available - Vault provider disabled');
+    return null;
+  }
 }
 
 export interface VaultConfig {
@@ -33,18 +36,20 @@ export interface VaultConfig {
 export class VaultSecretProvider extends BaseSecretProvider {
   private client: VaultClient | null = null;
   private config: VaultConfig;
+  private vault: VaultModule | null;
 
-  constructor(config: VaultConfig) {
+  constructor(config: VaultConfig, vaultInstance?: VaultModule) {
     super('VAULT');
     this.config = config;
+    this.vault = vaultInstance || loadVault();
     
-    if (vault) {
+    if (this.vault) {
       this.initializeClient();
     }
   }
 
   private initializeClient(): void {
-    if (!vault) return;
+    if (!this.vault) return;
     
     const options: VaultConfig = {
       endpoint: this.config.endpoint,
@@ -55,7 +60,7 @@ export class VaultSecretProvider extends BaseSecretProvider {
       options.namespace = this.config.namespace;
     }
 
-    this.client = vault(options);
+    this.client = this.vault(options);
 
     if (this.config.token && this.client) {
       this.client.token = this.config.token;
@@ -63,7 +68,7 @@ export class VaultSecretProvider extends BaseSecretProvider {
   }
 
   async isAvailable(): Promise<boolean> {
-    if (!vault || !this.client) {
+    if (!this.vault || !this.client) {
       return false;
     }
 
@@ -103,6 +108,10 @@ export class VaultSecretProvider extends BaseSecretProvider {
 
     const [path, field] = reference.split(':');
     const response = await this.client.read(path);
+    
+    if (!response) {
+      throw new Error(`Secret not found in Vault: ${path}`);
+    }
     
     const data = response.data?.data || response.data;
     

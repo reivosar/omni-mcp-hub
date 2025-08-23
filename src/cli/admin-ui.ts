@@ -31,7 +31,7 @@ interface YamlProfile {
   enabled?: boolean;
 }
 
-class AdminUI {
+export class AdminUI {
   private configPath: string;
   private profiles: Map<string, ProfileData>;
   private claudeConfigManager: ClaudeConfigManager;

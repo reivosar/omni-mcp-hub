@@ -28,6 +28,32 @@
                 "type": "boolean",
                 "default": false,
                 "description": "Whether to automatically apply this profile"
+              },
+              "allowToolsAppend": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Tools that can be appended across profile merges"
+              },
+              "mergeOptions": {
+                "type": "object",
+                "properties": {
+                  "appendSections": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["allowToolsAppend", "stopwords", "memory_dict", "glossary"]
+                    },
+                    "description": "Sections that should be appended instead of replaced"
+                  },
+                  "preserveToolsAppend": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Whether to preserve allowToolsAppend from previous profiles"
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false

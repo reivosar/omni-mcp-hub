@@ -1,0 +1,40 @@
+# Docker Configuration
+# Perfect for: Containerized deployments, microservices, cloud environments
+
+profiles:
+  - name: "default"
+    path: "/app/profiles/CLAUDE.md"
+
+externalServers:
+  - name: "filesystem"
+    command: "node"
+    args: ["/app/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js", "/data"]
+    description: "Containerized filesystem access"
+  
+  - name: "database"
+    command: "node"
+    args: ["/app/servers/postgres-server.js"]
+    description: "Database server in container"
+    environment:
+      DATABASE_URL: "postgresql://user:pass@postgres:5432/mcpdb"
+
+# Container-friendly logging
+logging:
+  level: "info"
+  structuredLogging: true
+  # Log to stdout for container log collection
+
+# Health endpoints for container orchestration
+monitoring:
+  enabled: true
+  port: 3099
+  healthEndpoints: true
+
+# Container security
+security:
+  authentication:
+    enabled: false  # Handle at ingress/proxy level
+  
+  audit:
+    enabled: true
+    logPath: "/dev/stdout"  # Stream to container logs

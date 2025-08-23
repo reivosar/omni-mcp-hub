@@ -240,6 +240,16 @@ export class MetricsCollector extends EventEmitter {
   private recordMetric(type: string, name: string, value: number, labels?: Record<string, string>, timestamp?: Date): void {
     if (!this.config.enabled) return;
 
+    // Auto-create metric definition if it doesn't exist
+    if (!this.metricDefinitions.has(name)) {
+      this.metricDefinitions.set(name, {
+        name,
+        type: type as 'counter' | 'gauge' | 'histogram',
+        description: `Auto-generated ${type} metric: ${name}`,
+        unit: type === 'histogram' && name.includes('duration') ? 'seconds' : 'count'
+      });
+    }
+
     const metric: MetricSample = {
       name,
       value,

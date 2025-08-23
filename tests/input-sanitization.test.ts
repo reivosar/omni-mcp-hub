@@ -492,14 +492,18 @@ describe('Input Sanitization and Validation System', () => {
       expect(metrics.sanitizationAttempts).toBe(0);
     });
 
-    it('should emit security events', (done) => {
-      securityManager.on('security-violation', (data) => {
-        expect(data.type).toBeDefined();
-        done();
+    it('should emit security events', async () => {
+      const eventPromise = new Promise<void>((resolve) => {
+        securityManager.on('security-violation', (data) => {
+          expect(data.type).toBeDefined();
+          resolve();
+        });
       });
 
       // This should trigger some security pattern
       securityManager.sanitize("'; DROP TABLE users; --");
+      
+      await eventPromise;
     }, 2000);
   });
 
@@ -764,34 +768,42 @@ describe('Input Sanitization and Validation System', () => {
       expect(result3.length).toBeLessThanOrEqual(50);
     });
 
-    it('should handle sanitization events', (done) => {
+    it('should handle sanitization events', async () => {
       const testSanitizer = new InputSanitizer();
       let eventCount = 0;
 
-      testSanitizer.on('injection-attempt', () => {
-        eventCount++;
-        if (eventCount === 4) done();
-      });
-      
-      testSanitizer.on('xss-attempt', () => {
-        eventCount++;
-        if (eventCount === 4) done();
-      });
-      
-      testSanitizer.on('command-injection-attempt', () => {
-        eventCount++;
-        if (eventCount === 4) done();
-      });
-      
-      testSanitizer.on('path-traversal-attempt', () => {
-        eventCount++;
-        if (eventCount === 4) done();
+      const eventPromise = new Promise<void>((resolve) => {
+        const checkEvents = () => {
+          if (eventCount === 4) resolve();
+        };
+
+        testSanitizer.on('injection-attempt', () => {
+          eventCount++;
+          checkEvents();
+        });
+        
+        testSanitizer.on('xss-attempt', () => {
+          eventCount++;
+          checkEvents();
+        });
+        
+        testSanitizer.on('command-injection-attempt', () => {
+          eventCount++;
+          checkEvents();
+        });
+        
+        testSanitizer.on('path-traversal-attempt', () => {
+          eventCount++;
+          checkEvents();
+        });
       });
 
       testSanitizer.sanitizeString("'; DROP TABLE users; --");
       testSanitizer.sanitizeString("<script>alert('xss')</script>");
       testSanitizer.sanitizeString("; rm -rf /");
       testSanitizer.sanitizeString("../../../etc/passwd");
+
+      await eventPromise;
     });
 
     it('should handle file path sanitization edge cases', () => {

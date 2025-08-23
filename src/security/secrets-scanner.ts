@@ -87,13 +87,13 @@ const DEFAULT_SECRET_PATTERNS: SecretPattern[] = [
   },
   {
     name: 'Slack Token',
-    pattern: /\b(xox[baprs]-[0-9]{10,48})\b/gi,
+    pattern: /\b(xox[baprs]-[0-9a-zA-Z-]{10,48})\b/gi,
     severity: 'high',
     description: 'Slack API Token detected'
   },
   {
     name: 'Slack Webhook',
-    pattern: /https:\/\/hooks\.slack\.com\/services\/T[a-zA-Z0-9_]{8}\/B[a-zA-Z0-9_]{8}\/[a-zA-Z0-9_]{24}/gi,
+    pattern: /https:\/\/hooks\.slack\.com\/services\/T[a-zA-Z0-9_]{4,12}\/B[a-zA-Z0-9_]{4,12}\/[a-zA-Z0-9_]{12,32}/gi,
     severity: 'high',
     description: 'Slack Webhook URL detected'
   },
@@ -565,7 +565,7 @@ export class SecretsScanner {
     report += `**Total Findings:** ${findings.length}\n\n`;
     
     if (findings.length === 0) {
-      report += '✅ No secrets detected\n';
+      report += 'No secrets detected\n';
       return report;
     }
     
@@ -607,7 +607,7 @@ export class SecretsScanner {
   <p><strong>Scan Date:</strong> ${new Date().toISOString()}</p>
   <p><strong>Total Findings:</strong> ${findings.length}</p>
   
-  ${findings.length === 0 ? '<p style="color: green;">✅ No secrets detected</p>' : ''}
+  ${findings.length === 0 ? '<p style="color: green;">No secrets detected</p>' : ''}
   
   ${findings.map(f => `
     <div class="finding">

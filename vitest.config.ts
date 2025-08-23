@@ -4,6 +4,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    env: {
+      NODE_ENV: 'test'
+    },
     // プロセス管理設定 - ゾンビプロセス防止
     testTimeout: 60000, // 60秒でテストタイムアウト
     teardownTimeout: 10000, // 10秒でteardownタイムアウト
@@ -43,8 +46,8 @@ export default defineConfig({
       '**/coverage/**',
       '**/.git/**'
     ],
-    // エラー時即座に終了
-    bail: 1,
+    // エラー時即座に終了を無効化してすべてのテストを実行
+    bail: false,
     // メモリリーク防止
     logHeapUsage: true
   }

@@ -1,4 +1,66 @@
-autoLoad: true
-fileSettings:
-  configFiles:
-    claude: "CLAUDE.md"
+# Omni MCP Hub - Complete Engineering Guide Configuration
+# Based on https://github.com/reivosar/claude-code-engineering-guide
+# Full dependency tree with all referenced files
+
+# Auto-load Configuration
+autoLoad:
+  profiles:
+    - name: "claude-guide"
+      url: "https://github.com/reivosar/claude-code-engineering-guide/blob/master/markdown/CLAUDE.md"
+      description: "Main entry point - MANDATORY read at task start"
+      autoApply: true
+      required: true
+
+# Engineering Framework Settings
+settings:
+  language: "japanese"
+  requireConfirmation: true
+  taskValidation: true
+  qualityGates: true
+  zeroTolerancePolicy: true
+  riskStratification: true
+  
+  # Loading Strategy
+  loadingStrategy:
+    minimal: ["claude-main", "checklist"]
+    development: ["claude-main", "checklist", "development", "testing", "code-style", "quality-gates", "repo-flow"]
+    full: "all"
+  
+  # Validation Requirements
+  validation:
+    mandatoryChecks: true
+    testPyramid: true
+    securityScans: true
+    performanceTargets: true
+
+# Compliance and Standards
+compliance:
+  accessibility: "WCAG 2.1 AA"
+  security: ["GDPR", "PCI DSS", "SOX", "HIPAA"]
+  designSystem: "Digital Agency Design System"
+  
+# Risk Levels (R0-R2 Strategy)
+riskLevels:
+  R0_missionCritical:
+    coverage: 100
+    testing: "extensive"
+  R1_important:
+    coverage: 95
+    testing: "performance-focused"
+  R2_experimental:
+    coverage: 90
+    testing: "minimal"
+
+# Performance Targets
+performance:
+  FCP: "< 1.8s"
+  LCP: "< 2.5s"
+  FID: "< 100ms"
+  CLS: "< 0.1"
+
+# Logging Configuration
+logging:
+  level: "info"
+  includeTaskValidation: true
+  includeRiskAssessment: true
+  includeComplianceChecks: true

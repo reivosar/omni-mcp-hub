@@ -1,0 +1,22 @@
+# Global owners
+* @reivosar
+
+# Security-related files
+/src/security/ @reivosar
+/tests/*security* @reivosar
+/tests/*audit* @reivosar
+
+# Configuration and workflows  
+/.github/ @reivosar
+/scripts/ @reivosar
+vitest.config.ts @reivosar
+package.json @reivosar
+
+# Documentation
+/*.md @reivosar
+/docs/ @reivosar
+
+# MCP specific files
+/src/mcp-proxy/ @reivosar
+/src/resources/ @reivosar
+/src/tools/ @reivosar

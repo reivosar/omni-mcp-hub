@@ -71,7 +71,7 @@ export class ResourceHandlers {
       if (autoApplyProfiles.length > 0) {
         baseResources.unshift({
           uri: "config://auto-apply",
-          name: "🚀 Auto-Apply Instructions",
+          name: "Auto-Apply Instructions",
           description: `Automatically apply ${autoApplyProfiles.length} profile(s) marked for auto-application`,
           mimeType: "text/plain",
         });
@@ -97,7 +97,7 @@ export class ResourceHandlers {
         const engineeringFiles = await this.githubResourceManager.getEngineeringGuide();
         const fileResources = engineeringFiles.map(file => ({
           uri: `engineering-guide://file/${encodeURIComponent(file.path)}`,
-          name: `📄 ${file.name}`,
+          name: `${file.name}`,
           description: `Engineering guide: ${file.path} (${Math.round(file.size / 1024)}KB)`,
           mimeType: "text/markdown",
         }));

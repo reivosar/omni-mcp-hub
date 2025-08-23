@@ -146,7 +146,7 @@ export class FileScanner {
     } catch (error) {
       const config = this.yamlConfig.getConfig();
       if (config.logging?.verboseFileLoading) {
-        this.logger.debug(`⚠️ Directory access error: ${dirPath}`, error);
+        this.logger.debug(`Directory access error: ${dirPath}`, error);
       }
     }
   }
@@ -288,7 +288,7 @@ export class FileScanner {
         allFiles.push(...files);
       } catch (error) {
         if (config.logging?.verboseFileLoading) {
-          this.logger.debug(`⚠️ Pattern search error: ${searchPath}`, error);
+          this.logger.debug(`Pattern search error: ${searchPath}`, error);
         }
       }
     }

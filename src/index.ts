@@ -23,6 +23,7 @@ export class OmniMCPServer {
   private proxyManager: MCPProxyManager;
   private yamlConfigManager: YamlConfigManager;
   private logger: ILogger;
+  private appliedBehaviorInstructions: string | null = null;
 
   constructor(logger?: ILogger) {
     this.logger = logger || Logger.getInstance();
@@ -57,7 +58,8 @@ export class OmniMCPServer {
       this.claudeConfigManager,
       this.activeProfiles,
       this.proxyManager,
-      this.logger
+      this.logger,
+      this // Pass OmniMCPServer instance to access behavior instructions
     );
     this.resourceHandlers = new ResourceHandlers(
       this.server,
@@ -82,6 +84,10 @@ export class OmniMCPServer {
     await this.loadInitialConfiguration();
     this.logger.info("[INIT] Initial configuration loaded");
 
+    this.logger.info("[INIT] Applying autoApply profiles...");
+    await this.applyAutoApplyProfiles();
+    this.logger.info("[INIT] AutoApply profiles applied");
+
     this.logger.debug("[INIT] Initializing external servers...");
     await this.initializeExternalServers();
     this.logger.debug("[INIT] External servers initialized");
@@ -93,8 +99,8 @@ export class OmniMCPServer {
     // Setup tools changed notification
     this.logger.debug("[INIT] Setting up tools changed notification...");
     this.proxyManager.on('toolsChanged', () => {
-      this.logger.info("[NOTIFY] Tools changed - would send notifications/tools/list_changed");
-      // TODO: Implement proper MCP notification when transport is available
+      this.logger.info("[NOTIFY] Tools changed - sending notifications/tools/list_changed");
+      this.sendToolsChangedNotification();
     });
     this.logger.debug("[INIT] Tools changed notification set up");
 
@@ -121,6 +127,36 @@ export class OmniMCPServer {
       }
     } catch (error) {
       this.logger.error("Failed to load initial configuration:", error);
+    }
+  }
+
+  /**
+   * Apply autoApply profiles that were loaded during initialization
+   */
+  private async applyAutoApplyProfiles(): Promise<void> {
+    try {
+      for (const [name, config] of this.activeProfiles) {
+        // Check if this profile has autoApply set to true
+        const configWithMetadata = config as ClaudeConfig & { _autoApply?: boolean };
+        if (configWithMetadata._autoApply === true) {
+          this.logger.info(`[INIT] Auto-applying profile '${name}'...`);
+          
+          // Generate behavior instructions from the profile
+          const { BehaviorGenerator } = await import('./utils/behavior-generator.js');
+          const behaviorInstructions = BehaviorGenerator.generateInstructions(config);
+          
+          // Store the applied behavior instructions
+          this.appliedBehaviorInstructions = behaviorInstructions;
+          
+          // Log the applied behavior instructions
+          this.logger.info(`[INIT] Applied behavior instructions for profile '${name}':`);
+          this.logger.debug(`\n=== APPLIED PROFILE '${name}' ===`);
+          this.logger.debug(behaviorInstructions);
+          this.logger.debug(`=== END PROFILE APPLICATION ===\n`);
+        }
+      }
+    } catch (error) {
+      this.logger.error("Failed to apply autoApply profiles:", error);
     }
   }
 
@@ -179,6 +215,37 @@ export class OmniMCPServer {
     return this.server;
   }
 
+  /**
+   * Get currently applied behavior instructions
+   */
+  getAppliedBehaviorInstructions(): string | null {
+    return this.appliedBehaviorInstructions;
+  }
+
+  /**
+   * Set currently applied behavior instructions
+   */
+  setAppliedBehaviorInstructions(instructions: string): void {
+    this.appliedBehaviorInstructions = instructions;
+    this.logger.info('[BEHAVIOR] Applied behavior instructions updated');
+  }
+
+  /**
+   * Send tools changed notification to MCP client
+   */
+  private sendToolsChangedNotification(): void {
+    try {
+      // Send MCP notification for tools list change
+      this.server.notification({
+        method: "notifications/tools/list_changed",
+        params: {},
+      });
+      this.logger.debug("[NOTIFY] Successfully sent tools/list_changed notification");
+    } catch (error) {
+      this.logger.debug("[NOTIFY] Failed to send tools/list_changed notification:", error);
+    }
+  }
+
   generateBehaviorInstructions(config: ClaudeConfig): string {
     return BehaviorGenerator.generateInstructions(config);
   }
@@ -198,21 +265,28 @@ export class OmniMCPServer {
 
 // Setup process-level error handling first
 const logger = Logger.getInstance();
-const processErrorHandler = new ProcessErrorHandler(logger, process);
-processErrorHandler.setupGlobalErrorHandlers();
-
-// Start metrics collection
-const _metricsInterval = processErrorHandler.startMetricsCollection(60000);
-
-// Clean up on shutdown
-process.on('beforeExit', () => {
-  processErrorHandler.stopMetricsCollection();
-  server.cleanup();
-});
 
 // Start the server
 const server = new OmniMCPServer();
+
+// Only set up process error handler in production
+if (process.env.NODE_ENV !== 'test') {
+  const processErrorHandler = new ProcessErrorHandler(logger, process);
+  processErrorHandler.setupGlobalErrorHandlers();
+  
+  // Start metrics collection
+  const _metricsInterval = processErrorHandler.startMetricsCollection(60000);
+  
+  // Clean up on shutdown
+  process.on('beforeExit', () => {
+    processErrorHandler.stopMetricsCollection();
+    server.cleanup();
+  });
+}
+
 server.run().catch((error) => {
   logger.error("Server startup error:", error);
-  process.exit(1);
+  if (process.env.NODE_ENV !== 'test') {
+    process.exit(1);
+  }
 });

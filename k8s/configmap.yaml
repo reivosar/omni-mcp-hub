@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: omni-mcp-hub-config
+  namespace: omni-mcp-hub
+data:
+  omni-config.yaml: |
+    agents: {}
+    settings:
+      security:
+        enabled: true
+        audit_logging: true
+        rate_limiting: true
+      monitoring:
+        enabled: true
+        metrics_port: 3099
+      github:
+        enabled: true
+        cache_ttl: 300000

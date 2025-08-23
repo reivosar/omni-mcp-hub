@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: omni-mcp-hub-service
+  namespace: omni-mcp-hub
+  labels:
+    app: omni-mcp-hub
+spec:
+  selector:
+    app: omni-mcp-hub
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3000
+  type: ClusterIP

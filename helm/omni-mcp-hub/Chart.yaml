@@ -1,0 +1,20 @@
+apiVersion: v2
+name: omni-mcp-hub
+description: A Helm chart for Omni MCP Hub - Universal MCP server for Claude Code integration
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - mcp
+  - claude
+  - ai
+  - server
+home: https://github.com/reivosar/omni-mcp-hub
+sources:
+  - https://github.com/reivosar/omni-mcp-hub
+maintainers:
+  - name: reivosar
+    url: https://github.com/reivosar
+icon: https://raw.githubusercontent.com/reivosar/omni-mcp-hub/main/docs/icon.png
+annotations:
+  category: Development

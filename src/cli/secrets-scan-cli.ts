@@ -58,13 +58,13 @@ async function main() {
       const stagedFiles = await getStagedFiles();
       if (stagedFiles.length === 0) {
         if (!options.quiet) {
-          console.log('✅ No staged files to scan');
+          console.log('No staged files to scan');
         }
         process.exit(0);
       }
       
       if (!options.quiet) {
-        console.log(`🔍 Scanning ${stagedFiles.length} staged files...`);
+        console.log(`Scanning ${stagedFiles.length} staged files...`);
       }
       
       result = await scanner.preCommitScan(stagedFiles);
@@ -74,7 +74,7 @@ async function main() {
       
       if (stats.isFile()) {
         if (!options.quiet) {
-          console.log(`🔍 Scanning file: ${scanPath}`);
+          console.log(`Scanning file: ${scanPath}`);
         }
         const findings = await scanner.scanFile(scanPath);
         result = {
@@ -85,7 +85,7 @@ async function main() {
         };
       } else {
         if (!options.quiet) {
-          console.log(`🔍 Scanning directory: ${scanPath}`);
+          console.log(`Scanning directory: ${scanPath}`);
         }
         result = await scanner.scanDirectory(scanPath);
       }
@@ -109,7 +109,7 @@ async function main() {
     if (options.output) {
       await fs.writeFile(options.output, report, 'utf-8');
       if (!options.quiet) {
-        console.log(`✅ Report saved to: ${options.output}`);
+        console.log(`Report saved to: ${options.output}`);
       }
     } else if (!options.quiet) {
       if (options.format === 'json') {
@@ -135,22 +135,22 @@ async function main() {
       });
 
       if (hasFailures) {
-        console.error(`\n❌ Found secrets with severity ${options.failOn} or higher`);
+        console.error(`\nFound secrets with severity ${options.failOn} or higher`);
         process.exit(1);
       }
     }
 
     // Exit with error if blocked
     if (result.blocked) {
-      console.error('\n❌ Critical secrets detected - operation blocked');
+      console.error('\nCritical secrets detected - operation blocked');
       process.exit(1);
     }
 
     if (!options.quiet) {
       if (result.findings.length === 0) {
-        console.log('\n✅ No secrets detected');
+        console.log('\nNo secrets detected');
       } else {
-        console.log(`\n⚠️  Found ${result.findings.length} potential secrets`);
+        console.log(`\nFound ${result.findings.length} potential secrets`);
       }
     }
 
@@ -172,7 +172,7 @@ function displayConsoleSummary(result: ScanResult) {
     console.log('\n=== Findings by Severity ===');
     
     if (grouped.critical?.length > 0) {
-      console.log(`❌ CRITICAL: ${grouped.critical.length}`);
+      console.log(`CRITICAL: ${grouped.critical.length}`);
       grouped.critical.slice(0, 3).forEach(f => {
         console.log(`  - ${f.type} in ${formatPath(f.file)}:${f.line}`);
       });
@@ -182,7 +182,7 @@ function displayConsoleSummary(result: ScanResult) {
     }
 
     if (grouped.high?.length > 0) {
-      console.log(`⚠️  HIGH: ${grouped.high.length}`);
+      console.log(`HIGH: ${grouped.high.length}`);
       grouped.high.slice(0, 3).forEach(f => {
         console.log(`  - ${f.type} in ${formatPath(f.file)}:${f.line}`);
       });
@@ -192,7 +192,7 @@ function displayConsoleSummary(result: ScanResult) {
     }
 
     if (grouped.medium?.length > 0) {
-      console.log(`🟡 MEDIUM: ${grouped.medium.length}`);
+      console.log(`MEDIUM: ${grouped.medium.length}`);
       grouped.medium.slice(0, 2).forEach(f => {
         console.log(`  - ${f.type} in ${formatPath(f.file)}:${f.line}`);
       });
@@ -202,7 +202,7 @@ function displayConsoleSummary(result: ScanResult) {
     }
 
     if (grouped.low?.length > 0) {
-      console.log(`🔵 LOW: ${grouped.low.length}`);
+      console.log(`LOW: ${grouped.low.length}`);
     }
   }
 }

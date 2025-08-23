@@ -146,62 +146,66 @@ Your main system instructions here...
 Memory context and information to remember...
 ```
 
-## YAML Configuration
+## Configuration
 
-The server supports advanced configuration via `omni-config.yaml` in your working directory. This enables:
+### Quick Start (< 10 lines)
 
-- **Auto-loading profiles** on startup
-- **File filtering** with exclude/include patterns
-- **Directory scanning** with depth control  
-- **Custom naming patterns** for profiles
-- **Logging control** for verbose output
-
-### Example Configuration
+The simplest configuration to get started:
 
 ```yaml
-# Auto-load profiles on startup
-autoLoad:
-  profiles:
-    - name: "lum"
-      path: "./examples/lum-behavior.md"
-      autoApply: true  # Note: See limitations below
+# omni-config.yaml
+profiles:
+  - name: "default"
+    path: "./profiles/default.md"
 
-# File scanning settings  
-fileSettings:
-  excludePatterns:
-    - "*.tmp"
-    - "node_modules/**"
-  allowedExtensions:
-    - ".md"
-    - ".txt"
-
-# Directory scanning
-directoryScanning:
-  recursive: true
-  maxDepth: 3
-
-# Logging
-logging:
-  level: "info"
-  verboseFileLoading: true
+externalServers:
+  - name: "filesystem"
+    command: "npx"
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
 ```
 
-See the `examples/` directory for ready-to-use character behaviors and `omni-config.yaml` for advanced configuration options.
+That's it! You're ready to use Claude Code with MCP.
 
-### Auto-Apply Limitations
+### Configuration Levels
 
-**Important**: The `autoApply: true` setting has limitations due to MCP architecture:
+Choose the configuration that fits your needs:
 
-- **Profiles are loaded but not automatically applied**: When the MCP server starts, it loads profiles marked with `autoApply: true` into memory, but cannot directly modify Claude's behavior.
-- **Manual application required**: You must run `/use apply_claude_config <profile>` in Claude Code to actually apply the behavior.
-- **MCP constraint**: MCP tools cannot directly modify Claude's system prompts or behavior - they can only return instructions that Claude chooses to follow.
+| Level | Lines | Use Case | Location |
+|-------|-------|----------|----------|
+| **Minimal** | < 10 | Getting started, prototypes | `omni-config.minimal.yaml` |
+| **Standard** | ~30 | Development teams | `/examples/standard/` |
+| **Advanced** | ~50 | Power users | `omni-config.advanced.yaml` |
+| **Enterprise** | 100+ | Production deployments | `/examples/enterprise/` |
 
-To apply a profile after starting Claude Code:
-```
-/use apply_claude_config lum-behavior
-```
+### Getting Started
 
-This is a fundamental limitation of the MCP protocol, not a bug in the implementation.
+1. **Start with minimal config**:
+   ```bash
+   cp omni-config.minimal.yaml omni-config.yaml
+   ```
+
+2. **Or choose from examples**:
+   ```bash
+   cp examples/minimal/omni-config.yaml .   # Simplest
+   cp examples/standard/omni-config.yaml .  # Recommended
+   cp examples/enterprise/omni-config.yaml . # Full features
+   ```
+
+3. **Apply profiles in Claude Code**:
+   ```
+   /use apply_claude_config default
+   /use list_claude_configs
+   /use get_applied_config
+   ```
+
+### Documentation
+
+- **Configuration Guide**: [docs/CONFIGURATION_GUIDE.md](./docs/CONFIGURATION_GUIDE.md)
+- **Migration Guide**: [docs/CONFIGURATION_MIGRATION.md](./docs/CONFIGURATION_MIGRATION.md)
+- **Schema**: [schemas/omni-config.schema.json](./schemas/omni-config.schema.json)
+- **Examples**: [examples/](./examples/) directory
+
+**Note**: MCP tools cannot automatically modify Claude's behavior - you must manually apply profiles using the commands above. This is a fundamental limitation of the MCP protocol.
 
 ## Development
 
@@ -299,7 +303,7 @@ All tests are written using **Vitest** with TypeScript support and provide compr
 - MCP resource handlers
 - Integration between all components
 
-**Test Coverage**: 89.66% (195 tests passing)
+**Test Coverage**: 81.05% (928/928 tests passing - 100% success rate)
 
 ## Scripts
 

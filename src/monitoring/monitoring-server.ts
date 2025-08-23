@@ -200,41 +200,26 @@ export class MonitoringServer {
   }
 
   private async routeRequest(path: string, req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
-    switch (path) {
-      case 'metrics':
-        await this.handleMetrics(req, res);
-        break;
-      
-      case 'health':
-        await this.handleHealth(req, res);
-        break;
-        
-      case 'health/ready':
-        await this.handleReadiness(req, res);
-        break;
-        
-      case 'health/live':
-        await this.handleLiveness(req, res);
-        break;
-        
-      case 'stats':
-        await this.handleStats(req, res);
-        break;
-        
-      case 'dashboard':
-        await this.handleDashboard(req, res);
-        break;
-        
-      case '':
-      case '/':
-        await this.handleRoot(req, res);
-        break;
-        
-      default:
-        this.sendResponse(res, 404, 'application/json', JSON.stringify({
-          error: 'Endpoint not found',
-          available: ['/metrics', '/health', '/health/ready', '/health/live', '/stats', '/dashboard']
-        }));
+    // Route mapping to reduce cyclomatic complexity
+    const routeHandlers: Record<string, (req: http.IncomingMessage, res: http.ServerResponse) => Promise<void>> = {
+      'metrics': (req, res) => this.handleMetrics(req, res),
+      'health': (req, res) => this.handleHealth(req, res),
+      'health/ready': (req, res) => this.handleReadiness(req, res),
+      'health/live': (req, res) => this.handleLiveness(req, res),
+      'stats': (req, res) => this.handleStats(req, res),
+      'dashboard': (req, res) => this.handleDashboard(req, res),
+      '': (req, res) => this.handleRoot(req, res),
+      '/': (req, res) => this.handleRoot(req, res)
+    };
+
+    const handler = routeHandlers[path];
+    if (handler) {
+      await handler(req, res);
+    } else {
+      this.sendResponse(res, 404, 'application/json', JSON.stringify({
+        error: 'Endpoint not found',
+        available: ['/metrics', '/health', '/health/ready', '/health/live', '/stats', '/dashboard']
+      }));
     }
   }
 

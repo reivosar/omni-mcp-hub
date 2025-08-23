@@ -74,7 +74,7 @@ Test memory content here.`;
       expect(config.project_name).toBe('Test Project');
       expect(config.description).toBe('A test configuration');
       expect(config.version).toBe('1.0.0');
-      expect(config.instructions).toBe('Test instructions here.');
+      expect(config.instructions).toEqual(['Test instructions here.']);
       expect(config.customInstructions).toHaveLength(2);
       expect(config.customInstructions?.[0]).toBe('- Custom instruction 1');
       expect(config.rules).toHaveLength(2);
@@ -104,7 +104,7 @@ Some instructions.`;
       const config = await manager.loadClaudeConfig(testFile);
       
       expect(config.project_name).toBe('Minimal Project');
-      expect(config.instructions).toBe('Some instructions.');
+      expect(config.instructions).toEqual(['Some instructions.']);
       expect(config.customInstructions || []).toEqual([]);
       expect(config.rules || []).toEqual([]);
       expect(config.knowledge || []).toEqual([]);
@@ -120,7 +120,7 @@ Some instructions.`;
         project_name: 'Saved Project',
         description: 'A saved configuration',
         version: '2.0.0',
-        instructions: 'Saved instructions',
+        instructions: ['Saved instructions'],
         customInstructions: ['Custom 1', 'Custom 2'],
         rules: ['Rule 1', 'Rule 2'],
         knowledge: ['Knowledge 1'],

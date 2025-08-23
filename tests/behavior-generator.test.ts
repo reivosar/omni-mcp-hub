@@ -5,7 +5,7 @@ describe('BehaviorGenerator', () => {
   describe('generateInstructions', () => {
     it('should generate complete behavior instructions', () => {
       const config = {
-        instructions: 'Main system instructions',
+        instructions: ['Main system instructions'],
         customInstructions: ['Custom instruction 1', 'Custom instruction 2'],
         rules: ['Rule 1', 'Rule 2'],
         context: ['Context info 1', 'Context info 2'],
@@ -34,7 +34,7 @@ describe('BehaviorGenerator', () => {
 
     it('should handle empty config sections gracefully', () => {
       const config = {
-        instructions: 'Only instructions',
+        instructions: ['Only instructions'],
         customInstructions: [],
         rules: undefined,
         context: undefined,
@@ -63,7 +63,7 @@ describe('BehaviorGenerator', () => {
 
     it('should handle only instructions', () => {
       const config = {
-        instructions: 'Just instructions'
+        instructions: ['Just instructions']
       };
 
       const result = BehaviorGenerator.generateInstructions(config);
@@ -97,7 +97,7 @@ describe('BehaviorGenerator', () => {
     it('should preserve order of sections', () => {
       const config = {
         memory: 'Memory',
-        instructions: 'Instructions',
+        instructions: ['Instructions'],
         tools: ['Tool'],
         customInstructions: ['Custom']
       };

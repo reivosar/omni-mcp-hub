@@ -1,4 +1,5 @@
 version: 2
+
 updates:
   # Enable version updates for npm
   - package-ecosystem: "npm"
@@ -6,44 +7,78 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "09:00"
-    open-pull-requests-limit: 5
+      time: "04:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
     reviewers:
       - "reivosar"
     assignees:
       - "reivosar"
-    commit-message:
-      prefix: "deps"
-      prefix-development: "deps-dev"
-      include: "scope"
     labels:
       - "dependencies"
-      - "auto-update"
-    # Group updates by dependency type
+      - "automated"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    versioning-strategy: "increase"
     groups:
+      production-dependencies:
+        dependency-type: "production"
+        patterns:
+          - "@*"
+        exclude-patterns:
+          - "@types/*"
+      development-dependencies:
+        dependency-type: "development"
+        patterns:
+          - "@types/*"
+          - "eslint*"
+          - "vitest*"
+          - "typescript"
       security-updates:
         patterns:
           - "*"
         update-types:
-          - "security-update"
-      minor-updates:
-        patterns:
-          - "*"
-        update-types:
-          - "version-update:semver-minor"
-      patch-updates:
-        patterns:
-          - "*"
-        update-types:
-          - "version-update:semver-patch"
+          - "security"
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "04:30"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
     reviewers:
+      - "reivosar"
+    assignees:
       - "reivosar"
     labels:
       - "github-actions"
       - "dependencies"
+      - "automated"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+
+  # Enable version updates for Docker
+  - package-ecosystem: "docker"
+    directory: "/docker"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "04:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "reivosar"
+    assignees:
+      - "reivosar"
+    labels:
+      - "docker"
+      - "dependencies"
+      - "automated"
+    commit-message:
+      prefix: "docker"
+      include: "scope"

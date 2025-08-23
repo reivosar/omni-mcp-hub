@@ -38,7 +38,7 @@ You are a helpful AI assistant.
 
       const config = manager.parseClaude(content);
       
-      expect(config.instructions).toBe('You are a helpful AI assistant.');
+      expect(config.instructions).toEqual(['You are a helpful AI assistant.']);
       expect(config.customInstructions).toEqual(['- Be concise', '- Use examples', '- Stay focused']);
       expect(config.knowledge).toEqual(['- Technical documentation', '- Best practices', '- Common patterns']);
     });
@@ -56,7 +56,7 @@ Basic instructions here.`;
       expect(config.project_name).toBe('Test Project');
       expect(config.description).toBe('A test project for validation');
       expect(config.version).toBe('1.0.0');
-      expect(config.instructions).toBe('Basic instructions here.');
+      expect(config.instructions).toEqual(['Basic instructions here.']);
     });
 
     it('should handle rules and guidelines sections', () => {
@@ -131,7 +131,7 @@ You are helpful.
 
       const config = manager.parseClaude(content);
       
-      expect(config.instructions).toBe('You are helpful.');
+      expect(config.instructions).toEqual(['You are helpful.']);
       expect(config.rules).toEqual(['- Be nice']);
     });
 
@@ -175,7 +175,7 @@ Snake case instructions.`;
       const config = manager.parseClaude(content);
       
       // system_instructions overwrites instructions (last section wins)
-      expect(config.instructions).toBe('Snake case instructions.');
+      expect(config.instructions).toEqual(['Snake case instructions.']);
       expect(config.customInstructions).toEqual(['Mixed case instructions.']);
     });
   });
@@ -192,7 +192,7 @@ Project Name: Test Project`;
 
       const config = await manager.loadClaudeConfig(filePath);
       
-      expect(config.instructions).toBe('You are a helpful assistant.');
+      expect(config.instructions).toEqual(['You are a helpful assistant.']);
       expect(config.project_name).toBe('Test Project');
       expect(config._filePath).toBe(path.resolve(filePath));
       expect(config._lastModified).toBeDefined();
@@ -253,7 +253,7 @@ Project Name: Test Project`;
     it('should save config to file successfully', async () => {
       const filePath = '/test/output/CLAUDE.md';
       const config: ClaudeConfig = {
-        instructions: 'You are helpful.',
+        instructions: ['You are helpful.'],
         customInstructions: ['Be concise', 'Use examples'],
         projectName: 'Test Project'
       };
@@ -272,7 +272,7 @@ Project Name: Test Project`;
     it('should update cache after saving', async () => {
       const filePath = '/test/output/CLAUDE.md';
       const config: ClaudeConfig = {
-        instructions: 'Cached after save.'
+        instructions: ['Cached after save.']
       };
 
       vi.mocked(fs.writeFile).mockResolvedValue(undefined);
@@ -284,13 +284,13 @@ Project Name: Test Project`;
       vi.clearAllMocks();
       const loadedConfig = await manager.loadClaudeConfig(filePath);
       
-      expect(loadedConfig.instructions).toBe('Cached after save.');
+      expect(loadedConfig.instructions).toEqual(['Cached after save.']);
       expect(fs.readFile).not.toHaveBeenCalled(); // Loaded from cache
     });
 
     it('should handle write errors', async () => {
       const filePath = '/readonly/CLAUDE.md';
-      const config: ClaudeConfig = { instructions: 'Test' };
+      const config: ClaudeConfig = { instructions: ['Test'] };
       const error = new Error('Permission denied');
 
       vi.mocked(fs.writeFile).mockRejectedValue(error);
@@ -304,7 +304,7 @@ Project Name: Test Project`;
     it('should convert config with project name', () => {
       const config: ClaudeConfig = {
         projectName: 'My Project',
-        instructions: 'You are helpful.'
+        instructions: ['You are helpful.']
       };
 
       // Access private method for testing
@@ -462,8 +462,8 @@ You are an advanced AI assistant with the following capabilities:
 
       const config = manager.parseClaude(content);
       
-      expect(config.instructions).toContain('You are an advanced AI assistant');
-      expect(config.instructions).toContain('- Code analysis and generation');
+      expect(config.instructions?.[0]).toContain('You are an advanced AI assistant');
+      expect(config.instructions?.join('\n')).toContain('- Code analysis and generation');
       expect(config.rules).toBeDefined();
       expect(Array.isArray(config.rules)).toBe(true);
       expect(config.rules!.length).toBeGreaterThan(0);

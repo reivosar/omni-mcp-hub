@@ -1,0 +1,199 @@
+# Default values for omni-mcp-hub.
+# This is a YAML-formatted file.
+# Declare variables to be substituted with their values.
+
+replicaCount: 2
+
+image:
+  repository: omni-mcp-hub
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: 
+  fsGroup: 1000
+  runAsNonRoot: true
+  runAsUser: 1000
+
+securityContext: 
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: omni-mcp-hub.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: omni-mcp-hub-tls
+  #    hosts:
+  #      - omni-mcp-hub.local
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /health  
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+# - name: foo
+#   secret:
+#     secretName: mysecret
+#     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+# - name: foo
+#   mountPath: "/etc/foo"
+#   readOnly: true
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Application configuration
+config:
+  # Main configuration file content
+  omniConfig: |
+    # Omni MCP Hub Configuration
+    server:
+      name: "Omni MCP Hub"
+      version: "1.0.0"
+    
+    # MCP Server configurations
+    mcpServers: {}
+    
+    # Auto-load profiles
+    autoLoad:
+      profiles: []
+    
+    # File settings
+    fileSettings:
+      configFiles:
+        claude: "CLAUDE.md"
+        behavior: "*-behavior.md"
+        custom: "*.claude.md"
+      includePaths:
+        - "/app/profiles"
+      excludePaths:
+        - "node_modules"
+        - ".git"
+        - "dist"
+      allowedExtensions:
+        - ".md"
+    
+    # Security settings
+    security:
+      enableSignatureVerification: false
+      trustedKeys: []
+    
+    # Logging
+    logging:
+      level: "info"
+      verboseFileLoading: false
+
+# Environment variables
+env:
+  NODE_ENV: production
+  PORT: "3000"
+
+# Additional environment variables from secrets
+envFrom: []
+
+# Persistent storage
+persistence:
+  enabled: false
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 1Gi
+  annotations: {}
+
+# Network policies
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# Monitoring
+monitoring:
+  enabled: false
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    path: /metrics
+    labels: {}
+
+# Backup configuration
+backup:
+  enabled: false
+  schedule: "0 2 * * *"
+  retention: 30
+  storage:
+    className: ""
+    size: 10Gi

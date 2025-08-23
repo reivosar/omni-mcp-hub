@@ -4,7 +4,9 @@
   "description": "Universal MCP server for Claude Code integration",
   "main": "dist/index.js",
   "bin": {
-    "omni-mcp-hub": "./dist/index.js"
+    "omni-mcp-hub": "./dist/index.js",
+    "omni-admin": "./dist/cli/admin-ui.js",
+    "omni-profile-admin": "./dist/cli/profile-admin.js"
   },
   "scripts": {
     "build": "tsc",
@@ -24,6 +26,9 @@
     "scan:secrets": "tsx src/cli/secrets-scan-cli.ts",
     "scan:secrets:pre-commit": "tsx src/cli/secrets-scan-cli.ts --pre-commit --fail-on high",
     "scan:secrets:ci": "tsx src/cli/secrets-scan-cli.ts --fail-on critical --output secrets-report.json",
+    "admin": "tsx src/cli/admin-ui.ts",
+    "admin:status": "tsx src/cli/admin-ui.ts status",
+    "profile:admin": "tsx src/cli/profile-admin.ts",
     "install:hooks": "git config core.hooksPath .githooks",
     "release": "semantic-release",
     "release:dry": "semantic-release --dry-run"
@@ -43,13 +48,16 @@
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.873.0",
     "@modelcontextprotocol/sdk": "^1.17.2",
+    "@types/inquirer": "^9.0.9",
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.2.1",
     "chalk": "^5.3.0",
+    "cli-table3": "^0.6.5",
     "commander": "^11.1.0",
     "express-jwt": "^8.5.1",
     "express-rate-limit": "^8.0.1",
+    "inquirer": "^12.9.3",
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
     "jwks-rsa": "^3.2.0",

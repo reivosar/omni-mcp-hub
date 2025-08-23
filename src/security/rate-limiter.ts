@@ -69,17 +69,33 @@ export class RateLimiter extends EventEmitter {
     super();
     this.logger = logger || new SilentLogger();
     
-    this.config = {
+    // Extract config initialization to reduce complexity
+    this.config = this.initializeConfig(config);
+
+    // Cleanup old records every minute
+    this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
+  }
+
+  /**
+   * Initialize rate limit configuration with defaults
+   */
+  private initializeConfig(config: RateLimitConfig): Required<RateLimitConfig> {
+    return {
       windowMs: config.windowMs || 60000, // 1 minute
       maxRequests: config.maxRequests || 100,
-      keyGenerator: config.keyGenerator || ((req: unknown) => (req as Record<string, unknown>)?.ip as string || (req as Record<string, unknown>)?.remoteAddress as string || 'unknown'),
+      keyGenerator: config.keyGenerator || this.defaultKeyGenerator,
       skipSuccessfulRequests: config.skipSuccessfulRequests || false,
       skipFailedRequests: config.skipFailedRequests || false,
       onLimitReached: config.onLimitReached || (() => {})
     };
+  }
 
-    // Cleanup old records every minute
-    this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
+  /**
+   * Default key generator function
+   */
+  private defaultKeyGenerator(req: unknown): string {
+    const request = req as Record<string, unknown>;
+    return (request?.ip as string) || (request?.remoteAddress as string) || 'unknown';
   }
 
   /**

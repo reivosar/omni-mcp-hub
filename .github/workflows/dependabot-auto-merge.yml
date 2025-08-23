@@ -114,7 +114,7 @@ jobs:
 Please review the changelog and breaking changes before merging.
 
 - [ ] Review changelog
-- [ ] Test locally
+- [ ] Test locally  
 - [ ] Update documentation if needed
 - [ ] Verify no breaking changes affect the codebase`
             });

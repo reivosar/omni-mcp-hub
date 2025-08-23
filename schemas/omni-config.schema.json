@@ -1,188 +1,280 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/reivosar/omni-mcp-hub/schemas/omni-config.schema.json",
-  "title": "Omni MCP Hub Configuration Schema",
-  "description": "Schema validation for Omni MCP Hub configuration files",
+  "$id": "https://github.com/reivosar/omni-mcp-hub/schemas/omni-config/v1.0.0",
+  "title": "Omni MCP Hub Configuration",
+  "description": "Configuration schema for Omni MCP Hub",
   "type": "object",
   "properties": {
-    "profiles": {
-      "type": "array",
-      "description": "List of profile configurations",
-      "items": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string", "minLength": 1 },
-          "path": { "type": "string", "minLength": 1 }
-        },
-        "required": ["name", "path"]
-      }
-    },
-    "externalServers": {
-      "oneOf": [
-        {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "name": { "type": "string", "minLength": 1 },
-              "command": { "type": "string", "minLength": 1 },
-              "args": { "type": "array", "items": { "type": "string" } },
-              "description": { "type": "string" },
-              "environment": { "type": "object" },
-              "workingDirectory": { "type": "string" }
-            },
-            "required": ["name", "command"]
-          }
-        },
-        {
-          "type": "object",
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "autoConnect": { "type": "boolean" },
-            "retry": {
-              "type": "object",
-              "properties": {
-                "maxAttempts": { "type": "integer", "minimum": 1 },
-                "delayMs": { "type": "integer", "minimum": 0 },
-                "backoffMultiplier": { "type": "number", "minimum": 1 }
-              }
-            },
-            "servers": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "name": { "type": "string", "minLength": 1 },
-                  "command": { "type": "string", "minLength": 1 },
-                  "args": { "type": "array", "items": { "type": "string" } },
-                  "description": { "type": "string" },
-                  "environment": { "type": "object" },
-                  "workingDirectory": { "type": "string" }
-                },
-                "required": ["name", "command"]
-              }
-            }
-          }
-        }
-      ]
-    },
-    "logging": {
-      "type": "object",
-      "properties": {
-        "level": {
-          "type": "string",
-          "enum": ["debug", "info", "warn", "error", "fatal"]
-        },
-        "verboseFileLoading": { "type": "boolean" },
-        "verboseProfileSwitching": { "type": "boolean" },
-        "structuredLogging": { "type": "boolean" },
-        "logFile": { "type": "string" }
-      }
-    },
     "autoLoad": {
       "type": "object",
+      "description": "Auto-load configuration profiles on startup",
       "properties": {
-        "enabled": { "type": "boolean" },
         "profiles": {
           "type": "array",
           "items": {
             "type": "object",
+            "required": ["name", "path"],
             "properties": {
-              "name": { "type": "string", "minLength": 1 },
-              "path": { "type": "string", "minLength": 1 },
-              "autoApply": { "type": "boolean" }
+              "name": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9-_]+$",
+                "description": "Profile name (alphanumeric, dash, underscore)"
+              },
+              "path": {
+                "type": "string",
+                "description": "Path to CLAUDE.md file"
+              },
+              "autoApply": {
+                "type": "boolean",
+                "default": false,
+                "description": "Whether to automatically apply this profile"
+              }
             },
-            "required": ["name", "path"]
+            "additionalProperties": false
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "fileSettings": {
       "type": "object",
+      "description": "File scanning and filtering settings",
       "properties": {
         "configFiles": {
           "type": "object",
           "properties": {
-            "claude": { "type": "string" },
-            "behavior": { "type": "string" },
-            "custom": { "type": "string" }
-          }
+            "claude": {
+              "type": "string",
+              "default": "CLAUDE.md"
+            },
+            "behavior": {
+              "type": "string",
+              "default": "*-behavior.md"
+            },
+            "custom": {
+              "type": "string",
+              "default": "*-config.md"
+            }
+          },
+          "additionalProperties": false
         },
         "includePaths": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          },
+          "description": "Directories to include when scanning"
         },
         "excludePatterns": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          },
+          "description": "Patterns to exclude from scanning"
         },
         "allowedExtensions": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string",
+            "pattern": "^\\.[a-zA-Z0-9]+$"
+          },
+          "description": "Allowed file extensions"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "directoryScanning": {
       "type": "object",
+      "description": "Directory scanning behavior configuration",
       "properties": {
-        "recursive": { "type": "boolean" },
-        "maxDepth": { "type": "integer", "minimum": 1 },
-        "includeHidden": { "type": "boolean" },
-        "followSymlinks": { "type": "boolean" }
-      }
+        "recursive": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to scan subdirectories recursively"
+        },
+        "maxDepth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 3,
+          "description": "Maximum directory depth to scan"
+        },
+        "includeHidden": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to include hidden files/directories"
+        },
+        "followSymlinks": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to follow symbolic links"
+        }
+      },
+      "additionalProperties": false
     },
     "profileManagement": {
       "type": "object",
+      "description": "Profile and configuration management settings",
       "properties": {
-        "allowDuplicateNames": { "type": "boolean" },
-        "autoNamePattern": { "type": "string" },
-        "defaultProfile": { "type": "string" }
-      }
-    },
-    "monitoring": {
-      "type": "object",
-      "properties": {
-        "enabled": { "type": "boolean" },
-        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
-        "healthEndpoints": { "type": "boolean" },
-        "prometheusMetrics": { "type": "boolean" }
-      }
-    },
-    "security": {
-      "type": "object",
-      "properties": {
-        "authentication": {
-          "type": "object",
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "jwtSecret": { "type": "string" },
-            "tokenExpiry": { "type": "string" }
-          }
+        "allowDuplicateNames": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow multiple profiles with the same name"
         },
-        "rbac": {
-          "type": "object",
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "defaultRole": { "type": "string" }
-          }
+        "autoNamePattern": {
+          "type": "string",
+          "default": "%filename%",
+          "description": "Pattern for auto-generating profile names"
         },
-        "rateLimit": {
-          "type": "object",
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "requestsPerMinute": { "type": "integer", "minimum": 1 }
-          }
-        },
-        "audit": {
-          "type": "object",
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "logPath": { "type": "string" }
-          }
+        "defaultProfile": {
+          "type": "string",
+          "default": "default",
+          "description": "Default profile name to use"
         }
-      }
+      },
+      "additionalProperties": false
+    },
+    "logging": {
+      "type": "object",
+      "description": "Logging configuration",
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["debug", "info", "warn", "error"],
+          "default": "info",
+          "description": "Log level"
+        },
+        "verboseFileLoading": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show detailed file loading messages"
+        },
+        "verboseProfileSwitching": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show profile switching messages"
+        }
+      },
+      "additionalProperties": false
+    },
+    "externalServers": {
+      "type": "object",
+      "description": "External MCP servers configuration",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether external servers are enabled"
+        },
+        "autoConnect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically connect to servers on startup"
+        },
+        "servers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "command", "args"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9-_]+$",
+                "description": "Server name (alphanumeric, dash, underscore)"
+              },
+              "command": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Command to start the server"
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Command arguments"
+              },
+              "env": {
+                "type": "object",
+                "patternProperties": {
+                  "^[A-Z_][A-Z0-9_]*$": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Environment variables"
+              },
+              "description": {
+                "type": "string",
+                "description": "Server description"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "retry": {
+          "type": "object",
+          "properties": {
+            "maxAttempts": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 3,
+              "description": "Maximum retry attempts"
+            },
+            "delayMs": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 10000,
+              "default": 1000,
+              "description": "Delay between retries in milliseconds"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   },
-  "required": ["profiles"],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "examples": [
+    {
+      "externalServers": {
+        "enabled": true,
+        "servers": [
+          {
+            "name": "filesystem",
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+            "description": "Local file operations"
+          }
+        ]
+      }
+    },
+    {
+      "autoLoad": {
+        "profiles": [
+          {
+            "name": "default",
+            "path": "./CLAUDE.md",
+            "autoApply": true
+          }
+        ]
+      },
+      "logging": {
+        "level": "debug",
+        "verboseFileLoading": true
+      },
+      "externalServers": {
+        "enabled": true,
+        "servers": [
+          {
+            "name": "filesystem",
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+          }
+        ]
+      }
+    }
+  ]
 }

@@ -5,6 +5,8 @@ import { fileURLToPath } from 'url';
 import { minimatch } from 'minimatch';
 import { ILogger, SilentLogger } from '../utils/logger.js';
 import { PathResolver } from '../utils/path-resolver.js';
+import { SchemaValidator, ValidationResult } from '../validation/schema-validator.js';
+import { defaultPathValidator, safeResolve } from '../utils/path-security.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -109,6 +111,7 @@ export class YamlConfigManager {
   private config: YamlConfig = DEFAULT_CONFIG;
   private configPath: string = '';
   private logger: ILogger;
+  private validator?: SchemaValidator;
 
   constructor(configPath?: string, logger?: ILogger) {
     if (configPath) {
@@ -118,14 +121,62 @@ export class YamlConfigManager {
   }
 
   /**
+   * Enable schema validation
+   */
+  async enableValidation(): Promise<void> {
+    if (!this.validator) {
+      this.validator = new SchemaValidator(this.logger);
+      await this.validator.initialize();
+    }
+  }
+
+  /**
+   * Validate configuration file
+   */
+  async validateConfig(configPath?: string): Promise<ValidationResult> {
+    if (!this.validator) {
+      await this.enableValidation();
+    }
+    
+    const yamlPath = configPath || this.configPath || this.findYamlConfigFile();
+    return this.validator!.validateConfig(yamlPath);
+  }
+
+  /**
    * Load YAML configuration file
    */
-  async loadYamlConfig(configPath?: string): Promise<YamlConfig> {
+  async loadYamlConfig(configPath?: string, options?: { validate?: boolean }): Promise<YamlConfig> {
     const yamlPath = configPath || this.configPath || this.findYamlConfigFile();
     
     try {
       const content = await fs.readFile(yamlPath, 'utf-8');
       const yamlData = yaml.load(content) as YamlConfig;
+      
+      // Perform validation if requested
+      if (options?.validate) {
+        try {
+          if (!this.validator) {
+            await this.enableValidation();
+          }
+          const validationResult = await this.validator!.validateConfig(yamlPath);
+          
+          if (!validationResult.valid) {
+            this.logger.warn(`Configuration validation failed for ${yamlPath}:`);
+            for (const error of validationResult.errors) {
+              this.logger.warn(`  - ${error.field}: ${error.message}`);
+            }
+          }
+          
+          if (validationResult.warnings.length > 0) {
+            this.logger.info(`Configuration warnings for ${yamlPath}:`);
+            for (const warning of validationResult.warnings) {
+              this.logger.info(`  - ${warning.field}: ${warning.message}`);
+            }
+          }
+        } catch (validationError) {
+          this.logger.warn(`Schema validation failed: ${validationError}`);
+        }
+      }
       
       // Merge with default configuration
       this.config = this.mergeConfig(DEFAULT_CONFIG, yamlData);
@@ -145,19 +196,27 @@ export class YamlConfigManager {
   }
 
   /**
-   * Auto-detect configuration file path
+   * Auto-detect configuration file path with security validation
    */
   private findYamlConfigFile(): string {
+    let configPath: string;
+    
     // Check for environment variable first
     if (process.env.OMNI_CONFIG_PATH) {
-      console.log(`[YAML-CONFIG] Using config from OMNI_CONFIG_PATH: ${process.env.OMNI_CONFIG_PATH}`);
-      return process.env.OMNI_CONFIG_PATH;
+      configPath = process.env.OMNI_CONFIG_PATH;
+      console.log(`[YAML-CONFIG] Using config from OMNI_CONFIG_PATH: ${configPath}`);
+      
+      // Validate environment-provided path
+      if (!defaultPathValidator.isPathSafe(configPath)) {
+        throw new Error(`OMNI_CONFIG_PATH contains dangerous patterns: ${configPath}`);
+      }
+    } else {
+      const pathResolver = PathResolver.getInstance();
+      configPath = pathResolver.resolveAbsolutePath('omni-config.yaml');
+      console.log(`[YAML-CONFIG] Looking for config file at: ${configPath}`);
+      console.log(`[YAML-CONFIG] Current working directory: ${process.cwd()}`);
     }
     
-    const pathResolver = PathResolver.getInstance();
-    const configPath = pathResolver.resolveAbsolutePath('omni-config.yaml');
-    console.log(`[YAML-CONFIG] Looking for config file at: ${configPath}`);
-    console.log(`[YAML-CONFIG] Current working directory: ${process.cwd()}`);
     return configPath;
   }
 
@@ -301,17 +360,32 @@ export class YamlConfigManager {
   }
 
   /**
-   * Check if directory should be included
+   * Check if directory should be included with security validation
    */
   shouldIncludeDirectory(dirPath: string): boolean {
+    // Validate directory path security
+    if (!defaultPathValidator.isPathSafe(dirPath)) {
+      if (this.config.logging?.verboseFileLoading) {
+        this.logger.debug(`⚠️ Directory path contains dangerous patterns: ${dirPath}`);
+      }
+      return false;
+    }
+    
     const includePaths = this.config.fileSettings?.includePaths || [];
     if (includePaths.length === 0) return true;
 
     return includePaths.some(includePath => {
-      const pathResolver = PathResolver.getInstance();
-      const resolvedIncludePath = pathResolver.resolveAbsolutePath(includePath);
-      const resolvedDirPath = pathResolver.resolveAbsolutePath(dirPath);
-      return resolvedDirPath.startsWith(resolvedIncludePath);
+      try {
+        const pathResolver = PathResolver.getInstance();
+        const resolvedIncludePath = pathResolver.resolveAbsolutePath(includePath);
+        const resolvedDirPath = pathResolver.resolveAbsolutePath(dirPath);
+        return resolvedDirPath.startsWith(resolvedIncludePath);
+      } catch (error) {
+        if (this.config.logging?.verboseFileLoading) {
+          this.logger.debug(`⚠️ Path resolution failed for include check: ${includePath} -> ${dirPath}`, error);
+        }
+        return false;
+      }
     });
   }
 
@@ -330,21 +404,38 @@ export class YamlConfigManager {
   }
 
   /**
-   * Save configuration file
+   * Save configuration file with security validation
    */
   async saveYamlConfig(configPath?: string): Promise<void> {
     const pathResolver = PathResolver.getInstance();
     const savePath = configPath || this.configPath || pathResolver.resolveAbsolutePath('omni-config.yaml');
-    const yamlContent = yaml.dump(this.config, {
-      indent: 2,
-      lineWidth: 80,
-      noRefs: true
-    });
-
-    await fs.writeFile(savePath, yamlContent, 'utf-8');
     
-    if (this.config.logging?.verboseFileLoading) {
-      this.logger.debug(`Saved YAML config: ${savePath}`);
+    // Validate save path security
+    if (!defaultPathValidator.isPathSafe(savePath)) {
+      throw new Error(`Configuration save path contains dangerous patterns: ${savePath}`);
+    }
+    
+    try {
+      // Ensure path is within allowed roots with flexible validation
+      safeResolve(savePath, {
+        allowAbsolutePaths: true,
+        allowedRoots: [process.cwd(), '/tmp', '/var/folders', '/private/var/folders'],
+        maxDepth: 20
+      });
+      
+      const yamlContent = yaml.dump(this.config, {
+        indent: 2,
+        lineWidth: 80,
+        noRefs: true
+      });
+
+      await fs.writeFile(savePath, yamlContent, 'utf-8');
+      
+      if (this.config.logging?.verboseFileLoading) {
+        this.logger.debug(`Saved YAML config: ${savePath}`);
+      }
+    } catch (error) {
+      throw new Error(`Failed to save YAML config to '${savePath}': ${error}`);
     }
   }
 
@@ -353,5 +444,37 @@ export class YamlConfigManager {
    */
   updateConfig(updates: Partial<YamlConfig>): void {
     this.config = this.mergeConfig(this.config, updates);
+  }
+
+  /**
+   * Perform dry-run validation
+   */
+  async dryRun(configPath?: string): Promise<import('../validation/schema-validator.js').DryRunResult> {
+    if (!this.validator) {
+      await this.enableValidation();
+    }
+    
+    const yamlPath = configPath || this.configPath || this.findYamlConfigFile();
+    return this.validator!.dryRun(yamlPath, this.config);
+  }
+
+  /**
+   * Format validation result for display
+   */
+  formatValidationResult(result: ValidationResult): string {
+    if (!this.validator) {
+      return 'Validator not initialized';
+    }
+    return this.validator.formatValidationResult(result);
+  }
+
+  /**
+   * Get validation instance (create if needed)
+   */
+  async getValidator(): Promise<SchemaValidator> {
+    if (!this.validator) {
+      await this.enableValidation();
+    }
+    return this.validator!;
   }
 }

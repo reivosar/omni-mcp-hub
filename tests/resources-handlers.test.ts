@@ -312,7 +312,7 @@ describe('ResourceHandlers', () => {
       
       const autoApplyResource = result.resources.find(r => r.uri === 'config://auto-apply');
       expect(autoApplyResource).toBeDefined();
-      expect(autoApplyResource!.name).toBe('🚀 Auto-Apply Instructions');
+      expect(autoApplyResource!.name).toBe('Auto-Apply Instructions');
       expect(autoApplyResource!.description).toContain('1 profile(s)');
     });
 

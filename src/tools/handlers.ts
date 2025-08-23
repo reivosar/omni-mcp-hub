@@ -13,6 +13,11 @@ import { MCPProxyManager } from "../mcp-proxy/manager.js";
 import { ILogger, SilentLogger } from "../utils/logger.js";
 import { ErrorHandler, createStandardErrorResponse } from "../utils/error-handler.js";
 
+// Interface for OmniMCPServer to replace 'any' type
+interface IOmniMCPServer {
+  setAppliedBehaviorInstructions(instructions: string): void;
+}
+
 export class ToolHandlers {
   private server: Server;
   private claudeConfigManager: ClaudeConfigManager;
@@ -23,19 +28,22 @@ export class ToolHandlers {
   private proxyManager?: MCPProxyManager;
   private logger: ILogger;
   private errorHandler: ErrorHandler;
+  private omniMCPServer?: IOmniMCPServer;
 
   constructor(
     server: Server,
     claudeConfigManager: ClaudeConfigManager,
     activeProfiles: Map<string, ClaudeConfig>,
     proxyManagerOrFileScanner?: MCPProxyManager | FileScanner,
-    logger?: ILogger
+    logger?: ILogger,
+    omniMCPServer?: IOmniMCPServer
   ) {
     this.server = server;
     this.claudeConfigManager = claudeConfigManager;
     this.activeProfiles = activeProfiles;
     this.logger = logger || new SilentLogger();
     this.errorHandler = ErrorHandler.getInstance(this.logger);
+    this.omniMCPServer = omniMCPServer;
     
     this.logger.debug('[TOOL-HANDLERS] Initializing ToolHandlers');
     this.logger.debug('[TOOL-HANDLERS] Active profiles count:', activeProfiles.size);
@@ -305,6 +313,13 @@ export class ToolHandlers {
         // If auto-apply is enabled
         if (autoApply) {
           const behaviorInstructions = BehaviorGenerator.generateInstructions(config!);
+          
+          // Actually apply the behavior instructions to the system
+          if (this.omniMCPServer && typeof this.omniMCPServer.setAppliedBehaviorInstructions === 'function') {
+            this.omniMCPServer.setAppliedBehaviorInstructions(behaviorInstructions);
+            this.logger.info('[APPLY-CLAUDE-CONFIG] Behavior instructions applied to system for profile:', profileName);
+          }
+          
           responseMessages.push(
             {
               type: "text" as const,
@@ -312,7 +327,7 @@ export class ToolHandlers {
             },
             {
               type: "text" as const,
-              text: behaviorInstructions,
+              text: "**PROFILE APPLIED TO SYSTEM**\n\nThe following behavior instructions are now active and will guide all responses:\n\n" + behaviorInstructions,
             }
           );
         } else {
@@ -461,6 +476,13 @@ export class ToolHandlers {
       this.logger.debug('[APPLY-CLAUDE-CONFIG] Auto-apply enabled, generating behavior instructions');
       const behaviorInstructions = BehaviorGenerator.generateInstructions(config);
       this.logger.debug('[APPLY-CLAUDE-CONFIG] Generated instructions length:', behaviorInstructions.length);
+      
+      // Actually apply the behavior instructions to the system
+      if (this.omniMCPServer && typeof this.omniMCPServer.setAppliedBehaviorInstructions === 'function') {
+        this.omniMCPServer.setAppliedBehaviorInstructions(behaviorInstructions);
+        this.logger.info('[APPLY-CLAUDE-CONFIG] Behavior instructions applied to system');
+      }
+      
       responseMessages.push(
         {
           type: "text" as const,
@@ -468,7 +490,7 @@ export class ToolHandlers {
         },
         {
           type: "text" as const,
-          text: behaviorInstructions,
+          text: "**PROFILE APPLIED TO SYSTEM**\n\nThe following behavior instructions are now active and will guide all responses:\n\n" + behaviorInstructions,
         }
       );
     } else {

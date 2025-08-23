@@ -399,10 +399,10 @@ export class ProfileSignatureVerifier {
   /**
    * Create a tamper-evident profile bundle
    */
-  public createBundle(profiles: { [name: string]: string }, privateKeyPem: string, keyId?: string): { profiles: { [name: string]: SignedProfile }; bundleSignature: string; bundleMetadata: { created: number; profileCount: number; version: string } } {
+  public createBundle(profiles: { [name: string]: string }, privateKeyPem: string, keyId?: string): { profiles: { [name: string]: SignedProfile }; bundleSignature: SignedProfile; bundleMetadata: { created: number; profileCount: number; version: string } } {
     const bundle = {
       profiles: {} as { [name: string]: SignedProfile },
-      bundleSignature: '',
+      bundleSignature: {} as SignedProfile,
       bundleMetadata: {
         created: Date.now(),
         profileCount: Object.keys(profiles).length,
@@ -418,7 +418,7 @@ export class ProfileSignatureVerifier {
     // Sign the entire bundle
     const bundleContent = JSON.stringify(bundle.profiles, Object.keys(bundle.profiles).sort());
     const bundleSignature = this.signProfile(bundleContent, privateKeyPem, keyId);
-    bundle.bundleSignature = bundleSignature.signature;
+    bundle.bundleSignature = bundleSignature;
 
     return bundle;
   }
@@ -426,9 +426,10 @@ export class ProfileSignatureVerifier {
   /**
    * Verify a profile bundle
    */
-  public verifyBundle(bundle: { profiles: { [name: string]: SignedProfile } }): { isValid: boolean; results: { [name: string]: VerificationResult } } {
+  public verifyBundle(bundle: { profiles: { [name: string]: SignedProfile }; bundleSignature?: SignedProfile }): { isValid: boolean; results: { [name: string]: VerificationResult }; bundleSignatureValid?: boolean } {
     const results: { [name: string]: VerificationResult } = {};
     let bundleValid = true;
+    let bundleSignatureValid: boolean | undefined;
 
     // Verify each profile in the bundle
     for (const [name, signedProfile] of Object.entries(bundle.profiles) as [string, SignedProfile][]) {
@@ -438,11 +439,33 @@ export class ProfileSignatureVerifier {
       }
     }
 
-    // TODO: Verify bundle signature if needed
+    // Verify bundle signature if present
+    if (bundle.bundleSignature) {
+      try {
+        // Reconstruct the bundle content that was signed
+        const bundleContent = JSON.stringify(bundle.profiles, Object.keys(bundle.profiles).sort());
+        
+        // Verify that the bundleSignature content matches the reconstructed content
+        if (bundle.bundleSignature.content === bundleContent) {
+          const bundleVerificationResult = this.verifyProfile(bundle.bundleSignature);
+          bundleSignatureValid = bundleVerificationResult.isValid;
+        } else {
+          bundleSignatureValid = false;
+        }
+        
+        if (!bundleSignatureValid) {
+          bundleValid = false;
+        }
+      } catch (_error) {
+        bundleSignatureValid = false;
+        bundleValid = false;
+      }
+    }
 
     return {
       isValid: bundleValid,
-      results
+      results,
+      bundleSignatureValid
     };
   }
 }

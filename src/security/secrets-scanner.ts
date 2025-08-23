@@ -565,7 +565,7 @@ export class SecretsScanner {
     report += `**Total Findings:** ${findings.length}\n\n`;
     
     if (findings.length === 0) {
-      report += '✅ No secrets detected\n';
+      report += 'No secrets detected\n';
       return report;
     }
     
@@ -607,7 +607,7 @@ export class SecretsScanner {
   <p><strong>Scan Date:</strong> ${new Date().toISOString()}</p>
   <p><strong>Total Findings:</strong> ${findings.length}</p>
   
-  ${findings.length === 0 ? '<p style="color: green;">✅ No secrets detected</p>' : ''}
+  ${findings.length === 0 ? '<p style="color: green;">No secrets detected</p>' : ''}
   
   ${findings.map(f => `
     <div class="finding">

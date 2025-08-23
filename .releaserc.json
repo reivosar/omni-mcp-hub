@@ -20,16 +20,16 @@
         "preset": "conventional",
         "presetConfig": {
           "types": [
-            {"type": "feat", "section": "✨ Features", "hidden": false},
-            {"type": "fix", "section": "🐛 Bug Fixes", "hidden": false},
-            {"type": "perf", "section": "⚡ Performance", "hidden": false},
-            {"type": "security", "section": "🔒 Security", "hidden": false},
-            {"type": "docs", "section": "📖 Documentation", "hidden": false},
-            {"type": "test", "section": "🧪 Tests", "hidden": false},
-            {"type": "refactor", "section": "♻️ Refactoring", "hidden": false},
-            {"type": "ci", "section": "👷 CI/CD", "hidden": false},
-            {"type": "build", "section": "📦 Build", "hidden": false},
-            {"type": "chore", "section": "🔧 Maintenance", "hidden": true}
+            {"type": "feat", "section": "Features", "hidden": false},
+            {"type": "fix", "section": "Bug Fixes", "hidden": false},
+            {"type": "perf", "section": "Performance", "hidden": false},
+            {"type": "security", "section": "Security", "hidden": false},
+            {"type": "docs", "section": "Documentation", "hidden": false},
+            {"type": "test", "section": "Tests", "hidden": false},
+            {"type": "refactor", "section": "Refactoring", "hidden": false},
+            {"type": "ci", "section": "CI/CD", "hidden": false},
+            {"type": "build", "section": "Build", "hidden": false},
+            {"type": "chore", "section": "Maintenance", "hidden": true}
           ]
         }
       }
@@ -54,8 +54,8 @@
           {"path": "dist/*.tgz", "label": "Distribution Archive"},
           {"path": "CHANGELOG.md", "label": "Changelog"}
         ],
-        "successComment": "🎉 This ${issue.pull_request ? 'PR is included' : 'issue has been resolved'} in version ${nextRelease.version}. The release is available on [GitHub release](${releases.filter(release => !!release.id)[0].url})",
-        "failTitle": "❌ The automated release failed",
+        "successComment": "This ${issue.pull_request ? 'PR is included' : 'issue has been resolved'} in version ${nextRelease.version}. The release is available on [GitHub release](${releases.filter(release => !!release.id)[0].url})",
+        "failTitle": "The automated release failed",
         "failComment": "The automated release from the `${branch.name}` branch failed. See the [workflow run](${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}) for details.",
         "labels": ["released"],
         "assignees": ["${env.GITHUB_ACTOR}"]

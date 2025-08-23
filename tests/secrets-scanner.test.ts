@@ -427,7 +427,6 @@ b3BlbnNzaC1rZXktdjEA...
       const report = scanner.generateReport([], 'markdown');
       
       expect(report).toContain('No secrets detected');
-      expect(report).toContain('✅');
     });
   });
 

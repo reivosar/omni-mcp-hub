@@ -55,7 +55,7 @@ class ProfileAdminCLI {
   }
 
   public listProfiles(): void {
-    console.log('\n📋 Registered Profiles:\n');
+    console.log('\nRegistered Profiles:\n');
     if (this.profiles.size === 0) {
       console.log('No profiles found.');
       return;
@@ -78,7 +78,7 @@ class ProfileAdminCLI {
     const resolvedPath = path.resolve(profilePath);
     
     if (!fs.existsSync(resolvedPath)) {
-      console.error(`❌ Error: File not found: ${resolvedPath}`);
+      console.error(`Error: File not found: ${resolvedPath}`);
       process.exit(1);
     }
 
@@ -96,42 +96,42 @@ class ProfileAdminCLI {
     this.profiles.set(name, profile);
     this.saveProfiles();
     
-    console.log(`✅ Profile '${name}' added successfully`);
+    console.log(`Profile '${name}' added successfully`);
     console.log(`   Checksum: ${checksum.substring(0, 16)}...`);
   }
 
   public removeProfile(name: string): void {
     if (!this.profiles.has(name)) {
-      console.error(`❌ Error: Profile '${name}' not found`);
+      console.error(`Error: Profile '${name}' not found`);
       process.exit(1);
     }
 
     this.profiles.delete(name);
     this.saveProfiles();
     
-    console.log(`✅ Profile '${name}' removed successfully`);
+    console.log(`Profile '${name}' removed successfully`);
   }
 
   public verifyProfile(name: string): void {
     const profile = this.profiles.get(name);
     
     if (!profile) {
-      console.error(`❌ Error: Profile '${name}' not found`);
+      console.error(`Error: Profile '${name}' not found`);
       process.exit(1);
     }
 
     if (!fs.existsSync(profile.path)) {
-      console.error(`❌ Error: Profile file not found: ${profile.path}`);
+      console.error(`Error: Profile file not found: ${profile.path}`);
       process.exit(1);
     }
 
     const currentChecksum = this.calculateChecksum(profile.path);
     
     if (profile.checksum === currentChecksum) {
-      console.log(`✅ Profile '${name}' integrity verified`);
+      console.log(`Profile '${name}' integrity verified`);
       console.log(`   Checksum: ${currentChecksum.substring(0, 16)}...`);
     } else {
-      console.error(`⚠️  Warning: Profile '${name}' has been modified`);
+      console.error(`Warning: Profile '${name}' has been modified`);
       console.error(`   Expected: ${profile.checksum?.substring(0, 16)}...`);
       console.error(`   Actual:   ${currentChecksum.substring(0, 16)}...`);
     }
@@ -141,14 +141,14 @@ class ProfileAdminCLI {
     const profile = this.profiles.get(name);
     
     if (!profile) {
-      console.error(`❌ Error: Profile '${name}' not found`);
+      console.error(`Error: Profile '${name}' not found`);
       process.exit(1);
     }
 
     if (newPath) {
       const resolvedPath = path.resolve(newPath);
       if (!fs.existsSync(resolvedPath)) {
-        console.error(`❌ Error: File not found: ${resolvedPath}`);
+        console.error(`Error: File not found: ${resolvedPath}`);
         process.exit(1);
       }
       profile.path = resolvedPath;
@@ -163,7 +163,7 @@ class ProfileAdminCLI {
     this.profiles.set(name, profile);
     this.saveProfiles();
     
-    console.log(`✅ Profile '${name}' updated successfully`);
+    console.log(`Profile '${name}' updated successfully`);
   }
 
   public exportProfiles(outputPath: string): void {
@@ -173,19 +173,19 @@ class ProfileAdminCLI {
     };
     
     fs.writeFileSync(outputPath, JSON.stringify(exportData, null, 2));
-    console.log(`✅ Exported ${this.profiles.size} profiles to ${outputPath}`);
+    console.log(`Exported ${this.profiles.size} profiles to ${outputPath}`);
   }
 
   public importProfiles(inputPath: string): void {
     if (!fs.existsSync(inputPath)) {
-      console.error(`❌ Error: File not found: ${inputPath}`);
+      console.error(`Error: File not found: ${inputPath}`);
       process.exit(1);
     }
 
     const importData = JSON.parse(fs.readFileSync(inputPath, 'utf-8'));
     
     if (!importData.profiles || !Array.isArray(importData.profiles)) {
-      console.error('❌ Error: Invalid import file format');
+      console.error('Error: Invalid import file format');
       process.exit(1);
     }
 
@@ -196,7 +196,7 @@ class ProfileAdminCLI {
     });
 
     this.saveProfiles();
-    console.log(`✅ Imported ${imported} profiles`);
+    console.log(`Imported ${imported} profiles`);
   }
 }
 

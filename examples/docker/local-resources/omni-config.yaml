@@ -1,0 +1,53 @@
+# Docker Local Resources Configuration
+# Docker environment with profile management focus
+
+autoLoad:
+  profiles:
+    - name: "dev-assistant"
+      path: "dev-assistant.md"
+      autoApply: false
+    - name: "code-reviewer"
+      path: "code-reviewer.md"
+      autoApply: false
+
+fileSettings:
+  configFiles:
+    claude: "CLAUDE.md"
+    behavior: "*-assistant.md"
+    custom: "*-reviewer.md"
+  includePaths:
+    - "."
+  excludePatterns:
+    - "*.tmp"
+    - "*.backup"
+    - "*~"
+  allowedExtensions:
+    - ".md"
+    - ".markdown"
+    - ".txt"
+
+directoryScanning:
+  recursive: true
+  maxDepth: 3
+  includeHidden: false
+  followSymlinks: false
+
+profileManagement:
+  allowDuplicateNames: false
+  autoNamePattern: "%filename%"
+  defaultProfile: "default"
+
+logging:
+  level: "info"
+  verboseFileLoading: true
+  verboseProfileSwitching: false
+
+# Minimal servers for Docker environment
+externalServers:
+  enabled: true
+  autoConnect: true
+  servers:
+    - name: "filesystem"
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "/app"]
+      description: "File system operations in Docker container"

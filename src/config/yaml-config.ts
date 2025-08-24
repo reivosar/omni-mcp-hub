@@ -21,6 +21,8 @@ export interface ExternalServerConfig {
 
 // YAML configuration file type definitions
 export interface YamlConfig {
+  mode?: 'minimal' | 'standard' | 'advanced';
+  preset?: 'claude-basic' | 'claude-enterprise' | 'custom';
   autoLoad?: {
     profiles?: Array<{
       name: string;
@@ -67,6 +69,8 @@ export interface YamlConfig {
 
 // Default configuration
 const DEFAULT_CONFIG: YamlConfig = {
+  mode: 'minimal',
+  preset: 'claude-basic',
   autoLoad: {
     profiles: []
   },

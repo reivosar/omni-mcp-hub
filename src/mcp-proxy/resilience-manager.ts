@@ -17,8 +17,7 @@ import {
   ResilientMCPConnection, 
   ConnectionState, 
   ConnectionStats, 
-  ResilienceConfig,
-  HealthCheckStrategy 
+  ResilienceConfig 
 } from './resilience.js';
 
 // Load balancing strategies

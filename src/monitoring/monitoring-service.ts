@@ -60,7 +60,7 @@ export interface ComponentStatus {
   status: 'starting' | 'running' | 'stopped' | 'error';
   lastActivity: number;
   errorCount: number;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 export interface AlertNotification {
@@ -403,11 +403,23 @@ export class MonitoringService extends EventEmitter {
   /**
    * Handle alerts from metrics collector
    */
-  private handleAlert(alert: any): void {
+  private handleAlert(alert: {
+    severity: string;
+    message: string;
+    component?: string;
+    source?: string;
+    rule?: {
+      severity?: string;
+      name?: string;
+      metric?: string;
+      threshold?: number;
+    };
+    value?: number;
+  }): void {
     const notification: AlertNotification = {
       id: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: Date.now(),
-      severity: alert.rule?.severity || 'medium',
+      severity: (alert.rule?.severity as 'critical' | 'high' | 'medium' | 'low') || 'medium',
       title: `Alert: ${alert.rule?.name || 'Unknown'}`,
       message: alert.message,
       component: 'metrics',
@@ -433,15 +445,23 @@ export class MonitoringService extends EventEmitter {
   /**
    * Handle critical alerts from health checker
    */
-  private handleCriticalAlert(data: any): void {
+  private handleCriticalAlert(data: {
+    component: string;
+    message: string;
+    details?: Record<string, unknown>;
+    check?: string;
+    result?: {
+      message?: string;
+    };
+  }): void {
     const notification: AlertNotification = {
       id: `critical_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: Date.now(),
       severity: 'critical',
-      title: `Critical Health Check Failure: ${data.check}`,
+      title: `Critical Health Check Failure: ${data.check || 'Unknown'}`,
       message: data.result?.message || 'Critical health check failed',
       component: 'health',
-      tags: { check: data.check }
+      tags: data.check ? { check: data.check } : undefined
     };
 
     this.alertHistory.push(notification);
@@ -538,7 +558,7 @@ export class MonitoringService extends EventEmitter {
   /**
    * Analyze performance metrics and generate insights
    */
-  private analyzePerformance(metrics: PerformanceMetrics, health: SystemHealth): PerformanceInsight[] {
+  private analyzePerformance(metrics: PerformanceMetrics, _health: SystemHealth): PerformanceInsight[] {
     const insights: PerformanceInsight[] = [];
 
     // Memory usage analysis
@@ -625,7 +645,7 @@ export class MonitoringService extends EventEmitter {
   private updateComponentStatus(
     component: keyof MonitoringStatus['components'],
     status: ComponentStatus['status'],
-    details?: Record<string, any>
+    details?: Record<string, unknown>
   ): void {
     this.status.components[component].status = status;
     this.status.components[component].lastActivity = Date.now();

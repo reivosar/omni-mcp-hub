@@ -20,7 +20,7 @@ export interface HealthCheckResult {
   message: string;
   timestamp: number;
   duration: number;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 export enum HealthStatus {
@@ -221,7 +221,7 @@ export class HealthChecker extends EventEmitter {
     this.logger.info('Stopping health checker...');
 
     // Stop all check intervals
-    for (const [name, interval] of this.checkIntervals) {
+    for (const [_name, interval] of this.checkIntervals) {
       clearInterval(interval);
     }
     this.checkIntervals.clear();
@@ -423,7 +423,7 @@ export class HealthChecker extends EventEmitter {
   /**
    * Execute HTTP health check
    */
-  private async executeHttpCheck(checkDef: HealthCheckDefinition): Promise<HealthCheckResult> {
+  private async executeHttpCheck(_checkDef: HealthCheckDefinition): Promise<HealthCheckResult> {
     // Implementation would depend on actual HTTP checking logic
     throw new Error('HTTP health checks not implemented yet');
   }
@@ -431,7 +431,7 @@ export class HealthChecker extends EventEmitter {
   /**
    * Execute TCP health check
    */
-  private async executeTcpCheck(checkDef: HealthCheckDefinition): Promise<HealthCheckResult> {
+  private async executeTcpCheck(_checkDef: HealthCheckDefinition): Promise<HealthCheckResult> {
     // Implementation would depend on actual TCP checking logic
     throw new Error('TCP health checks not implemented yet');
   }

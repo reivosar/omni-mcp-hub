@@ -14,8 +14,16 @@
 import { program } from 'commander';
 import chalk from 'chalk';
 import { promises as fs } from 'fs';
-import * as path from 'path';
-import { MonitoringService, MonitoringServiceConfig } from '../monitoring/monitoring-service.js';
+import { 
+  MonitoringService, 
+  MonitoringServiceConfig,
+  MonitoringStatus,
+  AlertNotification,
+  PerformanceReport,
+  PerformanceInsight
+} from '../monitoring/monitoring-service.js';
+import { PerformanceMetrics } from '../monitoring/metrics-collector.js';
+import { SystemHealth } from '../monitoring/health-checker.js';
 import { Logger } from '../utils/logger.js';
 
 interface MonitoringCLIOptions {
@@ -138,7 +146,9 @@ class MonitoringCLI {
       }
 
       // Display status in table format
-      this.displayStatus(status, metrics, health);
+      if (metrics && health) {
+        this.displayStatus(status, metrics, health);
+      }
       
     } catch (error) {
       console.error(chalk.red('❌ Failed to get monitoring status:'), error);
@@ -358,7 +368,7 @@ class MonitoringCLI {
       const configFile = await fs.readFile(configPath, 'utf-8');
       const userConfig = JSON.parse(configFile);
       return { ...defaultConfig, ...userConfig };
-    } catch (error) {
+    } catch (_error) {
       console.log(chalk.yellow(`⚠️  Could not load config from ${configPath}, using defaults`));
       return defaultConfig;
     }
@@ -399,14 +409,14 @@ class MonitoringCLI {
   /**
    * Display monitoring status
    */
-  private displayStatus(status: any, metrics: any, health: any): void {
+  private displayStatus(status: MonitoringStatus, metrics: PerformanceMetrics, health: SystemHealth): void {
     console.log(chalk.cyan('Service Status:'));
     console.log(`  Enabled: ${status.enabled ? chalk.green('✅ Yes') : chalk.red('❌ No')}`);
     console.log(`  Uptime: ${Math.round(status.uptime / 1000)}s`);
     console.log(`  Last Update: ${new Date(status.lastUpdate).toLocaleString()}\n`);
 
     console.log(chalk.cyan('Components:'));
-    Object.entries(status.components).forEach(([name, comp]: [string, any]) => {
+    Object.entries(status.components).forEach(([name, comp]) => {
       const statusIcons: Record<string, string> = {
         running: '🟢',
         stopped: '🔴',
@@ -434,7 +444,7 @@ class MonitoringCLI {
   /**
    * Display metrics in table format
    */
-  private displayMetrics(metrics: any): void {
+  private displayMetrics(metrics: PerformanceMetrics): void {
     const sections = [
       {
         title: 'Request Metrics',
@@ -478,16 +488,20 @@ class MonitoringCLI {
   /**
    * Display health status
    */
-  private displayHealth(health: any): void {
+  private displayHealth(health: SystemHealth): void {
     console.log(`Overall Status: ${this.getHealthIcon(health.status)} ${chalk.bold(health.status.toUpperCase())}\n`);
 
     console.log(chalk.cyan('Component Health:'));
-    Object.entries(health.components).forEach(([name, component]: [string, any]) => {
+    Object.entries(health.components).forEach(([name, component]) => {
       const icon = this.getHealthIcon(component.status);
       console.log(`  ${name}: ${icon} ${component.status}`);
       
       if (component.checks && component.checks.length > 0) {
-        component.checks.slice(-3).forEach((check: any) => {
+        component.checks.slice(-3).forEach((check: {
+          name: string;
+          status: string;
+          message: string;
+        }) => {
           const checkIcon = this.getHealthIcon(check.status);
           console.log(`    ${check.name}: ${checkIcon} ${check.message}`);
         });
@@ -505,7 +519,7 @@ class MonitoringCLI {
   /**
    * Display alerts
    */
-  private displayAlerts(alerts: any[], severityFilter?: string): void {
+  private displayAlerts(alerts: AlertNotification[], severityFilter?: string): void {
     const filteredAlerts = severityFilter ? 
       alerts.filter(alert => alert.severity === severityFilter) : 
       alerts;
@@ -542,14 +556,14 @@ class MonitoringCLI {
   /**
    * Display performance report
    */
-  private displayPerformanceReport(report: any): void {
+  private displayPerformanceReport(report: PerformanceReport): void {
     console.log(chalk.blue.bold('📊 Performance Report'));
     console.log(chalk.gray(`Generated: ${new Date(report.timestamp).toLocaleString()}`));
     console.log(chalk.gray(`Analysis Duration: ${report.duration}ms\n`));
 
     if (report.insights.length > 0) {
       console.log(chalk.cyan('🔍 Performance Insights:'));
-      report.insights.forEach((insight: any) => {
+      report.insights.forEach((insight: PerformanceInsight) => {
         const severityIcons: Record<string, string> = {
           info: '💡',
           warning: '⚠️',
@@ -557,7 +571,7 @@ class MonitoringCLI {
         };
         const severityIcon = severityIcons[insight.severity] || 'ℹ️';
         
-        console.log(`  ${severityIcon} [${insight.category.toUpperCase()}] ${insight.message}`);
+        console.log(`  ${severityIcon} [${insight.category?.toUpperCase() || 'GENERAL'}] ${insight.message}`);
         if (insight.trend) {
           const trendIcons: Record<string, string> = {
             improving: '📈',

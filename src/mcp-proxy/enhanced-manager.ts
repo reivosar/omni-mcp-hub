@@ -15,7 +15,7 @@ import { ExternalServerConfig } from "./client.js";
 import { ResilienceConfig, HealthCheckStrategy } from "./resilience.js";
 import { YamlConfigManager } from "../config/yaml-config.js";
 import { ILogger, SilentLogger } from "../utils/logger.js";
-import { Tool, Resource, CallToolResult, ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
+import { CallToolResult, ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 
 export interface EnhancedManagerConfig {
   // Legacy compatibility
@@ -505,7 +505,7 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
     return null;
   }
   
-  private getServerInfo(serverName: string): ExternalServerConfig | null {
+  private getServerInfo(_serverName: string): ExternalServerConfig | null {
     // This would need to be implemented based on how server configs are stored
     // For now, return null as placeholder
     return null;
@@ -522,9 +522,9 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
     
     // Cleanup legacy connections (if cleanup method exists)
     try {
-      const baseManager = this as MCPProxyManager;
-      if (typeof (baseManager as any).cleanup === 'function') {
-        (baseManager as any).cleanup();
+      const baseManager = this as MCPProxyManager & { cleanup?: () => void };
+      if (typeof baseManager.cleanup === 'function') {
+        baseManager.cleanup();
       }
     } catch (error) {
       this.enhancedLogger.warn('[ENHANCED-MGR] Legacy cleanup error:', error);

@@ -15,7 +15,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { EventEmitter } from 'events';
 import { Logger } from '../utils/logger.js';
 import { MetricsCollector, PerformanceMetrics } from './metrics-collector.js';
-import { HealthChecker, SystemHealth, HealthStatus } from './health-checker.js';
+import { HealthChecker, SystemHealth } from './health-checker.js';
 
 export interface DashboardConfig {
   enabled: boolean;
@@ -72,7 +72,14 @@ export interface SystemInfo {
   hostname: string;
   uptime: number;
   loadAverage: number[];
-  networkInterfaces: any;
+  networkInterfaces: Record<string, Array<{
+    address: string;
+    netmask: string;
+    family: string;
+    mac: string;
+    internal: boolean;
+    cidr: string | null;
+  }>>;
   environment: Record<string, string>;
 }
 
@@ -461,7 +468,12 @@ export class MonitoringDashboard extends EventEmitter {
   /**
    * Handle WebSocket messages
    */
-  private handleWebSocketMessage(ws: WebSocket, message: any): void {
+  private handleWebSocketMessage(ws: WebSocket, message: {
+    type: string;
+    payload?: unknown;
+    metric?: string;
+    timeRange?: number;
+  }): void {
     switch (message.type) {
       case 'subscribe':
         // Handle subscription to specific metrics
@@ -470,7 +482,9 @@ export class MonitoringDashboard extends EventEmitter {
         // Handle unsubscription
         break;
       case 'get-history':
-        this.sendHistoryToWebSocket(ws, message.metric, message.timeRange);
+        if (message.metric && message.timeRange) {
+          this.sendHistoryToWebSocket(ws, message.metric, message.timeRange);
+        }
         break;
       default:
         this.logger.warn('Unknown WebSocket message type:', message.type);
@@ -496,7 +510,7 @@ export class MonitoringDashboard extends EventEmitter {
   /**
    * Send WebSocket message
    */
-  private sendWebSocketMessage(ws: WebSocket, message: any): void {
+  private sendWebSocketMessage(ws: WebSocket, message: Record<string, unknown>): void {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(message));
     }
@@ -526,7 +540,12 @@ export class MonitoringDashboard extends EventEmitter {
   /**
    * Broadcast alert to all connected clients
    */
-  private broadcastAlert(alertData: any): void {
+  private broadcastAlert(alertData: {
+    severity: string;
+    message: string;
+    timestamp: number;
+    component?: string;
+  }): void {
     const alert = {
       type: 'alert',
       timestamp: Date.now(),

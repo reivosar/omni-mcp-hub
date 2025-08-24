@@ -275,8 +275,8 @@ class ManualApplyManager {
       try {
         const profileInfo = await this.analyzeProfile(file.path);
         profiles.push(profileInfo);
-      } catch (error) {
-        this.logger.warn(`Failed to analyze profile ${file.path}:`, error);
+      } catch (_error) {
+        this.logger.warn(`Failed to analyze profile ${file.path}:`, _error);
       }
     }
 
@@ -325,6 +325,7 @@ class ManualApplyManager {
   /**
    * Generate a human-readable summary of the profile
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private generateProfileSummary(config: any): string {
     const parts: string[] = [];
     
@@ -350,6 +351,7 @@ class ManualApplyManager {
   /**
    * Validate profile content and return warnings
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private validateProfileContent(config: any, content: string): string[] {
     const warnings: string[] = [];
     
@@ -478,7 +480,7 @@ class ManualApplyManager {
       const preview = content.substring(0, 300);
       console.log('\nContent preview:');
       console.log(chalk.gray(preview + (content.length > 300 ? '...' : '')));
-    } catch (error) {
+    } catch (_error) {
       console.log(chalk.red('Failed to read profile content'));
     }
 
@@ -514,13 +516,13 @@ class ManualApplyManager {
           result.errors.forEach(e => console.log(chalk.red(`   • ${e}`)));
         }
 
-      } catch (error) {
-        console.log(chalk.red(`💥 ${profile.name} application failed: ${error}`));
+      } catch (_error) {
+        console.log(chalk.red(`💥 ${profile.name} application failed: ${_error}`));
         results.push({
           success: false,
           profile: profile.name,
           warnings: [],
-          errors: [(error as Error).message],
+          errors: [(_error as Error).message],
           duration: 0
         });
       }
@@ -694,7 +696,7 @@ class ManualApplyManager {
   private async performUndo(applyResult: ApplyResult): Promise<void> {
     if (applyResult.backupPath && await this.fileExists(applyResult.backupPath)) {
       // Restore from backup
-      const backupData = JSON.parse(await fs.readFile(applyResult.backupPath, 'utf-8'));
+      const _backupData = JSON.parse(await fs.readFile(applyResult.backupPath, 'utf-8'));
       // Restore the previous state (implementation would depend on actual state storage)
       console.log(chalk.blue('Restoring from backup...'));
     } else {

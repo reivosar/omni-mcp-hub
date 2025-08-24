@@ -486,7 +486,7 @@ export class ResilientMCPConnection extends EventEmitter {
   }
   
   private async performHealthCheck(): Promise<boolean> {
-    const startTime = Date.now();
+    // const _startTime = Date.now();
     
     try {
       let isHealthy = false;

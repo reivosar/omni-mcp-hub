@@ -315,9 +315,9 @@ logging:
       
       const report = await validator.generateDoctorReport(configPath);
       
-      expect(report).toContain('🔍 Omni MCP Hub Configuration Doctor');
-      expect(report).toContain('✅ Status: HEALTHY');
-      expect(report).toContain('🎉 Your configuration is in perfect health!');
+      expect(report).toContain('INSIGHTS Omni MCP Hub Configuration Doctor');
+      expect(report).toContain('SUCCESS Status: HEALTHY');
+      expect(report).toContain(' Your configuration is in perfect health!');
     });
 
     it('should generate issue report for problematic config', async () => {
@@ -337,11 +337,11 @@ externalServers:
       
       const report = await validator.generateDoctorReport(configPath);
       
-      expect(report).toContain('🔍 Omni MCP Hub Configuration Doctor');
-      expect(report).toContain('❌ Status: REQUIRES ATTENTION');
-      expect(report).toContain('🚨 Critical Issues:');
+      expect(report).toContain('INSIGHTS Omni MCP Hub Configuration Doctor');
+      expect(report).toContain('ERROR Status: REQUIRES ATTENTION');
+      expect(report).toContain('ALERT Critical Issues:');
       expect(report).toContain('💊 Treatment:');
-      expect(report).toContain('🔧 Configuration needs immediate attention');
+      expect(report).toContain(' Configuration needs immediate attention');
     });
   });
 

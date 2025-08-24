@@ -32,7 +32,7 @@ program
         configPath = pathResolver.getAbsoluteYamlConfigPath();
       }
       
-      logger.info(`🔍 Analyzing configuration: ${configPath}`);
+      logger.info(`INSIGHTS Analyzing configuration: ${configPath}`);
       
       const validator = new FailFastValidator(logger);
       
@@ -54,7 +54,7 @@ program
       process.exit(0);
       
     } catch (error) {
-      console.error(chalk.red(`💥 Doctor failed: ${error}`));
+      console.error(chalk.red(`CRITICAL Doctor failed: ${error}`));
       process.exit(1);
     }
   });
@@ -86,15 +86,15 @@ program
       });
       
       if (result.valid) {
-        console.log(chalk.green('✅ Configuration is valid'));
+        console.log(chalk.green('SUCCESS Configuration is valid'));
         process.exit(0);
       } else {
-        console.log(chalk.red(`❌ Configuration has ${result.errors.length} error(s)`));
+        console.log(chalk.red(`ERROR Configuration has ${result.errors.length} error(s)`));
         process.exit(1);
       }
       
     } catch (error) {
-      console.error(chalk.red(`💥 Validation failed: ${error}`));
+      console.error(chalk.red(`CRITICAL Validation failed: ${error}`));
       process.exit(1);
     }
   });
@@ -118,11 +118,11 @@ program
       
       // Display results interactively
       if (result.valid) {
-        console.log(chalk.green.bold('🎉 DIAGNOSIS: HEALTHY'));
+        console.log(chalk.green.bold(' DIAGNOSIS: HEALTHY'));
         console.log(chalk.green('Your configuration is working perfectly!\n'));
         
         if (result.warnings.length > 0) {
-          console.log(chalk.yellow.bold('💡 RECOMMENDATIONS:'));
+          console.log(chalk.yellow.bold('INFO RECOMMENDATIONS:'));
           result.warnings.forEach((warning, index) => {
             console.log(chalk.yellow(`${index + 1}. ${warning.field}: ${warning.message}`));
             if (warning.suggestedFix) {
@@ -131,7 +131,7 @@ program
           });
         }
       } else {
-        console.log(chalk.red.bold('🚨 DIAGNOSIS: NEEDS ATTENTION'));
+        console.log(chalk.red.bold('ALERT DIAGNOSIS: NEEDS ATTENTION'));
         console.log(chalk.red(`Found ${result.errors.length} critical issue(s):\n`));
         
         result.errors.forEach((error, index) => {
@@ -149,7 +149,7 @@ program
       
       // Show configuration summary
       if (result.config) {
-        console.log(chalk.blue.bold('📋 CONFIGURATION SUMMARY:'));
+        console.log(chalk.blue.bold('LIST CONFIGURATION SUMMARY:'));
         console.log(chalk.blue(`   Mode: ${result.config.mode || 'not set'}`));
         console.log(chalk.blue(`   Preset: ${result.config.preset || 'not set'}`));
         
@@ -172,14 +172,14 @@ program
       process.exit(result.valid ? 0 : 1);
       
     } catch (error) {
-      console.error(chalk.red(`💥 Interactive diagnosis failed: ${error}`));
+      console.error(chalk.red(`CRITICAL Interactive diagnosis failed: ${error}`));
       process.exit(1);
     }
   });
 
 // Handle errors gracefully
 process.on('unhandledRejection', (error) => {
-  console.error(chalk.red(`💥 Unhandled error: ${error}`));
+  console.error(chalk.red(`CRITICAL Unhandled error: ${error}`));
   process.exit(1);
 });
 

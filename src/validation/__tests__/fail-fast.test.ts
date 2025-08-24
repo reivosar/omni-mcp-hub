@@ -102,7 +102,7 @@ describe('FailFastValidator', () => {
       expect(result.valid).toBe(true);
       expect(mockValidator.initialize).toHaveBeenCalled();
       expect(mockValidator.validateConfig).toHaveBeenCalledWith('test-config.yaml');
-      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('✅ Configuration validation passed'));
+      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('SUCCESS Configuration validation passed'));
     });
 
     it('should fail validation and exit on invalid config', async () => {
@@ -126,8 +126,8 @@ describe('FailFastValidator', () => {
         exitOnError: true
       })).rejects.toThrow('process.exit called');
 
-      expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining('🚨 Configuration Validation Errors:'));
-      expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining('❌ Configuration validation failed'));
+      expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining('ALERT Configuration Validation Errors:'));
+      expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining('ERROR Configuration validation failed'));
     });
 
     it('should not exit when exitOnError is false', async () => {
@@ -182,7 +182,7 @@ describe('FailFastValidator', () => {
         exitOnError: false
       });
 
-      expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('⚠️  Configuration Warnings:'));
+      expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('WARNING  Configuration Warnings:'));
     });
 
     it('should handle validation exceptions', async () => {
@@ -194,7 +194,7 @@ describe('FailFastValidator', () => {
         exitOnError: true
       })).rejects.toThrow('process.exit called');
 
-      expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining('💥 Fatal configuration error'));
+      expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining('CRITICAL Fatal configuration error'));
     });
 
     it('should display configuration summary for detailed output', async () => {
@@ -230,7 +230,7 @@ describe('FailFastValidator', () => {
         detailedOutput: true
       });
 
-      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('📋 Configuration Summary:'));
+      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('LIST Configuration Summary:'));
       expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Mode: advanced'));
       expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Preset: claude-enterprise'));
       expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Profiles: 2 configured'));
@@ -255,7 +255,7 @@ describe('FailFastValidator', () => {
 
       expect(result.valid).toBe(true);
       expect(process.exit).not.toHaveBeenCalled();
-      expect(mockLogger.info).not.toHaveBeenCalledWith(expect.stringContaining('✅ Configuration validation passed'));
+      expect(mockLogger.info).not.toHaveBeenCalledWith(expect.stringContaining('SUCCESS Configuration validation passed'));
     });
   });
 
@@ -273,9 +273,9 @@ describe('FailFastValidator', () => {
 
       const report = await validator.generateDoctorReport('test-config.yaml');
 
-      expect(report).toContain('🔍 Omni MCP Hub Configuration Doctor');
-      expect(report).toContain('✅ Status: HEALTHY');
-      expect(report).toContain('🎉 Your configuration is in perfect health!');
+      expect(report).toContain('INSIGHTS Omni MCP Hub Configuration Doctor');
+      expect(report).toContain('SUCCESS Status: HEALTHY');
+      expect(report).toContain(' Your configuration is in perfect health!');
     });
 
     it('should generate report with critical issues', async () => {
@@ -297,10 +297,10 @@ describe('FailFastValidator', () => {
 
       const report = await validator.generateDoctorReport('test-config.yaml');
 
-      expect(report).toContain('❌ Status: REQUIRES ATTENTION');
-      expect(report).toContain('🚨 Critical Issues:');
+      expect(report).toContain('ERROR Status: REQUIRES ATTENTION');
+      expect(report).toContain('ALERT Critical Issues:');
       expect(report).toContain('💊 Treatment: Provide a valid command path');
-      expect(report).toContain('🔧 Configuration needs immediate attention');
+      expect(report).toContain(' Configuration needs immediate attention');
     });
 
     it('should generate report with recommendations only', async () => {
@@ -322,10 +322,10 @@ describe('FailFastValidator', () => {
 
       const report = await validator.generateDoctorReport('test-config.yaml');
 
-      expect(report).toContain('✅ Status: HEALTHY');
-      expect(report).toContain('⚠️  Recommendations:');
-      expect(report).toContain('💡 Suggestion: Set logging.level to info for better performance');
-      expect(report).toContain('✨ Configuration is valid but could be optimized');
+      expect(report).toContain('SUCCESS Status: HEALTHY');
+      expect(report).toContain('WARNING  Recommendations:');
+      expect(report).toContain('INFO Suggestion: Set logging.level to info for better performance');
+      expect(report).toContain('NEW Configuration is valid but could be optimized');
     });
 
     it('should handle doctor analysis errors', async () => {
@@ -334,7 +334,7 @@ describe('FailFastValidator', () => {
 
       const report = await validator.generateDoctorReport('missing-config.yaml');
 
-      expect(report).toContain('💥 Doctor failed to analyze configuration');
+      expect(report).toContain('CRITICAL Doctor failed to analyze configuration');
     });
   });
 });
@@ -380,7 +380,7 @@ describe('Convenience Functions', () => {
 
       await runConfigDoctor('test-config.yaml', mockLogger);
 
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('🔍 Omni MCP Hub Configuration Doctor'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('INSIGHTS Omni MCP Hub Configuration Doctor'));
     });
   });
 });

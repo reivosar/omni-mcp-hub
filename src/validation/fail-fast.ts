@@ -47,7 +47,7 @@ export class FailFastValidator {
         this.displayErrors(result, detailedOutput);
         
         if (exitOnError) {
-          this.logger.error(chalk.red('❌ Configuration validation failed. Application cannot start.'));
+          this.logger.error(chalk.red('ERROR Configuration validation failed. Application cannot start.'));
           process.exit(1);
         }
         
@@ -61,7 +61,7 @@ export class FailFastValidator {
 
       // Show success message
       if (detailedOutput) {
-        this.logger.info(chalk.green('✅ Configuration validation passed'));
+        this.logger.info(chalk.green('SUCCESS Configuration validation passed'));
         this.displayConfigSummary(result);
       }
 
@@ -69,7 +69,7 @@ export class FailFastValidator {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error(chalk.red(`💥 Fatal configuration error: ${errorMessage}`));
+      this.logger.error(chalk.red(`CRITICAL Fatal configuration error: ${errorMessage}`));
       
       if (exitOnError) {
         process.exit(1);
@@ -91,7 +91,7 @@ export class FailFastValidator {
    * Display validation errors in a user-friendly format
    */
   private displayErrors(result: ValidationResult, detailed: boolean): void {
-    this.logger.error(chalk.red.bold('\n🚨 Configuration Validation Errors:'));
+    this.logger.error(chalk.red.bold('\nALERT Configuration Validation Errors:'));
     this.logger.error(chalk.red('━'.repeat(50)));
 
     result.errors.forEach((error, index) => {
@@ -103,7 +103,7 @@ export class FailFastValidator {
       }
       
       if (error.suggestedFix) {
-        this.logger.error(chalk.cyan(`   💡 修正案: ${error.suggestedFix}`));
+        this.logger.error(chalk.cyan(`   INFO 修正案: ${error.suggestedFix}`));
       }
 
       if (detailed && error.value !== undefined) {
@@ -119,13 +119,13 @@ export class FailFastValidator {
    * Display validation warnings
    */
   private displayWarnings(result: ValidationResult, _detailed: boolean): void {
-    this.logger.warn(chalk.yellow.bold('\n⚠️  Configuration Warnings:'));
+    this.logger.warn(chalk.yellow.bold('\nWARNING  Configuration Warnings:'));
     
     result.warnings.forEach((warning, index) => {
       this.logger.warn(chalk.yellow(`${index + 1}. ${warning.field}: ${warning.message}`));
       
       if (warning.suggestedFix) {
-        this.logger.warn(chalk.cyan(`   💡 推奨: ${warning.suggestedFix}`));
+        this.logger.warn(chalk.cyan(`   INFO 推奨: ${warning.suggestedFix}`));
       }
     });
   }
@@ -137,7 +137,7 @@ export class FailFastValidator {
     if (!result.config) return;
 
     const config = result.config;
-    this.logger.info(chalk.blue('\n📋 Configuration Summary:'));
+    this.logger.info(chalk.blue('\nLIST Configuration Summary:'));
     
     // Show mode and preset
     if (config.mode) {
@@ -187,21 +187,21 @@ export class FailFastValidator {
       let report = '';
       
       // Header
-      report += chalk.blue.bold('🔍 Omni MCP Hub Configuration Doctor\n');
+      report += chalk.blue.bold('INSIGHTS Omni MCP Hub Configuration Doctor\n');
       report += '='.repeat(40) + '\n\n';
 
       // Overall status
       if (result.valid) {
-        report += chalk.green('✅ Status: HEALTHY\n');
+        report += chalk.green('SUCCESS Status: HEALTHY\n');
       } else {
-        report += chalk.red('❌ Status: REQUIRES ATTENTION\n');
+        report += chalk.red('ERROR Status: REQUIRES ATTENTION\n');
       }
 
       report += '\n';
 
       // Errors section
       if (result.errors.length > 0) {
-        report += chalk.red.bold('🚨 Critical Issues:\n');
+        report += chalk.red.bold('ALERT Critical Issues:\n');
         result.errors.forEach((error, index) => {
           report += `${index + 1}. ${error.field}: ${error.message}\n`;
           if (error.suggestedFix) {
@@ -213,11 +213,11 @@ export class FailFastValidator {
 
       // Warnings section
       if (result.warnings.length > 0) {
-        report += chalk.yellow.bold('⚠️  Recommendations:\n');
+        report += chalk.yellow.bold('WARNING  Recommendations:\n');
         result.warnings.forEach((warning, index) => {
           report += `${index + 1}. ${warning.field}: ${warning.message}\n`;
           if (warning.suggestedFix) {
-            report += `   💡 Suggestion: ${warning.suggestedFix}\n`;
+            report += `   INFO Suggestion: ${warning.suggestedFix}\n`;
           }
           report += '\n';
         });
@@ -225,17 +225,17 @@ export class FailFastValidator {
 
       // Health summary
       if (result.valid && result.warnings.length === 0) {
-        report += chalk.green('🎉 Your configuration is in perfect health!\n');
+        report += chalk.green(' Your configuration is in perfect health!\n');
       } else if (result.valid) {
-        report += chalk.yellow('✨ Configuration is valid but could be optimized.\n');
+        report += chalk.yellow('NEW Configuration is valid but could be optimized.\n');
       } else {
-        report += chalk.red('🔧 Configuration needs immediate attention.\n');
+        report += chalk.red(' Configuration needs immediate attention.\n');
       }
 
       return report;
 
     } catch (error) {
-      return chalk.red(`💥 Doctor failed to analyze configuration: ${error}`);
+      return chalk.red(`CRITICAL Doctor failed to analyze configuration: ${error}`);
     }
   }
 }

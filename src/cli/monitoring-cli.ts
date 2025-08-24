@@ -50,7 +50,7 @@ class MonitoringCLI {
    * Start monitoring service
    */
   async startMonitoring(options: MonitoringCLIOptions = {}): Promise<void> {
-    console.log(chalk.blue.bold('🚀 Starting Omni MCP Hub Monitoring Service\n'));
+    console.log(chalk.blue.bold('Starting Omni MCP Hub Monitoring Service\n'));
 
     try {
       // Load configuration
@@ -75,29 +75,29 @@ class MonitoringCLI {
       
       await this.monitoringService.start();
       
-      console.log(chalk.green('✅ Monitoring service started successfully!'));
+      console.log(chalk.green('Monitoring service started successfully!'));
       console.log(chalk.gray('Services running on:'));
       
       if (config.metricsConfig?.prometheusEnabled) {
-        console.log(chalk.cyan(`📊 Prometheus metrics: http://localhost:${config.metricsConfig?.prometheusPort || 3001}/metrics`));
+        console.log(chalk.cyan(`Prometheus metrics: http://localhost:${config.metricsConfig?.prometheusPort || 3001}/metrics`));
       }
       
       if (config.healthConfig?.enabled) {
-        console.log(chalk.cyan(`🏥 Health checks: http://localhost:${config.healthConfig?.port || 3002}/health`));
+        console.log(chalk.cyan(`HEALTH Health checks: http://localhost:${config.healthConfig?.port || 3002}/health`));
       }
       
       if (config.dashboardConfig?.enabled) {
-        console.log(chalk.cyan(`📈 Dashboard: http://localhost:${config.dashboardConfig?.port || 3003}`));
+        console.log(chalk.cyan(`Dashboard: http://localhost:${config.dashboardConfig?.port || 3003}`));
       }
       
-      console.log(chalk.yellow('\n⌨️  Press Ctrl+C to stop monitoring\n'));
+      console.log(chalk.yellow('\nPress Ctrl+C to stop monitoring\n'));
       
       // Keep process running
       process.on('SIGINT', () => this.gracefulShutdown());
       process.on('SIGTERM', () => this.gracefulShutdown());
       
     } catch (error) {
-      console.error(chalk.red('❌ Failed to start monitoring service:'), error);
+      console.error(chalk.red('ERROR Failed to start monitoring service:'), error);
       process.exit(1);
     }
   }
@@ -107,17 +107,17 @@ class MonitoringCLI {
    */
   async stopMonitoring(): Promise<void> {
     if (!this.monitoringService) {
-      console.log(chalk.yellow('⚠️  Monitoring service is not running'));
+      console.log(chalk.yellow('WARNING  Monitoring service is not running'));
       return;
     }
 
-    console.log(chalk.blue('🛑 Stopping monitoring service...'));
+    console.log(chalk.blue('STOP Stopping monitoring service...'));
     
     try {
       await this.monitoringService.stop();
-      console.log(chalk.green('✅ Monitoring service stopped successfully'));
+      console.log(chalk.green('SUCCESS Monitoring service stopped successfully'));
     } catch (error) {
-      console.error(chalk.red('❌ Error stopping monitoring service:'), error);
+      console.error(chalk.red('ERROR Error stopping monitoring service:'), error);
       process.exit(1);
     }
   }
@@ -126,7 +126,7 @@ class MonitoringCLI {
    * Show current monitoring status
    */
   async showStatus(options: MonitoringCLIOptions = {}): Promise<void> {
-    console.log(chalk.blue.bold('📊 Monitoring Status\n'));
+    console.log(chalk.blue.bold('REPORT Monitoring Status\n'));
 
     try {
       // Try to connect to running service or start temporarily
@@ -151,7 +151,7 @@ class MonitoringCLI {
       }
       
     } catch (error) {
-      console.error(chalk.red('❌ Failed to get monitoring status:'), error);
+      console.error(chalk.red('ERROR Failed to get monitoring status:'), error);
       process.exit(1);
     }
   }
@@ -170,7 +170,7 @@ class MonitoringCLI {
       const metrics = this.monitoringService.getCurrentMetrics();
       
       if (!metrics) {
-        console.log(chalk.yellow('⚠️  No metrics available'));
+        console.log(chalk.yellow('WARNING  No metrics available'));
         return;
       }
 
@@ -179,16 +179,16 @@ class MonitoringCLI {
         return;
       }
 
-      console.log(chalk.blue.bold('📈 Performance Metrics\n'));
+      console.log(chalk.blue.bold('TREND_UP Performance Metrics\n'));
       this.displayMetrics(metrics);
       
       if (options.watch) {
-        console.log(chalk.gray('\n👀 Watching for updates... Press Ctrl+C to stop\n'));
+        console.log(chalk.gray('\nWATCH Watching for updates... Press Ctrl+C to stop\n'));
         const interval = setInterval(async () => {
           const updatedMetrics = this.monitoringService!.getCurrentMetrics();
           if (updatedMetrics) {
             console.clear();
-            console.log(chalk.blue.bold('📈 Performance Metrics (Live)\n'));
+            console.log(chalk.blue.bold('TREND_UP Performance Metrics (Live)\n'));
             this.displayMetrics(updatedMetrics);
           }
         }, 5000);
@@ -200,7 +200,7 @@ class MonitoringCLI {
       }
       
     } catch (error) {
-      console.error(chalk.red('❌ Failed to get metrics:'), error);
+      console.error(chalk.red('ERROR Failed to get metrics:'), error);
       process.exit(1);
     }
   }
@@ -219,7 +219,7 @@ class MonitoringCLI {
       const health = this.monitoringService.getSystemHealth();
       
       if (!health) {
-        console.log(chalk.yellow('⚠️  No health data available'));
+        console.log(chalk.yellow('WARNING  No health data available'));
         return;
       }
 
@@ -228,11 +228,11 @@ class MonitoringCLI {
         return;
       }
 
-      console.log(chalk.blue.bold('🏥 System Health\n'));
+      console.log(chalk.blue.bold('HEALTH System Health\n'));
       this.displayHealth(health);
       
     } catch (error) {
-      console.error(chalk.red('❌ Failed to get health status:'), error);
+      console.error(chalk.red('ERROR Failed to get health status:'), error);
       process.exit(1);
     }
   }
@@ -251,7 +251,7 @@ class MonitoringCLI {
       const alerts = this.monitoringService.getRecentAlerts(options.limit || 20);
       
       if (alerts.length === 0) {
-        console.log(chalk.green('✅ No recent alerts'));
+        console.log(chalk.green('SUCCESS No recent alerts'));
         return;
       }
 
@@ -260,11 +260,11 @@ class MonitoringCLI {
         return;
       }
 
-      console.log(chalk.blue.bold(`🚨 Recent Alerts (${alerts.length})\n`));
+      console.log(chalk.blue.bold(`ALERT Recent Alerts (${alerts.length})\n`));
       this.displayAlerts(alerts, options.severity);
       
     } catch (error) {
-      console.error(chalk.red('❌ Failed to get alerts:'), error);
+      console.error(chalk.red('ERROR Failed to get alerts:'), error);
       process.exit(1);
     }
   }
@@ -288,12 +288,12 @@ class MonitoringCLI {
       
       await fs.writeFile(filename, data);
       
-      console.log(chalk.green(`✅ Data exported to: ${filename}`));
+      console.log(chalk.green(`SUCCESS Data exported to: ${filename}`));
       console.log(chalk.gray(`Format: ${format.toUpperCase()}`));
       console.log(chalk.gray(`Size: ${data.length} bytes`));
       
     } catch (error) {
-      console.error(chalk.red('❌ Failed to export data:'), error);
+      console.error(chalk.red('ERROR Failed to export data:'), error);
       process.exit(1);
     }
   }
@@ -309,12 +309,12 @@ class MonitoringCLI {
         await this.monitoringService.start();
       }
 
-      console.log(chalk.blue.bold('📊 Generating Performance Report...\n'));
+      console.log(chalk.blue.bold('REPORT Generating Performance Report...\n'));
       
       const history = this.monitoringService.getPerformanceHistory(options.limit || 24);
       
       if (history.length === 0) {
-        console.log(chalk.yellow('⚠️  No performance history available'));
+        console.log(chalk.yellow('WARNING  No performance history available'));
         return;
       }
 
@@ -328,7 +328,7 @@ class MonitoringCLI {
       this.displayPerformanceReport(latestReport);
       
     } catch (error) {
-      console.error(chalk.red('❌ Failed to generate report:'), error);
+      console.error(chalk.red('ERROR Failed to generate report:'), error);
       process.exit(1);
     }
   }
@@ -369,7 +369,7 @@ class MonitoringCLI {
       const userConfig = JSON.parse(configFile);
       return { ...defaultConfig, ...userConfig };
     } catch (_error) {
-      console.log(chalk.yellow(`⚠️  Could not load config from ${configPath}, using defaults`));
+      console.log(chalk.yellow(`WARNING  Could not load config from ${configPath}, using defaults`));
       return defaultConfig;
     }
   }
@@ -393,14 +393,14 @@ class MonitoringCLI {
                       severityColor === 'yellow' ? chalk.yellow :
                       severityColor === 'magenta' ? chalk.magenta :
                       severityColor === 'red' ? chalk.red : chalk.gray;
-      console.log(colorFunc(`\n🚨 ALERT [${alert.severity.toUpperCase()}]: ${alert.title}`));
+      console.log(colorFunc(`\nALERT ALERT [${alert.severity.toUpperCase()}]: ${alert.title}`));
       console.log(chalk.gray(`   ${alert.message}`));
       console.log(chalk.gray(`   Component: ${alert.component}`));
       console.log(chalk.gray(`   Time: ${new Date(alert.timestamp).toLocaleString()}\n`));
     });
 
     this.monitoringService.on('critical-alert', (alert) => {
-      console.log(chalk.red.bold('\n🔥 CRITICAL ALERT:'), alert.title);
+      console.log(chalk.red.bold('\nCRITICAL CRITICAL ALERT:'), alert.title);
       console.log(chalk.red(`   ${alert.message}`));
       console.log(chalk.red(`   Immediate attention required!\n`));
     });
@@ -411,19 +411,19 @@ class MonitoringCLI {
    */
   private displayStatus(status: MonitoringStatus, metrics: PerformanceMetrics, health: SystemHealth): void {
     console.log(chalk.cyan('Service Status:'));
-    console.log(`  Enabled: ${status.enabled ? chalk.green('✅ Yes') : chalk.red('❌ No')}`);
+    console.log(`  Enabled: ${status.enabled ? chalk.green('SUCCESS Yes') : chalk.red('ERROR No')}`);
     console.log(`  Uptime: ${Math.round(status.uptime / 1000)}s`);
     console.log(`  Last Update: ${new Date(status.lastUpdate).toLocaleString()}\n`);
 
     console.log(chalk.cyan('Components:'));
     Object.entries(status.components).forEach(([name, comp]) => {
       const statusIcons: Record<string, string> = {
-        running: '🟢',
-        stopped: '🔴',
-        starting: '🟡',
-        error: '💥'
+        running: 'RUNNING',
+        stopped: 'STOPPED',
+        starting: 'STARTING',
+        error: 'ERROR'
       };
-      const statusIcon = statusIcons[comp.status] || '⚪';
+      const statusIcon = statusIcons[comp.status] || 'UNKNOWN';
       
       console.log(`  ${name}: ${statusIcon} ${comp.status} (errors: ${comp.errorCount})`);
     });
@@ -525,7 +525,7 @@ class MonitoringCLI {
       alerts;
 
     if (filteredAlerts.length === 0) {
-      console.log(chalk.green('✅ No alerts matching criteria'));
+      console.log(chalk.green('SUCCESS No alerts matching criteria'));
       return;
     }
 
@@ -557,26 +557,26 @@ class MonitoringCLI {
    * Display performance report
    */
   private displayPerformanceReport(report: PerformanceReport): void {
-    console.log(chalk.blue.bold('📊 Performance Report'));
+    console.log(chalk.blue.bold('REPORT Performance Report'));
     console.log(chalk.gray(`Generated: ${new Date(report.timestamp).toLocaleString()}`));
     console.log(chalk.gray(`Analysis Duration: ${report.duration}ms\n`));
 
     if (report.insights.length > 0) {
-      console.log(chalk.cyan('🔍 Performance Insights:'));
+      console.log(chalk.cyan('INSIGHTS Performance Insights:'));
       report.insights.forEach((insight: PerformanceInsight) => {
         const severityIcons: Record<string, string> = {
-          info: '💡',
-          warning: '⚠️',
-          critical: '🔥'
+          info: 'INFO',
+          warning: 'WARNING',
+          critical: 'CRITICAL'
         };
-        const severityIcon = severityIcons[insight.severity] || 'ℹ️';
+        const severityIcon = severityIcons[insight.severity] || 'INFO';
         
         console.log(`  ${severityIcon} [${insight.category?.toUpperCase() || 'GENERAL'}] ${insight.message}`);
         if (insight.trend) {
           const trendIcons: Record<string, string> = {
-            improving: '📈',
-            stable: '➡️',
-            degrading: '📉'
+            improving: 'TREND_UP',
+            stable: 'STABLE',
+            degrading: 'TREND_DOWN'
           };
           const trendIcon = trendIcons[insight.trend] || '';
           console.log(`      Trend: ${trendIcon} ${insight.trend}`);
@@ -586,7 +586,7 @@ class MonitoringCLI {
     }
 
     if (report.recommendations.length > 0) {
-      console.log(chalk.cyan('💡 Recommendations:'));
+      console.log(chalk.cyan('INFO Recommendations:'));
       report.recommendations.forEach((rec: string, index: number) => {
         console.log(`  ${index + 1}. ${rec}`);
       });
@@ -594,7 +594,7 @@ class MonitoringCLI {
     }
 
     // Show key metrics
-    console.log(chalk.cyan('📈 Key Metrics:'));
+    console.log(chalk.cyan('TREND_UP Key Metrics:'));
     console.log(`  Memory Usage: ${Math.round(report.metrics.memoryUsage.heapUsed / 1024 / 1024)}MB`);
     console.log(`  Response Time: ${report.metrics.averageResponseTime.toFixed(1)}ms`);
     console.log(`  Error Rate: ${(report.metrics.errorRate * 100).toFixed(2)}%`);
@@ -607,28 +607,28 @@ class MonitoringCLI {
    */
   private getHealthIcon(status: string): string {
     const icons = {
-      healthy: '🟢',
-      degraded: '🟡',
-      unhealthy: '🔴',
-      unknown: '⚪'
+      healthy: 'HEALTHY',
+      degraded: 'DEGRADED',
+      unhealthy: 'UNHEALTHY',
+      unknown: 'UNKNOWN'
     };
-    return icons[status as keyof typeof icons] || '⚪';
+    return icons[status as keyof typeof icons] || 'UNKNOWN';
   }
 
   /**
    * Graceful shutdown
    */
   private async gracefulShutdown(): Promise<void> {
-    console.log(chalk.blue('\n🛑 Gracefully shutting down monitoring service...'));
+    console.log(chalk.blue('\nSTOP Gracefully shutting down monitoring service...'));
     
     try {
       if (this.monitoringService) {
         await this.monitoringService.stop();
       }
-      console.log(chalk.green('✅ Monitoring service stopped successfully'));
+      console.log(chalk.green('SUCCESS Monitoring service stopped successfully'));
       process.exit(0);
     } catch (error) {
-      console.error(chalk.red('❌ Error during shutdown:'), error);
+      console.error(chalk.red('ERROR Error during shutdown:'), error);
       process.exit(1);
     }
   }
@@ -724,7 +724,7 @@ program
 
 // Error handling
 process.on('unhandledRejection', (error) => {
-  console.error(chalk.red('💥 Unhandled error:'), error);
+  console.error(chalk.red('CRITICAL Unhandled error:'), error);
   process.exit(1);
 });
 

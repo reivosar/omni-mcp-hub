@@ -80,7 +80,7 @@ class ManualApplyManager {
    * Interactive profile application workflow
    */
   async runInteractiveApply(): Promise<void> {
-    console.log(chalk.blue.bold('\n🎯 Omni MCP Hub - Interactive Profile Application'));
+    console.log(chalk.blue.bold('\n Omni MCP Hub - Interactive Profile Application'));
     console.log(chalk.blue('====================================================\n'));
 
     try {
@@ -89,7 +89,7 @@ class ManualApplyManager {
       const profiles = await this.scanAvailableProfiles();
 
       if (profiles.length === 0) {
-        console.log(chalk.red('❌ No CLAUDE.md profiles found in the current directory.'));
+        console.log(chalk.red('ERROR No CLAUDE.md profiles found in the current directory.'));
         console.log(chalk.gray('   Create a CLAUDE.md file or specify a different directory.\n'));
         return;
       }
@@ -118,7 +118,7 @@ class ManualApplyManager {
       await this.displayApplySummary();
 
     } catch (error) {
-      console.error(chalk.red('💥 Interactive apply failed:'), error);
+      console.error(chalk.red('CRITICAL Interactive apply failed:'), error);
       process.exit(1);
     }
   }
@@ -147,7 +147,7 @@ class ManualApplyManager {
         targetProfile = defaultProfile;
       }
 
-      console.log(chalk.blue(`🎯 Quick applying profile: ${targetProfile.name}`));
+      console.log(chalk.blue(` Quick applying profile: ${targetProfile.name}`));
 
       // Show preview if requested
       if (options.preview) {
@@ -178,19 +178,19 @@ class ManualApplyManager {
       // Display result
       const duration = Date.now() - startTime;
       if (result.success) {
-        console.log(chalk.green(`✅ Profile applied successfully in ${duration}ms`));
+        console.log(chalk.green(`SUCCESS Profile applied successfully in ${duration}ms`));
         if (result.warnings.length > 0) {
-          console.log(chalk.yellow('⚠️  Warnings:'));
+          console.log(chalk.yellow('WARNING  Warnings:'));
           result.warnings.forEach(w => console.log(chalk.yellow(`   • ${w}`)));
         }
       } else {
-        console.log(chalk.red(`❌ Profile application failed after ${duration}ms`));
+        console.log(chalk.red(`ERROR Profile application failed after ${duration}ms`));
         result.errors.forEach(e => console.log(chalk.red(`   • ${e}`)));
         process.exit(1);
       }
 
     } catch (error) {
-      console.error(chalk.red('💥 Quick apply failed:'), error);
+      console.error(chalk.red('CRITICAL Quick apply failed:'), error);
       process.exit(1);
     }
   }
@@ -200,7 +200,7 @@ class ManualApplyManager {
    */
   async runProfileComparison(profile1Path: string, profile2Path?: string): Promise<void> {
     try {
-      console.log(chalk.blue.bold('\n📊 Profile Comparison\n'));
+      console.log(chalk.blue.bold('\nREPORT Profile Comparison\n'));
 
       const profile1 = await this.analyzeProfile(profile1Path);
       let profile2: ProfileInfo | null = null;
@@ -216,7 +216,7 @@ class ManualApplyManager {
       await this.displayProfileComparison(profile1, profile2);
 
     } catch (error) {
-      console.error(chalk.red('💥 Profile comparison failed:'), error);
+      console.error(chalk.red('CRITICAL Profile comparison failed:'), error);
       process.exit(1);
     }
   }
@@ -226,10 +226,10 @@ class ManualApplyManager {
    */
   async runUndoApply(): Promise<void> {
     try {
-      console.log(chalk.blue.bold('\n↩️  Undo Profile Application\n'));
+      console.log(chalk.blue.bold('\nUNDO  Undo Profile Application\n'));
 
       if (this.appliedProfiles.length === 0) {
-        console.log(chalk.yellow('ℹ️  No recent profile applications to undo.\n'));
+        console.log(chalk.yellow('INFO  No recent profile applications to undo.\n'));
         return;
       }
 
@@ -256,10 +256,10 @@ class ManualApplyManager {
 
       // Perform undo operation
       await this.performUndo(lastApply);
-      console.log(chalk.green('✅ Profile application undone successfully.\n'));
+      console.log(chalk.green('SUCCESS Profile application undone successfully.\n'));
 
     } catch (error) {
-      console.error(chalk.red('💥 Undo operation failed:'), error);
+      console.error(chalk.red('CRITICAL Undo operation failed:'), error);
       process.exit(1);
     }
   }
@@ -387,12 +387,12 @@ class ManualApplyManager {
    * Display profile summary table
    */
   private async displayProfileSummary(profiles: ProfileInfo[]): Promise<void> {
-    console.log(chalk.green(`📋 Found ${profiles.length} profile(s):\n`));
+    console.log(chalk.green(`LIST Found ${profiles.length} profile(s):\n`));
     
     profiles.forEach((profile, index) => {
       const status = profile.isValid 
-        ? chalk.green('✅ Valid') 
-        : chalk.yellow(`⚠️  ${profile.warnings.length} warning(s)`);
+        ? chalk.green('SUCCESS Valid') 
+        : chalk.yellow(`WARNING  ${profile.warnings.length} warning(s)`);
       
       const size = this.formatFileSize(profile.size);
       const modified = profile.lastModified.toLocaleDateString();
@@ -442,7 +442,7 @@ class ManualApplyManager {
    * Preview selected profiles with confirmation
    */
   private async previewProfiles(profiles: ProfileInfo[]): Promise<boolean> {
-    console.log(chalk.blue.bold('\n🔍 Profile Preview\n'));
+    console.log(chalk.blue.bold('\nINSIGHTS Profile Preview\n'));
 
     for (const profile of profiles) {
       await this.showProfilePreview(profile);
@@ -462,7 +462,7 @@ class ManualApplyManager {
    * Show detailed preview of a single profile
    */
   private async showProfilePreview(profile: ProfileInfo): Promise<void> {
-    console.log(chalk.cyan.bold(`📄 ${profile.name}`));
+    console.log(chalk.cyan.bold(`FILE ${profile.name}`));
     console.log(chalk.gray('─'.repeat(50)));
     
     console.log(`Path: ${profile.path}`);
@@ -491,7 +491,7 @@ class ManualApplyManager {
    * Apply profiles in batch with progress tracking
    */
   private async applyProfilesBatch(profiles: ProfileInfo[]): Promise<void> {
-    console.log(chalk.blue.bold('\n⚡ Applying Profiles\n'));
+    console.log(chalk.blue.bold('\nAPPLY Applying Profiles\n'));
 
     const results: ApplyResult[] = [];
 
@@ -510,14 +510,14 @@ class ManualApplyManager {
         this.appliedProfiles.push(result);
 
         if (result.success) {
-          console.log(chalk.green(`✅ ${profile.name} applied successfully`));
+          console.log(chalk.green(`SUCCESS ${profile.name} applied successfully`));
         } else {
-          console.log(chalk.red(`❌ ${profile.name} failed to apply`));
+          console.log(chalk.red(`ERROR ${profile.name} failed to apply`));
           result.errors.forEach(e => console.log(chalk.red(`   • ${e}`)));
         }
 
       } catch (_error) {
-        console.log(chalk.red(`💥 ${profile.name} application failed: ${_error}`));
+        console.log(chalk.red(`CRITICAL ${profile.name} application failed: ${_error}`));
         results.push({
           success: false,
           profile: profile.name,
@@ -563,7 +563,7 @@ class ManualApplyManager {
 
       // Dry run mode
       if (options.dryRun) {
-        console.log(chalk.blue('🔍 Dry run mode - no changes will be made'));
+        console.log(chalk.blue('INSIGHTS Dry run mode - no changes will be made'));
         result.success = true;
         result.appliedBehavior = BehaviorGenerator.generateInstructions(config);
         return result;
@@ -658,13 +658,13 @@ class ManualApplyManager {
    * Display final application summary
    */
   private async displayApplySummary(): Promise<void> {
-    console.log(chalk.blue.bold('\n📊 Application Summary\n'));
+    console.log(chalk.blue.bold('\nREPORT Application Summary\n'));
 
     const successful = this.appliedProfiles.filter(r => r.success);
     const failed = this.appliedProfiles.filter(r => !r.success);
 
-    console.log(`✅ Successful: ${chalk.green(successful.length.toString())}`);
-    console.log(`❌ Failed: ${chalk.red(failed.length.toString())}`);
+    console.log(`SUCCESS Successful: ${chalk.green(successful.length.toString())}`);
+    console.log(`ERROR Failed: ${chalk.red(failed.length.toString())}`);
 
     if (successful.length > 0) {
       console.log(chalk.green('\nSuccessfully applied profiles:'));
@@ -785,7 +785,7 @@ program
   .alias('s')
   .description('Show current profile application status')
   .action(async () => {
-    console.log(chalk.blue.bold('📊 Current Status\n'));
+    console.log(chalk.blue.bold('REPORT Current Status\n'));
     
     // Show current applied profile information
     console.log('Current applied profile: Not implemented yet');
@@ -796,7 +796,7 @@ program
 
 // Handle errors gracefully
 process.on('unhandledRejection', (error) => {
-  console.error(chalk.red('💥 Unhandled error:'), error);
+  console.error(chalk.red('CRITICAL Unhandled error:'), error);
   process.exit(1);
 });
 

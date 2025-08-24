@@ -390,37 +390,37 @@ export class AdminUI {
     try {
       // Check if file exists
       if (!fs.existsSync(profile.path)) {
-        console.log(chalk.red('✗ File not found'));
+        console.log(chalk.red('File not found'));
         return;
       }
-      console.log(chalk.green('✓ File exists'));
+      console.log(chalk.green('File exists'));
 
       // Check checksum
       const currentChecksum = this.calculateChecksum(profile.path);
       if (profile.checksum && profile.checksum !== currentChecksum) {
-        console.log(chalk.yellow('⚠ File has been modified'));
+        console.log(chalk.yellow('File has been modified'));
         profile.checksum = currentChecksum;
         profile.updatedAt = new Date().toISOString();
         this.saveProfiles();
       } else {
-        console.log(chalk.green('✓ File integrity verified'));
+        console.log(chalk.green('File integrity verified'));
       }
 
       // Validate CLAUDE.md format
       try {
         const config = await this.claudeConfigManager.loadClaudeConfig(profile.path);
-        console.log(chalk.green('✓ Valid CLAUDE.md format'));
+        console.log(chalk.green('Valid CLAUDE.md format'));
         
         const sections = Object.keys(config).filter(k => !k.startsWith('_'));
         if (sections.length > 0) {
           console.log(chalk.blue('Sections found:'), sections.join(', '));
         }
       } catch (error) {
-        console.log(chalk.red('✗ Invalid CLAUDE.md format:'), error);
+        console.log(chalk.red('Invalid CLAUDE.md format:'), error);
       }
 
     } catch (error) {
-      console.log(chalk.red('✗ Validation failed:'), error);
+      console.log(chalk.red('Validation failed:'), error);
     }
   }
 
@@ -586,10 +586,10 @@ export class AdminUI {
       const check = await this.profileManager.checkCircularDependencies(profilePath);
       
       if (check.hasCircular) {
-        console.log(chalk.red('✗ Circular dependency detected!'));
+        console.log(chalk.red('Circular dependency detected!'));
         console.log(chalk.yellow('Chain:'), check.chain.map(p => path.basename(p, '.md')).join(' → '));
       } else {
-        console.log(chalk.green('✓ No circular dependencies found'));
+        console.log(chalk.green('No circular dependencies found'));
         if (check.chain.length > 1) {
           console.log(chalk.blue('Inheritance chain:'), check.chain.map(p => path.basename(p, '.md')).join(' → '));
         }
@@ -638,7 +638,7 @@ export class AdminUI {
 
     try {
       await this.profileManager.exportResolvedProfile(profilePath, outputPath);
-      console.log(chalk.green(`✓ Exported resolved profile to ${outputPath}`));
+      console.log(chalk.green(`Exported resolved profile to ${outputPath}`));
     } catch (error) {
       console.log(chalk.red('Export failed:'), error);
     }
@@ -670,13 +670,13 @@ export class AdminUI {
       
       if (preview.errors.length > 0) {
         console.log(chalk.red('Errors:'));
-        preview.errors.forEach(error => console.log(chalk.red(`  ✗ ${error}`)));
+        preview.errors.forEach(error => console.log(chalk.red(`  ${error}`)));
         console.log();
       }
 
       if (preview.warnings.length > 0) {
         console.log(chalk.yellow('Warnings:'));
-        preview.warnings.forEach(warning => console.log(chalk.yellow(`  ⚠ ${warning}`)));
+        preview.warnings.forEach(warning => console.log(chalk.yellow(`  ${warning}`)));
         console.log();
       }
 

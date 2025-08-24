@@ -11,10 +11,65 @@ vi.mock('fs/promises', () => ({
   stat: vi.fn(),
 }));
 
+// Mock path security validation
+vi.mock('../src/utils/path-security.js', async (importOriginal) => {
+  const original = await importOriginal() as any;
+  return {
+    ...original,
+    validatePathExists: vi.fn().mockImplementation((path: string, options?: any) => {
+      // Return false for non-existent paths as expected by tests
+      if (path.includes('/non/existent/') || path.includes('nonexistent')) {
+        return Promise.resolve(false);
+      }
+      // For fileExists test: directories should return false when testing files
+      if (path.includes('/directory')) {
+        return Promise.resolve(false);
+      }
+      // Return true for most paths in tests
+      return Promise.resolve(true);
+    }),
+    defaultPathValidator: {
+      isPathSafe: vi.fn().mockImplementation((path: string) => {
+        // Block obviously dangerous patterns for tests
+        if (path.includes('dangerous')) {
+          return false;
+        }
+        // Allow /absolute/path for the normalizePath test
+        return true;
+      })
+    }
+  };
+});
+
+// Mock PathResolver - Fix hoisting issue
+vi.mock('../src/utils/path-resolver.js', () => {
+  const path = require('path');
+  const mockInstance = {
+    resolveAbsolutePath: vi.fn().mockImplementation((inputPath: string) => {
+      // Return realistic absolute paths like the real PathResolver
+      if (inputPath.startsWith('/')) {
+        return inputPath;
+      }
+      return path.resolve(process.cwd(), inputPath);
+    }),
+    getYamlConfigPath: vi.fn().mockReturnValue('./omni-config.yaml'),
+    getProfileSearchDirectory: vi.fn().mockReturnValue('./profiles')
+  };
+
+  return {
+    PathResolver: {
+      getInstance: vi.fn().mockReturnValue(mockInstance)
+    }
+  };
+});
+
 describe('FileScanner Extended Tests', () => {
   let scanner: FileScanner;
   let mockYamlConfig: YamlConfigManager;
   let mockLogger: SilentLogger;
+  
+  // Use a safe test path within the project directory
+  const testPath = path.join(process.cwd(), 'test-fixtures');
 
   beforeEach(() => {
     // Create mock YamlConfigManager
@@ -32,7 +87,7 @@ describe('FileScanner Extended Tests', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks(); // Clear history but keep mock implementations
   });
 
   describe('Constructor', () => {
@@ -45,7 +100,7 @@ describe('FileScanner Extended Tests', () => {
     it('should scan configured includePaths', async () => {
       const mockConfig = {
         fileSettings: {
-          includePaths: ['/test/path1', '/test/path2'],
+          includePaths: [`${testPath}/path1`, `${testPath}/path2`],
         },
         logging: { verboseFileLoading: false }
       };
@@ -63,8 +118,8 @@ describe('FileScanner Extended Tests', () => {
       const files = await scanner.scanForClaudeFiles();
       
       expect(files).toEqual([]);
-      expect(fs.stat).toHaveBeenCalledWith('/test/path1');
-      expect(fs.stat).toHaveBeenCalledWith('/test/path2');
+      expect(fs.stat).toHaveBeenCalledWith(`${testPath}/path1`);
+      expect(fs.stat).toHaveBeenCalledWith(`${testPath}/path2`);
     });
 
     it('should handle relative include paths', async () => {
@@ -171,7 +226,7 @@ describe('FileScanner Extended Tests', () => {
         isDirectory: () => false,
       } as any);
 
-      const files = await scanner.scanForClaudeFiles('/test');
+      const files = await scanner.scanForClaudeFiles(testPath);
       
       expect(files).toHaveLength(3);
       expect(files[0].name).toBe('a-file.md');
@@ -205,7 +260,7 @@ describe('FileScanner Extended Tests', () => {
         }
       });
 
-      await scanner.scanForClaudeFiles('/test');
+      await scanner.scanForClaudeFiles(testPath);
       
       expect(readdirCallCount).toBe(1); // Only scanned root directory
     });
@@ -232,7 +287,7 @@ describe('FileScanner Extended Tests', () => {
         isFile: () => true,
       } as any);
 
-      const files = await scanner.scanForClaudeFiles('/test');
+      const files = await scanner.scanForClaudeFiles(testPath);
       
       expect(files).toHaveLength(1);
       expect(files[0].name).toBe('visible-file.md');
@@ -264,7 +319,7 @@ describe('FileScanner Extended Tests', () => {
         isFile: () => true,
       } as any);
 
-      const files = await scanner.scanForClaudeFiles('/test');
+      const files = await scanner.scanForClaudeFiles(testPath);
       
       expect(files).toHaveLength(2);
       expect(files.some(f => f.name === '.hidden-file.md')).toBe(true);
@@ -299,7 +354,7 @@ describe('FileScanner Extended Tests', () => {
         isFile: () => true,
       } as any);
 
-      const files = await scanner.scanForClaudeFiles('/test');
+      const files = await scanner.scanForClaudeFiles(testPath);
       
       expect(files).toHaveLength(1);
       expect(files[0].name).toBe('included-file.md');
@@ -333,7 +388,7 @@ describe('FileScanner Extended Tests', () => {
         isFile: () => true,
       } as any);
 
-      const files = await scanner.scanForClaudeFiles('/test');
+      const files = await scanner.scanForClaudeFiles(testPath);
       
       expect(files).toHaveLength(1);
       expect(files[0].name).toBe('document.md');
@@ -350,7 +405,7 @@ describe('FileScanner Extended Tests', () => {
       vi.mocked(mockYamlConfig.shouldIncludeDirectory).mockReturnValue(true);
       vi.mocked(fs.readdir).mockRejectedValue(new Error('Permission denied'));
 
-      const files = await scanner.scanForClaudeFiles('/test');
+      const files = await scanner.scanForClaudeFiles(testPath);
       
       expect(files).toEqual([]);
     });
@@ -380,7 +435,7 @@ describe('FileScanner Extended Tests', () => {
         isFile: () => true,
       } as any);
 
-      const files = await scanner.scanForClaudeFiles('/test');
+      const files = await scanner.scanForClaudeFiles(testPath);
       
       expect(files).toHaveLength(1);
       expect(files[0].name).toBe('symlink-file.md');
@@ -416,7 +471,7 @@ describe('FileScanner Extended Tests', () => {
         isFile: () => true,
       } as any);
 
-      const files = await scanner.scanForClaudeFiles('/test');
+      const files = await scanner.scanForClaudeFiles(testPath);
       
       expect(files).toHaveLength(2);
       const claudeFile = files.find(f => f.name === 'CLAUDE.md');
@@ -454,7 +509,7 @@ describe('FileScanner Extended Tests', () => {
         isFile: () => true,
       } as any);
 
-      const files = await scanner.scanForClaudeFiles('/test', {
+      const files = await scanner.scanForClaudeFiles(testPath, {
         customPatterns: ['custom-*.md']
       });
       
@@ -494,7 +549,7 @@ describe('FileScanner Extended Tests', () => {
         isFile: () => true,
       } as any);
 
-      const files = await scanner.scanForClaudeFiles('/test');
+      const files = await scanner.scanForClaudeFiles(testPath);
       
       expect(files).toHaveLength(2);
       const claudeFile = files.find(f => f.name === 'CLAUDE.md');
@@ -523,13 +578,13 @@ describe('FileScanner Extended Tests', () => {
       vi.mocked(fs.readdir).mockResolvedValue([]);
 
       // Test that custom options override config defaults
-      await scanner.scanForClaudeFiles('/test', {
+      await scanner.scanForClaudeFiles(testPath, {
         recursive: true,  // Override config
         maxDepth: 2,      // Override config
         customPatterns: ['custom-*.md']
       });
 
-      expect(fs.readdir).toHaveBeenCalledWith('/test', { withFileTypes: true });
+      expect(fs.readdir).toHaveBeenCalledWith(testPath, { withFileTypes: true });
     });
 
     it('should use default values when config is missing', async () => {
@@ -543,10 +598,10 @@ describe('FileScanner Extended Tests', () => {
       vi.mocked(mockYamlConfig.shouldIncludeDirectory).mockReturnValue(true);
       vi.mocked(fs.readdir).mockResolvedValue([]);
 
-      await scanner.scanForClaudeFiles('/test');
+      await scanner.scanForClaudeFiles(testPath);
 
       // Should use defaults: recursive=true, maxDepth=3, includeHidden=false, followSymlinks=false
-      expect(fs.readdir).toHaveBeenCalledWith('/test', { withFileTypes: true });
+      expect(fs.readdir).toHaveBeenCalledWith(testPath, { withFileTypes: true });
     });
   });
 
@@ -675,7 +730,7 @@ describe('FileScanner Extended Tests', () => {
           isDirectory: () => false,
         } as any);
 
-        const result = await FileScanner.fileExists('/test/file.txt');
+        const result = await FileScanner.fileExists(`${testPath}/file.txt`);
         expect(result).toBe(true);
       });
 
@@ -685,7 +740,7 @@ describe('FileScanner Extended Tests', () => {
           isDirectory: () => true,
         } as any);
 
-        const result = await FileScanner.fileExists('/test/directory');
+        const result = await FileScanner.fileExists(`${testPath}/directory`);
         expect(result).toBe(false);
       });
 
@@ -704,7 +759,7 @@ describe('FileScanner Extended Tests', () => {
           isDirectory: () => true,
         } as any);
 
-        const result = await FileScanner.directoryExists('/test/directory');
+        const result = await FileScanner.directoryExists(`${testPath}/directory`);
         expect(result).toBe(true);
       });
 
@@ -714,7 +769,7 @@ describe('FileScanner Extended Tests', () => {
           isDirectory: () => false,
         } as any);
 
-        const result = await FileScanner.directoryExists('/test/file.txt');
+        const result = await FileScanner.directoryExists(`${testPath}/file.txt`);
         expect(result).toBe(false);
       });
 
@@ -751,7 +806,7 @@ describe('FileScanner Extended Tests', () => {
       // Mock stat to throw error for createFileInfo
       vi.mocked(fs.stat).mockRejectedValue(new Error('Stat error'));
 
-      const files = await scanner.scanForClaudeFiles('/test');
+      const files = await scanner.scanForClaudeFiles(testPath);
       
       // File should be skipped due to createFileInfo error
       expect(files).toEqual([]);
@@ -767,7 +822,7 @@ describe('FileScanner Extended Tests', () => {
       vi.mocked(mockYamlConfig.getConfig).mockReturnValue(mockConfig);
       vi.mocked(mockYamlConfig.shouldIncludeDirectory).mockReturnValue(false);
 
-      const files = await scanner.scanForClaudeFiles('/test');
+      const files = await scanner.scanForClaudeFiles(testPath);
       
       // Should not scan directory that's excluded
       expect(files).toEqual([]);

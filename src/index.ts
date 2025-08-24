@@ -12,6 +12,7 @@ import { MCPProxyManager } from "./mcp-proxy/manager.js";
 import { PathResolver } from "./utils/path-resolver.js";
 import { Logger, ILogger } from "./utils/logger.js";
 import { ProcessErrorHandler } from "./utils/process-error-handler.js";
+import { validateConfigOnStartup } from "./validation/fail-fast.js";
 
 export class OmniMCPServer {
   private server: Server;
@@ -196,6 +197,21 @@ export class OmniMCPServer {
    * Start the MCP server
    */
   async run(): Promise<void> {
+    // Perform fail-fast configuration validation before any initialization
+    this.logger.info("[STARTUP] Starting fail-fast configuration validation...");
+    const pathResolver = PathResolver.getInstance();
+    const yamlConfigPath = pathResolver.getAbsoluteYamlConfigPath();
+    
+    await validateConfigOnStartup({
+      configPath: yamlConfigPath,
+      exitOnError: true,
+      showWarnings: true,
+      detailedOutput: true,
+      logger: this.logger
+    });
+    
+    this.logger.info("[STARTUP] Configuration validation passed - proceeding with initialization");
+
     // Initialize everything before starting the server
     await this.initialize();
 

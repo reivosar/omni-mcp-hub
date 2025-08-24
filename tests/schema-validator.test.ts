@@ -310,7 +310,6 @@ externalServers:
       
       const formatted = validator.formatValidationResult(result);
       
-      expect(formatted).toContain('✅');
       expect(formatted).toContain('Configuration is valid');
     });
 
@@ -338,12 +337,11 @@ externalServers:
       
       const formatted = validator.formatValidationResult(result);
       
-      expect(formatted).toContain('❌');
       expect(formatted).toContain('Configuration validation failed');
       expect(formatted).toContain('externalServers.enabled: Expected boolean but got string');
       expect(formatted).toContain('Line 3, Column 12');
-      expect(formatted).toContain('💡 Use true or false');
-      expect(formatted).toContain('⚠️');
+      expect(formatted).toContain('Use true or false');
+      expect(formatted).toContain('Warning:');
       expect(formatted).toContain('Profile file not found');
     });
 
@@ -372,7 +370,7 @@ externalServers:
       const formatted = validator.formatValidationResult(result);
       
       expect(formatted).toContain('Configuration Changes:');
-      expect(formatted).toContain('➕ Added profile "new-profile"');
+      expect(formatted).toContain('[+] Added profile "new-profile"');
       expect(formatted).toContain('Impact Summary:');
       expect(formatted).toContain('New profiles: new-profile');
     });

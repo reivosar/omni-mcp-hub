@@ -43,6 +43,7 @@ export class FileScanner {
     
     const files: FileInfo[] = [];
     
+    
     // If includePaths are configured, scan those directories
     const includePaths = config.fileSettings?.includePaths || [];
     if (includePaths.length > 0) {
@@ -111,7 +112,7 @@ export class FileScanner {
         } catch (error) {
           // Skip entries that fail security validation
           if (this.yamlConfig.getConfig().logging?.verboseFileLoading) {
-            this.logger.debug(`⚠️ Skipping entry due to security validation: ${entry.name}`, error);
+            this.logger.debug(`Skipping entry due to security validation: ${entry.name}`, error);
           }
           continue;
         }
@@ -159,7 +160,7 @@ export class FileScanner {
       // Validate path security first
       if (!defaultPathValidator.isPathSafe(filePath)) {
         if (this.yamlConfig.getConfig().logging?.verboseFileLoading) {
-          this.logger.debug(`⚠️ File path contains dangerous patterns: ${filePath}`);
+          this.logger.debug(`File path contains dangerous patterns: ${filePath}`);
         }
         return null;
       }
@@ -191,7 +192,7 @@ export class FileScanner {
       if (isClaudeConfig) {
         matchedPattern = this.getMatchedPattern(filePath);
       }
-
+      
       return {
         path: filePath,
         name,

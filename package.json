@@ -7,7 +7,8 @@
     "omni-mcp-hub": "./dist/index.js",
     "omni-admin": "./dist/cli/admin-ui.js",
     "omni-profile-admin": "./dist/cli/profile-admin.js",
-    "omni-disclosure": "./dist/cli/mode-disclosure-cli.js"
+    "omni-disclosure": "./dist/cli/mode-disclosure-cli.js",
+    "omni-manual-apply": "./dist/cli/manual-apply.js"
   },
   "scripts": {
     "build": "tsc",
@@ -31,6 +32,7 @@
     "admin:status": "tsx src/cli/admin-ui.ts status",
     "profile:admin": "tsx src/cli/profile-admin.ts",
     "disclosure": "tsx src/cli/mode-disclosure-cli.ts",
+    "manual:apply": "tsx src/cli/manual-apply.ts",
     "install:hooks": "git config core.hooksPath .githooks",
     "release": "semantic-release",
     "release:dry": "semantic-release --dry-run"

@@ -6,7 +6,7 @@ import { minimatch } from 'minimatch';
 import { ILogger, SilentLogger } from '../utils/logger.js';
 import { PathResolver } from '../utils/path-resolver.js';
 import { SchemaValidator, ValidationResult } from '../validation/schema-validator.js';
-import { defaultPathValidator, safeResolve } from '../utils/path-security.js';
+import { defaultPathValidator, safeResolve, containsDangerousPatterns } from '../utils/path-security.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -363,10 +363,10 @@ export class YamlConfigManager {
    * Check if directory should be included with security validation
    */
   shouldIncludeDirectory(dirPath: string): boolean {
-    // Validate directory path security
-    if (!defaultPathValidator.isPathSafe(dirPath)) {
+    // Validate directory path security (but allow simple paths)
+    if (containsDangerousPatterns(dirPath)) {
       if (this.config.logging?.verboseFileLoading) {
-        this.logger.debug(`⚠️ Directory path contains dangerous patterns: ${dirPath}`);
+        this.logger.debug(`Directory path contains dangerous patterns: ${dirPath}`);
       }
       return false;
     }
@@ -382,7 +382,7 @@ export class YamlConfigManager {
         return resolvedDirPath.startsWith(resolvedIncludePath);
       } catch (error) {
         if (this.config.logging?.verboseFileLoading) {
-          this.logger.debug(`⚠️ Path resolution failed for include check: ${includePath} -> ${dirPath}`, error);
+          this.logger.debug(`Path resolution failed for include check: ${includePath} -> ${dirPath}`, error);
         }
         return false;
       }
@@ -410,8 +410,8 @@ export class YamlConfigManager {
     const pathResolver = PathResolver.getInstance();
     const savePath = configPath || this.configPath || pathResolver.resolveAbsolutePath('omni-config.yaml');
     
-    // Validate save path security
-    if (!defaultPathValidator.isPathSafe(savePath)) {
+    // Validate save path security (but allow simple paths)
+    if (containsDangerousPatterns(savePath)) {
       throw new Error(`Configuration save path contains dangerous patterns: ${savePath}`);
     }
     

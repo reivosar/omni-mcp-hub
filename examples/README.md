@@ -2,7 +2,7 @@
 
 This directory contains standardized configuration examples for different use cases.
 
-## 🚀 Quick Start
+## Quick Start
 
 **New to Omni MCP Hub?** Start here:
 
@@ -17,43 +17,43 @@ echo "You are a helpful AI assistant." > CLAUDE.md
 npm start
 ```
 
-## 📁 Example Types
+## Example Types
 
 ### 1. **Minimal** (`examples/minimal/`) 
 **Perfect for:** First-time users, testing, learning
 
-- ✅ Single profile (`CLAUDE.md`)
-- ✅ Basic logging
-- ✅ 5 lines of config
-- ✅ Zero complexity
+- Single profile (`CLAUDE.md`)
+- Basic logging
+- 5 lines of config
+- Zero complexity
 
 ### 2. **Standard** (`examples/standard/`) 
 **Perfect for:** Most users, development teams, production
 
-- ✅ Multiple profiles organized in folders
-- ✅ Essential external servers (filesystem, git)  
-- ✅ Production-ready logging
-- ✅ Health monitoring
-- ✅ ~15 lines of config
+- Multiple profiles organized in folders
+- Essential external servers (filesystem, git)  
+- Production-ready logging
+- Health monitoring
+- ~15 lines of config
 
 ### 3. **Enterprise** (`examples/enterprise/`)
 **Perfect for:** Large teams, security-conscious deployments
 
-- ✅ Full security features (JWT, RBAC, audit logging)
-- ✅ Advanced profile inheritance
-- ✅ Multiple external servers
-- ✅ Performance optimization
-- ✅ Comprehensive monitoring
+- Full security features (JWT, RBAC, audit logging)
+- Advanced profile inheritance
+- Multiple external servers
+- Performance optimization
+- Comprehensive monitoring
 
 ### 4. **Docker** (`examples/docker/`)  
 **Perfect for:** Containerized deployments, cloud environments
 
-- ✅ Container-friendly paths and logging
-- ✅ Health endpoints for orchestration
-- ✅ Environment variable integration
-- ✅ Security handled at ingress level
+- Container-friendly paths and logging
+- Health endpoints for orchestration
+- Environment variable integration
+- Security handled at ingress level
 
-## 🔧 Configuration Structure
+## Configuration Structure
 
 ### Minimal Configuration (Recommended Start)
 ```yaml
@@ -82,14 +82,14 @@ monitoring:
   healthEndpoints: true
 ```
 
-## 📋 Schema Validation
+## Schema Validation
 
 All configurations are validated against the JSON schema:
 - **Schema:** `schemas/omni-config.schema.json`
 - **Validation:** Automatic on startup
 - **Editor Support:** VSCode, IntelliJ, etc.
 
-## 🔄 Migration Guide
+## Migration Guide
 
 ### From Old Configurations
 
@@ -133,7 +133,7 @@ externalServers:
     args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
 ```
 
-## 🆘 Help
+## Help
 
 - **Can't decide?** → Start with `minimal/`
 - **Need external servers?** → Use `standard/`
@@ -141,7 +141,7 @@ externalServers:
 - **Docker/Kubernetes?** → Use `docker/`
 - **Migration issues?** → Check the migration guide above
 
-## ✅ Validation
+## Validation
 
 Test your configuration:
 ```bash

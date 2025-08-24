@@ -358,7 +358,6 @@ externalServers:
       const result = await configManager.validateConfig('valid-config.yaml');
       const formatted = configManager.formatValidationResult(result);
       
-      expect(formatted).toContain('✅');
       expect(formatted).toContain('Configuration is valid');
     });
 
@@ -366,7 +365,6 @@ externalServers:
       const result = await configManager.validateConfig('invalid-config.yaml');
       const formatted = configManager.formatValidationResult(result);
       
-      expect(formatted).toContain('❌');
       expect(formatted).toContain('Configuration validation failed');
       expect(formatted).toContain('Errors:');
     });

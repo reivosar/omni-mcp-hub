@@ -448,9 +448,9 @@ export class SchemaValidator {
     let output = '';
     
     if (result.valid) {
-      output += '✅ Configuration is valid\n';
+      output += 'Configuration is valid\n';
     } else {
-      output += '❌ Configuration validation failed\n\n';
+      output += 'Configuration validation failed\n\n';
     }
 
     // Show errors
@@ -462,7 +462,7 @@ export class SchemaValidator {
           output += `    Line ${error.line}${error.column ? `, Column ${error.column}` : ''}\n`;
         }
         if (error.suggestedFix) {
-          output += `    💡 ${error.suggestedFix}\n`;
+          output += `    Suggestion: ${error.suggestedFix}\n`;
         }
         output += '\n';
       }
@@ -472,9 +472,9 @@ export class SchemaValidator {
     if (result.warnings.length > 0) {
       output += 'Warnings:\n';
       for (const warning of result.warnings) {
-        output += `  ⚠️ ${warning.field}: ${warning.message}\n`;
+        output += `  Warning: ${warning.field}: ${warning.message}\n`;
         if (warning.suggestedFix) {
-          output += `    💡 ${warning.suggestedFix}\n`;
+          output += `    Suggestion: ${warning.suggestedFix}\n`;
         }
       }
     }
@@ -483,7 +483,7 @@ export class SchemaValidator {
     if ('changes' in result && result.changes.length > 0) {
       output += '\nConfiguration Changes:\n';
       for (const change of result.changes) {
-        const icon = change.type === 'added' ? '➕' : change.type === 'removed' ? '➖' : '📝';
+        const icon = change.type === 'added' ? '[+]' : change.type === 'removed' ? '[-]' : '[*]';
         output += `  ${icon} ${change.description}\n`;
       }
 

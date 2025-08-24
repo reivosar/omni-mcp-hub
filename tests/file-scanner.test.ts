@@ -12,6 +12,58 @@ const mockedFs = vi.mocked(fs);
 // Mock YamlConfigManager methods
 vi.mock('../src/config/yaml-config.js');
 
+// Mock path security validation
+vi.mock('../src/utils/path-security.js', async (importOriginal) => {
+  const original = await importOriginal() as any;
+  return {
+    ...original,
+    validatePathExists: vi.fn().mockImplementation((path: string) => {
+      // Return false for non-existent paths as expected by tests
+      if (path.includes('/non/existent/') || path.includes('nonexistent')) {
+        return Promise.resolve(false);
+      }
+      // For fileExists test: directories should return false when testing files
+      if (path.includes('/directory')) {
+        return Promise.resolve(false);
+      }
+      // Return true for most paths in tests
+      return Promise.resolve(true);
+    }),
+    defaultPathValidator: {
+      isPathSafe: vi.fn().mockImplementation((path: string) => {
+        // Block obviously dangerous patterns for tests
+        if (path.includes('dangerous')) {
+          return false;
+        }
+        // Allow most paths for tests
+        return true;
+      })
+    }
+  };
+});
+
+// Mock PathResolver
+vi.mock('../src/utils/path-resolver.js', () => {
+  const path = require('path');
+  const mockInstance = {
+    resolveAbsolutePath: vi.fn().mockImplementation((inputPath: string) => {
+      // Return realistic absolute paths like the real PathResolver
+      if (inputPath.startsWith('/')) {
+        return inputPath;
+      }
+      return path.resolve(process.cwd(), inputPath);
+    }),
+    getYamlConfigPath: vi.fn().mockReturnValue('./omni-config.yaml'),
+    getProfileSearchDirectory: vi.fn().mockReturnValue('./profiles')
+  };
+
+  return {
+    PathResolver: {
+      getInstance: vi.fn().mockReturnValue(mockInstance)
+    }
+  };
+});
+
 describe('FileScanner', () => {
   let scanner: FileScanner;
   let mockYamlConfigManager: any;

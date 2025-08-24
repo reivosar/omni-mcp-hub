@@ -171,11 +171,11 @@ instructions:
 
 | Config Version | System Version | Compatible | Requires Migration | Notes |
 |----------------|---------------|------------|-------------------|--------|
-| 1.0.0 | 1.0.0 | ✅ | ❌ | Exact match |
-| 1.0.0 | 1.1.0 | ✅ | ✅ | Auto-migration available |
-| 1.0.0 | 1.2.0 | ✅ | ✅ | Multi-step migration |
-| 1.1.0 | 1.0.0 | ❌ | ❌ | Downgrade not supported |
-| 2.0.0 | 1.x.x | ❌ | ❌ | Major version incompatibility |
+| 1.0.0 | 1.0.0 | Yes | No | Exact match |
+| 1.0.0 | 1.1.0 | Yes | Yes | Auto-migration available |
+| 1.0.0 | 1.2.0 | Yes | Yes | Multi-step migration |
+| 1.1.0 | 1.0.0 | No | No | Downgrade not supported |
+| 2.0.0 | 1.x.x | No | No | Major version incompatibility |
 
 ## Migration Process
 

@@ -450,6 +450,11 @@ export class ToolHandlers {
     
     this.logger.debug('[APPLY-CLAUDE-CONFIG] Attempting final config load from:', filePath);
     const config = await this.claudeConfigManager.loadClaudeConfig(filePath);
+    
+    if (!config) {
+      throw new Error(`Failed to load Claude configuration from ${filePath}`);
+    }
+    
     this.logger.debug('[APPLY-CLAUDE-CONFIG] Successfully loaded config, keys:', Object.keys(config));
     
     // Auto-generate profile name from filename (without extension) or use default

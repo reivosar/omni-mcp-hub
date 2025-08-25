@@ -221,6 +221,10 @@ class ProfileApplicator {
     // Load Claude configuration
     const config = await this.configManager.loadClaudeConfig(target.source);
     
+    if (!config) {
+      throw new Error(`Failed to load Claude configuration from ${target.source}`);
+    }
+    
     // Generate behavior instructions
     const behavior = BehaviorGenerator.generateInstructions(config);
     

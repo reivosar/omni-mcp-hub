@@ -47,51 +47,82 @@ export function safeJoin(basePath: string, ...segments: string[]): string {
  */
 export function safeResolve(inputPath: string, options?: PathSecurityOptions): string {
   const opts = { ...DEFAULT_OPTIONS, ...options };
+  const providedRoots = options?.allowedRoots && options.allowedRoots.length > 0 ? options.allowedRoots : undefined;
+  const allowedRoots = providedRoots ?? DEFAULT_OPTIONS.allowedRoots;
+
+  // Determine base:
+  // - Prefer a root that equals current CWD (handling macOS alias and Windows case-insensitivity)
+  // - Otherwise use the first provided root, or CWD if none provided
+  const cwd = process.cwd();
+  const normalizeWin = (p: string) => p.replace(/\\/g, '\\').toLowerCase();
+  const isWinPath = (p: string) => /^[a-zA-Z]:[\\/]/.test(p) || p.startsWith('\\\\');
+  const canon = (p: string) => p.replace(/^\/private\/var\/folders/, '/var/folders');
   
+  let base: string;
+  // Prefer exact CWD match first
+  const exactMatch = allowedRoots.find(r => r === cwd);
+  const match = exactMatch ? exactMatch : allowedRoots.find(r => {
+    if (isWinPath(r) || isWinPath(cwd)) {
+      return normalizeWin(r) === normalizeWin(cwd);
+    }
+    return canon(path.resolve(r)) === canon(path.resolve(cwd));
+  });
+
+  const isExplicitRelative = normalizedInputStartsExplicit(inputPath);
+  base = isExplicitRelative ? cwd : (match ? match : (providedRoots ? allowedRoots[0] : cwd));
+
+  function normalizedInputStartsExplicit(p: string) {
+    const np = p.replace(/\\/g, '/');
+    return np.startsWith('./') || np.startsWith('../') || np === '.' || np === '..';
+  }
+
+  // Absolute path detection should be cross-platform
+  const isAbsolute = path.isAbsolute(inputPath) || (isWinPath(inputPath) && path.win32.isAbsolute(inputPath));
   
-  // Resolve the input path - THIS ALLOWS ../../ but checks the final result
+  // Resolve the input path - allow relative traversals but validate final bounds
   let resolvedPath: string;
-  
-  if (path.isAbsolute(inputPath)) {
+  if (isAbsolute) {
     if (!opts.allowAbsolutePaths) {
       throw new Error(`Absolute paths are not allowed: ${inputPath}`);
     }
-    resolvedPath = path.resolve(inputPath);
+    resolvedPath = isWinPath(inputPath) ? path.win32.resolve(inputPath) : path.resolve(inputPath);
   } else {
-    // CRITICAL FIX: For relative paths, resolve from current working directory, not rootDir
-    // This preserves the normal behavior of relative paths while still doing boundary checks
-    resolvedPath = path.resolve(process.cwd(), inputPath);
+    // Resolve from selected base (supports Windows-style bases in POSIX envs)
+    resolvedPath = isWinPath(base) 
+      ? path.win32.resolve(base, inputPath)
+      : path.resolve(base, inputPath);
   }
-  
+
   // Check for dangerous patterns (but NOT ../../ - that's allowed!)
   if (containsDangerousPatterns(inputPath)) {
     throw new Error(`Path contains dangerous patterns: ${inputPath}`);
   }
-  
+
   // CRITICAL BOUNDARY CHECK: Ensure resolved path is within allowed roots
-  const isWithinBounds = opts.allowedRoots.some(root => {
-    const normalizedAllowedRoot = path.resolve(root);
-    // Handle macOS path aliasing: /var/folders and /private/var/folders are the same
-    const canonicalResolvedPath = resolvedPath.replace(/^\/private\/var\/folders/, '/var/folders');
-    const canonicalAllowedRoot = normalizedAllowedRoot.replace(/^\/private\/var\/folders/, '/var/folders');
-    
-    return canonicalResolvedPath.startsWith(canonicalAllowedRoot + path.sep) || 
-           canonicalResolvedPath === canonicalAllowedRoot ||
-           resolvedPath.startsWith(normalizedAllowedRoot + path.sep) || 
-           resolvedPath === normalizedAllowedRoot;
+  const isWithinBounds = allowedRoots.some(root => {
+    if (isWinPath(resolvedPath) || isWinPath(root)) {
+      const r = normalizeWin(resolvedPath);
+      const a = normalizeWin(root);
+      return r === a || r.startsWith(a.endsWith('\\') ? a : a + '\\');
+    } else {
+      const normalizedAllowedRoot = path.resolve(root);
+      const canonicalResolvedPath = canon(resolvedPath);
+      const canonicalAllowedRoot = canon(normalizedAllowedRoot);
+      return canonicalResolvedPath === canonicalAllowedRoot || canonicalResolvedPath.startsWith(canonicalAllowedRoot + path.sep);
+    }
   });
-  
+
   if (!isWithinBounds) {
     throw new Error(`Path resolves outside allowed boundaries: ${inputPath} → ${resolvedPath}`);
   }
-  
-  // Check path depth based on input path structure
-  const inputSegments = inputPath.split(/[/\\]/).filter(segment => segment && segment !== '.' && !segment.startsWith('..'));
-  
-  if (inputSegments.length > opts.maxDepth) {
+
+  // Check path depth based on input segments (include file)
+  const normalizedInput = inputPath.replace(/\\/g, '/');
+  const inputSegments = normalizedInput.split('/').filter(segment => segment && segment !== '.');
+  if (inputSegments.filter(s => !s.startsWith('..')).length > opts.maxDepth) {
     throw new Error(`Path depth exceeds maximum allowed (${opts.maxDepth}): ${inputPath}`);
   }
-  
+
   return resolvedPath;
 }
 
@@ -118,7 +149,8 @@ export function containsDangerousPatterns(inputPath: string): boolean {
   }
   
   const dangerousPatterns = [
-    // Removed /\.\./ - relative paths are NORMAL and NEEDED
+    /^(?:\\\\|\/\/)/, // UNC paths
+    /%(2f|5c)/i, // Percent-encoded slashes
     /~[/\\]/,        // Home directory access
     /[<>:"|?*]/,      // Invalid filename characters
     /\0/,             // Null byte

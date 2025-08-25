@@ -794,10 +794,18 @@ program
     console.log();
   });
 
-// Handle errors gracefully
-process.on('unhandledRejection', (error) => {
-  console.error(chalk.red('CRITICAL Unhandled error:'), error);
-  process.exit(1);
-});
+export async function run(args: string[]): Promise<void> {
+  // Parse arguments without exiting process
+  program.exitOverride();
+  await program.parseAsync(args, { from: 'user' });
+}
 
-program.parse();
+// Handle errors gracefully when run directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  process.on('unhandledRejection', (error) => {
+    console.error(chalk.red('CRITICAL Unhandled error:'), error);
+    process.exit(1);
+  });
+
+  program.parse();
+}

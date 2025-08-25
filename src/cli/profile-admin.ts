@@ -265,4 +265,32 @@ program
     cli.importProfiles(path);
   });
 
-program.parse(process.argv);
+export async function run(args: string[]): Promise<void> {
+  // Override process.argv for testing
+  const originalArgv = process.argv;
+  const originalExit = process.exit;
+  
+  try {
+    // Mock process.exit to prevent actual exit during tests
+    process.exit = ((code?: number) => {
+      throw new Error(`process.exit called with code ${code}`);
+    }) as typeof process.exit;
+    
+    process.argv = ['node', 'profile-admin', ...args];
+    program.parse(process.argv);
+  } catch (error) {
+    // Handle expected exit calls gracefully
+    if (error instanceof Error && error.message.includes('process.exit called with code')) {
+      return;
+    }
+    throw error;
+  } finally {
+    process.argv = originalArgv;
+    process.exit = originalExit;
+  }
+}
+
+// Run CLI when executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  program.parse(process.argv);
+}

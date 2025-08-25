@@ -177,10 +177,39 @@ program
     }
   });
 
-// Handle errors gracefully
-process.on('unhandledRejection', (error) => {
-  console.error(chalk.red(`CRITICAL Unhandled error: ${error}`));
-  process.exit(1);
-});
+export async function run(args: string[]): Promise<void> {
+  // Override process.argv and process.exit for testing
+  const originalArgv = process.argv;
+  const originalExit = process.exit;
+  
+  try {
+    // Mock process.exit to prevent actual exit during tests
+    process.exit = ((code?: number) => {
+      throw new Error(`process.exit called with code ${code}`);
+    }) as typeof process.exit;
+    
+    // Parse arguments without exiting process
+    program.exitOverride();
+    process.argv = ['node', 'config-doctor', ...args];
+    await program.parseAsync(process.argv, { from: 'node' });
+  } catch (error) {
+    // Handle expected exit calls gracefully
+    if (error instanceof Error && error.message.includes('process.exit called with code')) {
+      return;
+    }
+    throw error;
+  } finally {
+    process.argv = originalArgv;
+    process.exit = originalExit;
+  }
+}
 
-program.parse();
+// Handle errors gracefully when run directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  process.on('unhandledRejection', (error) => {
+    console.error(chalk.red(`CRITICAL Unhandled error: ${error}`));
+    process.exit(1);
+  });
+
+  program.parse();
+}

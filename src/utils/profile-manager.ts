@@ -266,7 +266,7 @@ export class ProfileManager {
     }
 
     // Remove inheritance metadata from exported config
-    const exportConfig = { ...resolution.config };
+    const exportConfig = { ...resolution.config, _exported: true };
     delete exportConfig.inheritance;
     delete exportConfig._inheritanceChain;
     delete exportConfig._resolvedFrom;

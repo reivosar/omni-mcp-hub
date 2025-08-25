@@ -111,6 +111,14 @@ export class ConfigLoader {
 
         try {
           const loadedConfig = await this.claudeConfigManager.loadClaudeConfig(fileInfo.path);
+          
+          if (!loadedConfig) {
+            if (config.logging?.verboseFileLoading) {
+              this.logger.debug(`Auto-scan profile '${profileName}' returned null: ${fileInfo.path}`);
+            }
+            continue;
+          }
+          
           // Mark as auto-scanned (not explicitly auto-apply)
           (loadedConfig as { _autoScanned?: boolean; _filePath?: string })._autoScanned = true;
           (loadedConfig as { _autoScanned?: boolean; _filePath?: string })._filePath = fileInfo.path;
@@ -176,6 +184,12 @@ export class ConfigLoader {
           
           // Load only the main profile file (specified in config)
           const loadedConfig = await this.claudeConfigManager.loadClaudeConfig(fullPath);
+          
+          if (!loadedConfig) {
+            this.logger.warn(`[CONFIG-LOADER] Failed to load profile '${profile.name}' from ${fullPath} - config is null`);
+            continue;
+          }
+          
           // Mark config with metadata and downloaded files info
           (loadedConfig as { _autoApply?: boolean; _filePath?: string; _sourceUrl?: string; _downloadedFiles?: Map<string, string> })._autoApply = profile.autoApply === true;
           (loadedConfig as { _autoApply?: boolean; _filePath?: string; _sourceUrl?: string; _downloadedFiles?: Map<string, string> })._filePath = fullPath;
@@ -225,6 +239,12 @@ export class ConfigLoader {
           const fullPath = pathResolver.resolveProfilePath(profile.path);
           
           const loadedConfig = await this.claudeConfigManager.loadClaudeConfig(fullPath);
+          
+          if (!loadedConfig) {
+            this.logger.debug(`Auto-loaded profile '${profile.name}' returned null: ${profile.path}`);
+            continue;
+          }
+          
           activeProfiles.set(profile.name, loadedConfig);
           this.logger.debug(`Auto-loaded profile '${profile.name}': ${profile.path}`);
         } catch (error) {

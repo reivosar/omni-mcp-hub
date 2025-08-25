@@ -209,10 +209,27 @@ export class ProfileSignatureVerifier {
    */
   public verifyChecksum(profileContent: string, expectedChecksum: string): boolean {
     const actualChecksum = this.createChecksum(profileContent);
-    return crypto.timingSafeEqual(
-      Buffer.from(actualChecksum, 'hex'),
-      Buffer.from(expectedChecksum, 'hex')
-    );
+    
+    // Check if lengths are equal first to avoid timingSafeEqual error
+    if (actualChecksum.length !== expectedChecksum.length) {
+      return false;
+    }
+    
+    // Validate that both are valid hex strings
+    const hexPattern = /^[0-9a-fA-F]+$/;
+    if (!hexPattern.test(actualChecksum) || !hexPattern.test(expectedChecksum)) {
+      return false;
+    }
+    
+    try {
+      return crypto.timingSafeEqual(
+        Buffer.from(actualChecksum, 'hex'),
+        Buffer.from(expectedChecksum, 'hex')
+      );
+    } catch (_error) {
+      // In case of any buffer creation error, return false
+      return false;
+    }
   }
 
   /**

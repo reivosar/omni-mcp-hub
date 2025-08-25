@@ -1,0 +1,608 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { ResilientMCPConnection, ConnectionState } from '../src/mcp-proxy/resilience.js';
+import { EventEmitter } from 'events';
+
+// Mock MCPProxyClient instead of SDK components directly
+const mockMCPProxyClient = {
+  connect: vi.fn(),
+  disconnect: vi.fn(),
+  isConnected: vi.fn(),
+  getTools: vi.fn(),
+  getResources: vi.fn(),
+  callTool: vi.fn(),
+  readResource: vi.fn(),
+  getServerName: vi.fn()
+};
+
+vi.mock('../src/mcp-proxy/client.js', () => ({
+  MCPProxyClient: vi.fn().mockImplementation(() => mockMCPProxyClient)
+}));
+
+describe('Resilient MCP Connection Tests', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    
+    // Default successful responses for MCPProxyClient
+    mockMCPProxyClient.connect.mockResolvedValue(undefined);
+    mockMCPProxyClient.disconnect.mockResolvedValue(undefined);
+    mockMCPProxyClient.isConnected.mockReturnValue(true);
+    mockMCPProxyClient.getTools.mockReturnValue([]);
+    mockMCPProxyClient.getResources.mockReturnValue([]);
+    mockMCPProxyClient.callTool.mockResolvedValue({ content: [{ type: 'text', text: 'success' }] });
+    mockMCPProxyClient.readResource.mockResolvedValue({ contents: [] });
+    mockMCPProxyClient.getServerName.mockReturnValue('test-server');
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  describe('Connection Resilience Features', () => {
+    it('should create connection instance', () => {
+      const config = {
+        name: 'test-server',
+        command: 'node',
+        args: ['server.js']
+      };
+      const connection = new ResilientMCPConnection(config);
+      expect(connection).toBeDefined();
+      expect(connection.getState()).toBe(ConnectionState.DISCONNECTED);
+    });
+  });
+
+  describe('Full Resilience Features', () => {
+    it('should implement automatic retry on connection failure', async () => {
+      const config = {
+        name: 'retry-test-server',
+        command: 'node',
+        args: ['server.js']
+      };
+
+      const resilienceConfig = {
+        maxRetryAttempts: 2,  // Reduced to avoid timeout
+        baseRetryDelayMs: 0,
+        maxRetryDelayMs: 0,
+        retryJitterFactor: 0,
+        circuitBreaker: {
+          failureThreshold: 10,  // High threshold to avoid circuit breaking
+          recoveryTimeoutMs: 0,
+          halfOpenMaxAttempts: 1
+        },
+        healthCheck: {
+          strategy: 'basic_ping' as const,
+          intervalMs: 0,
+          timeoutMs: 100,
+          consecutiveFailuresBeforeDegraded: 3
+        }
+      };
+
+      const connection = new ResilientMCPConnection(config, resilienceConfig);
+
+      // Mock first attempt to fail, second to succeed
+      mockMCPProxyClient.connect
+        .mockRejectedValueOnce(new Error('Connection failed'))
+        .mockResolvedValueOnce(undefined);
+
+      await connection.connect();
+      
+      expect(mockMCPProxyClient.connect).toHaveBeenCalledTimes(2);
+      expect(connection.isConnected()).toBe(true);
+    }, 15000);
+
+    it('should implement circuit breaker pattern', async () => {
+      const config = {
+        name: 'circuit-test-server',
+        command: 'node',
+        args: ['server.js']
+      };
+
+      const resilienceConfig = {
+        circuitBreaker: {
+          failureThreshold: 3,
+          recoveryTimeoutMs: 0,
+          halfOpenMaxAttempts: 2
+        },
+        degradedMode: {
+          enabled: false, // Disable degraded mode to test circuit breaker rejection
+          cacheResponsesMs: 0,
+          fallbackStrategies: []
+        }
+      };
+
+      const connection = new ResilientMCPConnection(config, resilienceConfig);
+      await connection.connect();
+
+      // Mock consecutive failures to trip circuit breaker
+      mockMCPProxyClient.callTool.mockRejectedValue(new Error('Service failure'));
+
+      const stateChanges: ConnectionState[] = [];
+      connection.on('stateChange', (newState) => {
+        stateChanges.push(newState);
+      });
+
+      // Execute calls to trip the breaker
+      for (let i = 0; i < 3; i++) {
+        try {
+          await connection.callTool('failing-tool', {});
+        } catch (error) {
+          // Expected failures
+        }
+      }
+
+      // Next call should be rejected immediately due to circuit breaker
+      await expect(connection.callTool('test-tool', {}))
+        .rejects.toThrow(/circuit.*OPEN|breaker.*OPEN/i);
+
+      expect(stateChanges).toContain(ConnectionState.CIRCUIT_OPEN);
+    });
+
+    it('should implement health checking mechanisms', async () => {
+      const config = {
+        name: 'health-check-server',
+        command: 'node',
+        args: ['server.js']
+      };
+
+      const resilienceConfig = {
+        healthCheck: {
+          intervalMs: 1,
+          timeoutMs: 1,
+          strategy: 'capability_check',
+          consecutiveFailureThreshold: 2,
+          recoveryCheckIntervalMs: 1
+        }
+      };
+
+      const connection = new ResilientMCPConnection(config, resilienceConfig);
+      await connection.connect();
+
+      // Mock health checks through capability checking instead
+      let healthCheckCalls = 0;
+      mockMCPProxyClient.getTools.mockImplementation(() => {
+        healthCheckCalls++;
+        if (healthCheckCalls <= 2) {
+          return [{ name: 'test-tool' }];
+        } else {
+          throw new Error('Health check failed');
+        }
+      });
+
+      // Connection starts healthy
+      expect(connection.isHealthy()).toBe(true);
+
+      // Advance time to trigger health checks
+      await vi.advanceTimersByTimeAsync(10);
+      
+      // Health should be checked multiple times
+      expect(healthCheckCalls).toBeGreaterThan(0);
+    });
+
+    it('should handle connection state transitions properly', async () => {
+      const config = {
+        name: 'state-test-server',
+        command: 'node',
+        args: ['server.js']
+      };
+
+      const connection = new ResilientMCPConnection(config);
+
+      const stateTransitions: Array<{ from: ConnectionState; to: ConnectionState }> = [];
+      let previousState = ConnectionState.DISCONNECTED;
+
+      connection.on('stateChange', (newState) => {
+        stateTransitions.push({ from: previousState, to: newState });
+        previousState = newState;
+      });
+
+      // Connect
+      await connection.connect();
+      expect(stateTransitions).toContainEqual({ 
+        from: ConnectionState.DISCONNECTED, 
+        to: ConnectionState.CONNECTING 
+      });
+      expect(stateTransitions).toContainEqual({ 
+        from: ConnectionState.CONNECTING, 
+        to: ConnectionState.CONNECTED 
+      });
+
+      // Simulate failure
+      mockMCPProxyClient.callTool.mockRejectedValue(new Error('Connection lost'));
+      try {
+        await connection.callTool('test-tool', {});
+      } catch (error) {
+        // Expected failure
+      }
+
+      // Disconnect
+      await connection.disconnect();
+      expect(stateTransitions.some(t => t.to === ConnectionState.DISCONNECTED)).toBe(true);
+    });
+
+    it('should collect and provide connection statistics', async () => {
+      const config = {
+        name: 'stats-server',
+        command: 'node',
+        args: ['server.js']
+      };
+
+      const connection = new ResilientMCPConnection(config);
+      await connection.connect();
+
+      // Execute some operations
+      mockMCPProxyClient.callTool.mockResolvedValue({ content: [{ type: 'text', text: 'success' }] });
+      
+      const startTime = Date.now();
+      await connection.callTool('test-tool-1', {});
+      await connection.callTool('test-tool-2', {});
+      
+      // One failure
+      mockMCPProxyClient.callTool.mockRejectedValueOnce(new Error('Tool failure'));
+      try {
+        await connection.callTool('failing-tool', {});
+      } catch (error) {
+        // Expected failure
+      }
+
+      // One more success
+      mockMCPProxyClient.callTool.mockResolvedValueOnce({ content: [{ type: 'text', text: 'success' }] });
+      await connection.callTool('test-tool-3', {});
+
+      const stats = connection.getStats();
+      
+      expect(stats.totalOperations).toBe(4);
+      expect(stats.failedOperations).toBe(1);
+      expect(stats.serverName).toBe('stats-server');
+      expect(stats.state).toBe(ConnectionState.CONNECTED);
+    });
+
+    it('should handle concurrent operations safely', async () => {
+      const config = {
+        name: 'concurrent-server',
+        command: 'node',
+        args: ['server.js']
+      };
+
+      const resilienceConfig = {
+        connection: {
+          maxConcurrentOperations: 3,
+          connectTimeoutMs: 1,
+          idleTimeoutMs: 1,
+          gracefulShutdownTimeoutMs: 1
+        }
+      };
+
+      const connection = new ResilientMCPConnection(config, resilienceConfig);
+      await connection.connect();
+
+      let activeOperations = 0;
+      let maxConcurrent = 0;
+
+      mockMCPProxyClient.callTool.mockImplementation((name) => {
+        activeOperations++;
+        maxConcurrent = Math.max(maxConcurrent, activeOperations);
+        
+        return new Promise(resolve => {
+          setTimeout(() => {
+            activeOperations--;
+            resolve({ content: [{ type: 'text', text: `Tool ${name} completed` }] });
+          }, 1);
+        });
+      });
+
+      // Launch many concurrent operations - some should be rejected due to concurrency limits
+      const operations = Array(5).fill(null).map((_, i) =>
+        connection.callTool(`concurrent-tool-${i}`, {}).catch(() => 'rejected')
+      );
+
+      // Advance time to let operations complete
+      await vi.advanceTimersByTimeAsync(5);
+      const results = await Promise.allSettled(operations);
+
+      expect(results).toHaveLength(5);
+      const rejectedCount = results.filter(r => r.status === 'fulfilled' && r.value === 'rejected').length;
+      expect(rejectedCount).toBeGreaterThan(0); // Some should be rejected due to concurrency limits
+    });
+
+    it('should handle timeout scenarios', async () => {
+      const config = {
+        name: 'timeout-server',
+        command: 'node',
+        args: ['server.js']
+      };
+
+      const resilienceConfig = {
+        connection: {
+          connectTimeoutMs: 1,
+          idleTimeoutMs: 1,
+          maxConcurrentOperations: 10,
+          gracefulShutdownTimeoutMs: 1
+        },
+        degradedMode: {
+          enabled: false, // Disable degraded mode to test timeout rejection
+          cacheResponsesMs: 0,
+          fallbackStrategies: []
+        }
+      };
+
+      const connection = new ResilientMCPConnection(config, resilienceConfig);
+      await connection.connect();
+
+      // Mock operation that fails immediately to simulate timeout
+      mockMCPProxyClient.callTool.mockRejectedValue(new Error('Operation timed out'));
+
+      await expect(connection.callTool('timeout-tool', {})).rejects.toThrow('Operation timed out');
+
+      const stats = connection.getStats();
+      expect(stats.failedOperations).toBe(1);
+    });
+  });
+
+  describe('Error Recovery Mechanisms', () => {
+    it('should recover from temporary network issues', async () => {
+      const config = {
+        name: 'network-recovery-server',
+        command: 'node',
+        args: ['server.js']
+      };
+
+      const resilienceConfig = {
+        maxRetryAttempts: 2,
+        baseRetryDelayMs: 0,
+        maxRetryDelayMs: 0,
+        degradedMode: {
+          enabled: true,
+          cacheResponsesMs: 1000,
+          fallbackStrategies: ['default_response']
+        }
+      };
+
+      const connection = new ResilientMCPConnection(config, resilienceConfig);
+      await connection.connect();
+
+      // Mock operation that fails then succeeds
+      mockMCPProxyClient.callTool
+        .mockRejectedValueOnce(new Error('ECONNRESET'))
+        .mockResolvedValueOnce({ content: [{ type: 'text', text: 'recovered' }] });
+
+      // This should use degraded mode fallback first time
+      const result = await connection.callTool('network-tool', {});
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('object');
+    });
+
+    it('should handle process crashes with automatic restart', async () => {
+      const config = {
+        name: 'crash-recovery-server',
+        command: 'node',
+        args: ['server.js']
+      };
+
+      const resilienceConfig = {
+        maxRetryAttempts: 3,
+        baseRetryDelayMs: 0,
+        maxRetryDelayMs: 0,
+        degradedMode: {
+          enabled: false, // Disable degraded mode to test error propagation
+          cacheResponsesMs: 0,
+          fallbackStrategies: []
+        }
+      };
+
+      const connection = new ResilientMCPConnection(config, resilienceConfig);
+      await connection.connect();
+
+      // Simulate process crash - should get fallback response
+      mockMCPProxyClient.callTool.mockRejectedValue(new Error('Process exited'));
+      
+      let stateChanges: ConnectionState[] = [];
+      connection.on('stateChange', (newState) => {
+        stateChanges.push(newState);
+      });
+
+      // This should fail since degraded mode is disabled
+      await expect(connection.callTool('crash-tool', {})).rejects.toThrow('Process exited');
+    });
+
+    it('should implement graceful degradation', async () => {
+      const config = {
+        name: 'degradation-server',
+        command: 'node',
+        args: ['server.js']
+      };
+
+      const resilienceConfig = {
+        healthCheck: {
+          intervalMs: 1,
+          timeoutMs: 1,
+          strategy: 'capability_check',
+          consecutiveFailureThreshold: 1,
+          recoveryCheckIntervalMs: 1
+        },
+        degradedMode: {
+          enabled: true,
+          cacheResponsesMs: 1,
+          fallbackStrategies: ['default_response']
+        }
+      };
+
+      const connection = new ResilientMCPConnection(config, resilienceConfig);
+      await connection.connect();
+
+      let stateChanged = false;
+      connection.on('stateChange', (newState) => {
+        if (newState === ConnectionState.DEGRADED) {
+          stateChanged = true;
+        }
+      });
+
+      // Mock failures to trigger degraded mode
+      mockMCPProxyClient.callTool.mockRejectedValue(new Error('Service degraded'));
+
+      // This should trigger degraded mode fallback
+      const result = await connection.callTool('degraded-tool', {});
+      
+      expect(result).toBeDefined();
+      // Should get default fallback response
+      expect(result).toMatchObject({ content: [], isError: false, _fallback: true });
+    }, 60000);
+
+    it('should handle memory leaks and resource cleanup', async () => {
+      const config = {
+        name: 'cleanup-server',
+        command: 'node',
+        args: ['server.js']
+      };
+
+      const connection = new ResilientMCPConnection(config);
+      await connection.connect();
+
+      // Simulate many operations to test cleanup
+      mockMCPProxyClient.callTool.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+
+      for (let i = 0; i < 10; i++) {
+        await connection.callTool(`test-tool-${i}`, {});
+      }
+
+      const statsBefore = connection.getStats();
+      
+      // Force cleanup (this would normally be done internally)
+      await connection.disconnect();
+      await connection.connect();
+
+      const statsAfter = connection.getStats();
+      
+      // Verify stats are reset properly
+      expect(statsAfter.currentOperations).toBe(0);
+      expect(statsAfter.totalConnections).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Advanced Resilience Patterns', () => {
+    it('should implement bulkhead isolation', async () => {
+      const config = {
+        name: 'bulkhead-server',
+        command: 'node',
+        args: ['server.js']
+      };
+
+      const resilienceConfig = {
+        connection: {
+          maxConcurrentOperations: 2,
+          connectTimeoutMs: 1,
+          idleTimeoutMs: 1,
+          gracefulShutdownTimeoutMs: 1
+        }
+      };
+
+      const connection = new ResilientMCPConnection(config, resilienceConfig);
+      await connection.connect();
+
+      let activeOperations = 0;
+      mockMCPProxyClient.callTool.mockImplementation(() => {
+        activeOperations++;
+        return new Promise(resolve => {
+          setTimeout(() => {
+            activeOperations--;
+            resolve({ content: [{ type: 'text', text: 'completed' }] });
+          }, 1);
+        });
+      });
+
+      // Launch more operations than the bulkhead allows
+      const operations = Array(5).fill(null).map((_, i) =>
+        connection.callTool(`bulkhead-tool-${i}`, {}).catch(() => 'rejected')
+      );
+
+      const results = await Promise.all(operations);
+      await vi.advanceTimersByTimeAsync(5);
+
+      // Some operations should be rejected due to bulkhead
+      const rejectedCount = results.filter(r => r === 'rejected').length;
+      expect(rejectedCount).toBeGreaterThan(0);
+    });
+
+    it('should implement adaptive retry strategies', async () => {
+      const config = {
+        name: 'adaptive-retry-server',
+        command: 'node',
+        args: ['server.js']
+      };
+
+      const resilienceConfig = {
+        maxRetryAttempts: 4,
+        baseRetryDelayMs: 0,
+        maxRetryDelayMs: 0,
+        retryJitterFactor: 0.0,
+        degradedMode: {
+          enabled: false, // Disable degraded mode to test retry behavior
+          cacheResponsesMs: 0,
+          fallbackStrategies: []
+        }
+      };
+
+      const connection = new ResilientMCPConnection(config, resilienceConfig);
+      await connection.connect();
+
+      let attemptCount = 0;
+      mockMCPProxyClient.callTool.mockImplementation(() => {
+        attemptCount++;
+        // Fail first few attempts, then succeed
+        if (attemptCount <= 2) {
+          throw new Error(`Attempt ${attemptCount} failed`);
+        }
+        return Promise.resolve({ content: [{ type: 'text', text: 'success' }] });
+      });
+
+      const startTime = Date.now();
+      const result = await connection.callTool('adaptive-tool', {});
+      const duration = Date.now() - startTime;
+
+      expect(result).toBeDefined();
+      expect(attemptCount).toBe(3);
+      // Should have taken some time due to backoff
+      expect(duration).toBeGreaterThan(0);
+    });
+
+    it('should handle cascading failure prevention', async () => {
+      const config = {
+        name: 'cascade-prevention-server',
+        command: 'node',
+        args: ['server.js']
+      };
+
+      const resilienceConfig = {
+        circuitBreaker: {
+          failureThreshold: 5,
+          recoveryTimeoutMs: 0,
+          halfOpenMaxAttempts: 2
+        }
+      };
+
+      const connection = new ResilientMCPConnection(config, resilienceConfig);
+      await connection.connect();
+
+      let callCount = 0;
+      mockMCPProxyClient.callTool.mockImplementation(() => {
+        callCount++;
+        // 60% failure rate to trigger cascade protection
+        if (callCount % 10 < 6) {
+          throw new Error('Cascading failure');
+        }
+        return Promise.resolve({ content: [{ type: 'text', text: 'success' }] });
+      });
+
+      // Execute operations to trigger cascade protection
+      const operations = Array(10).fill(null).map((_, i) =>
+        connection.callTool(`cascade-tool-${i}`, {}).catch(() => 'failed')
+      );
+
+      const results = await Promise.all(operations);
+      const failureCount = results.filter(r => r === 'failed').length;
+
+      // Cascade protection should limit the failure rate
+      expect(failureCount).toBeLessThan(10);
+    });
+  });
+});

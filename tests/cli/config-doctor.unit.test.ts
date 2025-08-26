@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../../src/validation/fail-fast.ts', async () => {
+vi.mock('../../src/validation/fail-fast.js', async () => {
   return {
     FailFastValidator: class {
       constructor(_l?: unknown) {}
@@ -11,7 +11,7 @@ vi.mock('../../src/validation/fail-fast.ts', async () => {
   };
 });
 
-vi.mock('../../src/utils/path-resolver.ts', async () => {
+vi.mock('../../src/utils/path-resolver.js', async () => {
   return { PathResolver: { getInstance: () => ({ getAbsoluteYamlConfigPath: () => '/tmp/config.yaml' }) } };
 });
 
@@ -23,7 +23,7 @@ describe('config-doctor CLI (unit)', () => {
   });
 
   it('check --json exits 0', async () => {
-    const { run } = await import('../../src/cli/config-doctor.ts');
+    const { run } = await import('../../src/cli/config-doctor.js');
     // The run function uses exitOverride, so it should complete without throwing
     await expect(run(['check', '--json'])).resolves.toBeUndefined();
     expect(logs.join('\n')).toContain('valid');

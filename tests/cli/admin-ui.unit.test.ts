@@ -9,7 +9,7 @@ describe('admin-ui CLI (unit)', () => {
   });
 
   it('runs status command and prints System Status', async () => {
-    const { run } = await import('../../src/cli/admin-ui.ts');
+    const { run } = await import('../../src/cli/admin-ui.js');
     await run(['status', '--config', '/nonexistent/config.json']);
     const output = logs.join('\n').toLowerCase();
     expect(output).toContain('system');

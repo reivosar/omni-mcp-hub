@@ -4,7 +4,7 @@ vi.mock('child_process', () => {
   return { execSync: vi.fn(() => '') };
 });
 
-vi.mock('../../src/security/secrets-scanner.ts', async (importOriginal) => {
+vi.mock('../../src/security/secrets-scanner.js', async (importOriginal) => {
   const mod = await importOriginal();
   class MockScanner {
     constructor(_opts?: unknown) {}
@@ -32,14 +32,14 @@ describe('secrets-scan CLI (unit)', () => {
   });
 
   it('runs with directory target and outputs JSON by default', async () => {
-    const { run } = await import('../../src/cli/secrets-scan-cli.ts');
+    const { run } = await import('../../src/cli/secrets-scan-cli.js');
     const mockExit = vi.fn();
     await run(['node', 'secrets-scan', process.cwd(), '--format', 'json', '--quiet'], { exit: mockExit as (code: number) => void });
     expect(mockExit).not.toHaveBeenCalled();
   });
 
   it('handles --pre-commit with no staged files gracefully', async () => {
-    const { run } = await import('../../src/cli/secrets-scan-cli.ts');
+    const { run } = await import('../../src/cli/secrets-scan-cli.js');
     // The CLI just returns normally when no staged files, not calling process.exit
     await expect(run(['--pre-commit', '--quiet'])).resolves.toBeUndefined();
   });

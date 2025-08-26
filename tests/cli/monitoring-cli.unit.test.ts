@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 describe('monitoring-cli (unit)', () => {
   it('shows help without executing actions', async () => {
-    const { run } = await import('../../src/cli/monitoring-cli.ts');
+    const { run } = await import('../../src/cli/monitoring-cli.js');
     try {
       await run(['node', 'omni-monitoring', '--help']);
     } catch (_e) {

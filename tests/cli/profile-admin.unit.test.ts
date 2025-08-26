@@ -16,7 +16,7 @@ describe('profile-admin CLI (unit)', () => {
   });
 
   it('runs list command without crashing and prints header', async () => {
-    const { run } = await import('../../src/cli/profile-admin.ts');
+    const { run } = await import('../../src/cli/profile-admin.js');
     await run(['list']);
     const output = logs.join('\n');
     expect(output).toMatch(/Registered Profiles|No profiles/);

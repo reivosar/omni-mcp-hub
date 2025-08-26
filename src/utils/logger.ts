@@ -1,8 +1,8 @@
-import winston from 'winston';
-import * as path from 'path';
-import * as fs from 'fs';
+import winston from "winston";
+import * as path from "path";
+import * as fs from "fs";
 
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export interface ILogger {
   debug(message: string, ...args: unknown[]): void;
@@ -27,7 +27,7 @@ export interface LoggerConfig {
 export class Logger implements ILogger {
   private static instance: Logger;
   private winstonLogger!: winston.Logger;
-  private currentLevel: LogLevel = 'info';
+  private currentLevel: LogLevel = "info";
   private enabled = true;
   private config: LoggerConfig;
 
@@ -35,19 +35,19 @@ export class Logger implements ILogger {
     debug: 0,
     info: 1,
     warn: 2,
-    error: 3
+    error: 3,
   };
 
   constructor(config: LoggerConfig = {}) {
     this.config = {
-      level: 'info',
-      logDir: 'logs',
-      maxSize: '20m',
-      maxFiles: '14d',
-      datePattern: 'YYYY-MM-DD',
+      level: "info",
+      logDir: "logs",
+      maxSize: "20m",
+      maxFiles: "14d",
+      datePattern: "YYYY-MM-DD",
       zippedArchive: true,
       consoleOutput: false,
-      ...config
+      ...config,
     };
 
     this.currentLevel = this.config.level!;
@@ -64,54 +64,62 @@ export class Logger implements ILogger {
     const transports: winston.transport[] = [];
 
     // Simple file transport for all logs
-    transports.push(new winston.transports.File({
-      filename: path.join(logDir, 'omni-mcp-hub.log'),
-      maxsize: 20 * 1024 * 1024, // 20MB
-      maxFiles: 5,
-      format: winston.format.combine(
-        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
-        winston.format.errors({ stack: true }),
-        winston.format.printf(({ timestamp, level, message, ...meta }) => {
-          let log = `${timestamp} [${level.toUpperCase()}] ${message}`;
-          if (Object.keys(meta).length) {
-            log += ` ${JSON.stringify(meta)}`;
-          }
-          return log;
-        })
-      )
-    }));
+    transports.push(
+      new winston.transports.File({
+        filename: path.join(logDir, "omni-mcp-hub.log"),
+        maxsize: 20 * 1024 * 1024, // 20MB
+        maxFiles: 5,
+        format: winston.format.combine(
+          winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss.SSS" }),
+          winston.format.errors({ stack: true }),
+          winston.format.printf(({ timestamp, level, message, ...meta }) => {
+            let log = `${timestamp} [${level.toUpperCase()}] ${message}`;
+            if (Object.keys(meta).length) {
+              log += ` ${JSON.stringify(meta)}`;
+            }
+            return log;
+          }),
+        ),
+      }),
+    );
 
     // Separate error log file
-    transports.push(new winston.transports.File({
-      filename: path.join(logDir, 'error.log'),
-      level: 'error',
-      maxsize: 20 * 1024 * 1024, // 20MB
-      maxFiles: 5,
-      format: winston.format.combine(
-        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
-        winston.format.errors({ stack: true }),
-        winston.format.printf(({ timestamp, level, message, ...meta }) => {
-          let log = `${timestamp} [${level.toUpperCase()}] ${message}`;
-          if (Object.keys(meta).length) {
-            log += ` ${JSON.stringify(meta)}`;
-          }
-          return log;
-        })
-      )
-    }));
+    transports.push(
+      new winston.transports.File({
+        filename: path.join(logDir, "error.log"),
+        level: "error",
+        maxsize: 20 * 1024 * 1024, // 20MB
+        maxFiles: 5,
+        format: winston.format.combine(
+          winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss.SSS" }),
+          winston.format.errors({ stack: true }),
+          winston.format.printf(({ timestamp, level, message, ...meta }) => {
+            let log = `${timestamp} [${level.toUpperCase()}] ${message}`;
+            if (Object.keys(meta).length) {
+              log += ` ${JSON.stringify(meta)}`;
+            }
+            return log;
+          }),
+        ),
+      }),
+    );
 
     // Console output (only if enabled)
     if (this.config.consoleOutput) {
-      transports.push(new winston.transports.Console({
-        format: winston.format.combine(
-          winston.format.colorize(),
-          winston.format.timestamp(),
-          winston.format.printf(({ timestamp, level, message, ...meta }) => {
-            const metaStr = Object.keys(meta).length ? JSON.stringify(meta, null, 2) : '';
-            return `[${timestamp}] [${level}] ${message} ${metaStr}`;
-          })
-        )
-      }));
+      transports.push(
+        new winston.transports.Console({
+          format: winston.format.combine(
+            winston.format.colorize(),
+            winston.format.timestamp(),
+            winston.format.printf(({ timestamp, level, message, ...meta }) => {
+              const metaStr = Object.keys(meta).length
+                ? JSON.stringify(meta, null, 2)
+                : "";
+              return `[${timestamp}] [${level}] ${message} ${metaStr}`;
+            }),
+          ),
+        }),
+      );
     }
 
     this.winstonLogger = winston.createLogger({
@@ -120,10 +128,10 @@ export class Logger implements ILogger {
         error: 0,
         warn: 1,
         info: 2,
-        debug: 3
+        debug: 3,
       },
       transports,
-      exitOnError: false
+      exitOnError: false,
     });
   }
 
@@ -134,7 +142,11 @@ export class Logger implements ILogger {
     return Logger.instance;
   }
 
-  static createLogger(level: LogLevel = 'info', enabled = true, config: LoggerConfig = {}): Logger {
+  static createLogger(
+    level: LogLevel = "info",
+    enabled = true,
+    config: LoggerConfig = {},
+  ): Logger {
     const logger = new Logger({ level, ...config });
     logger.setEnabled(enabled);
     return logger;
@@ -154,19 +166,19 @@ export class Logger implements ILogger {
   }
 
   debug(message: string, ...args: unknown[]): void {
-    this.log('debug', message, ...args);
+    this.log("debug", message, ...args);
   }
 
   info(message: string, ...args: unknown[]): void {
-    this.log('info', message, ...args);
+    this.log("info", message, ...args);
   }
 
   warn(message: string, ...args: unknown[]): void {
-    this.log('warn', message, ...args);
+    this.log("warn", message, ...args);
   }
 
   error(message: string, ...args: unknown[]): void {
-    this.log('error', message, ...args);
+    this.log("error", message, ...args);
   }
 
   log(level: LogLevel, message: string, ...args: unknown[]): void {
@@ -177,9 +189,11 @@ export class Logger implements ILogger {
     // Format message with args
     let formattedMessage = message;
     if (args.length > 0) {
-      const argsStr = args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-      ).join(' ');
+      const argsStr = args
+        .map((arg) =>
+          typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg),
+        )
+        .join(" ");
       formattedMessage = `${message} ${argsStr}`;
     }
 
@@ -214,14 +228,14 @@ export class SilentLogger implements ILogger {
 // Create file logger configuration
 export const createFileLogger = (config: LoggerConfig = {}): Logger => {
   return new Logger({
-    level: 'debug',
-    logDir: 'logs',
-    maxSize: '20m',
-    maxFiles: '14d',
-    datePattern: 'YYYY-MM-DD',
+    level: "debug",
+    logDir: "logs",
+    maxSize: "20m",
+    maxFiles: "14d",
+    datePattern: "YYYY-MM-DD",
     zippedArchive: true,
     consoleOutput: false,
-    ...config
+    ...config,
   });
 };
 

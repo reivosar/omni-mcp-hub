@@ -1,9 +1,13 @@
-import { EventEmitter } from 'events';
-import { SecretProvider, parseSecretReference, maskSecret } from './secret-provider';
+import { EventEmitter } from "events";
+import {
+  SecretProvider,
+  parseSecretReference,
+  maskSecret,
+} from "./secret-provider";
 
 export interface SecretManagerConfig {
-  provider?: 'keychain' | 'env' | 'vault';
-  fallback?: 'keychain' | 'env' | 'vault';
+  provider?: "keychain" | "env" | "vault";
+  fallback?: "keychain" | "env" | "vault";
   vault?: Record<string, unknown>;
   keychainService?: string;
   cacheTTL?: number;
@@ -25,22 +29,22 @@ export class SecretManager extends EventEmitter {
   constructor(config: SecretManagerConfig = {}) {
     super();
     this.config = {
-      provider: 'env',
+      provider: "env",
       cacheTTL: 300,
       auditEnabled: true,
-      ...config
+      ...config,
     };
   }
 
   public async resolveSecret(reference: string): Promise<string> {
     const cached = this.getCachedSecret(reference);
     if (cached) {
-      this.audit('cache-hit', reference);
+      this.audit("cache-hit", reference);
       return cached;
     }
 
     const parsed = parseSecretReference(reference);
-    
+
     if (!parsed) {
       if (this.primaryProvider) {
         return this.resolveWithProvider(this.primaryProvider, reference);
@@ -59,36 +63,42 @@ export class SecretManager extends EventEmitter {
     return this.resolveWithProvider(provider, parsed.path);
   }
 
-  private async resolveWithProvider(provider: SecretProvider, reference: string): Promise<string> {
+  private async resolveWithProvider(
+    provider: SecretProvider,
+    reference: string,
+  ): Promise<string> {
     try {
       const value = await provider.resolve(reference);
       this.cacheSecret(reference, value);
-      this.audit('resolved', reference, provider.getName());
+      this.audit("resolved", reference, provider.getName());
       return value;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.audit('resolve-failed', reference, provider.getName(), errorMessage);
-      
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.audit("resolve-failed", reference, provider.getName(), errorMessage);
+
       if (this.fallbackProvider && provider !== this.fallbackProvider) {
-        this.emit('provider:fallback', {
+        this.emit("provider:fallback", {
           from: provider.getName(),
-          to: this.fallbackProvider.getName()
+          to: this.fallbackProvider.getName(),
         });
         return this.resolveWithProvider(this.fallbackProvider, reference);
       }
-      
+
       throw error;
     }
   }
 
-  public async resolveConfig(config: Record<string, unknown>): Promise<Record<string, unknown>> {
+  public async resolveConfig(
+    config: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
     const resolved = JSON.parse(JSON.stringify(config));
-    
+
     const resolveValue = async (value: unknown): Promise<unknown> => {
-      if (typeof value === 'string') {
+      if (typeof value === "string") {
         const secretRegex = /\$\{[^}]+\}/g;
         const matches = value.match(secretRegex);
-        
+
         if (matches) {
           let result = value;
           for (const match of matches) {
@@ -96,10 +106,11 @@ export class SecretManager extends EventEmitter {
               const secret = await this.resolveSecret(match);
               result = result.replace(match, secret);
             } catch (error: unknown) {
-              const errorMessage = error instanceof Error ? error.message : String(error);
-              this.emit('config:resolve-error', {
+              const errorMessage =
+                error instanceof Error ? error.message : String(error);
+              this.emit("config:resolve-error", {
                 reference: match,
-                error: errorMessage
+                error: errorMessage,
               });
               throw error;
             }
@@ -108,14 +119,16 @@ export class SecretManager extends EventEmitter {
         }
       } else if (Array.isArray(value)) {
         return Promise.all(value.map(resolveValue));
-      } else if (value && typeof value === 'object') {
+      } else if (value && typeof value === "object") {
         const result: Record<string, unknown> = {};
-        for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+        for (const [key, val] of Object.entries(
+          value as Record<string, unknown>,
+        )) {
           result[key] = await resolveValue(val);
         }
         return result;
       }
-      
+
       return value;
     };
 
@@ -124,7 +137,7 @@ export class SecretManager extends EventEmitter {
 
   private getCachedSecret(reference: string): string | null {
     const cached = this.cache.get(reference);
-    
+
     if (!cached) {
       return null;
     }
@@ -144,7 +157,12 @@ export class SecretManager extends EventEmitter {
     }
   }
 
-  private audit(action: string, reference: string, provider?: string, error?: string): void {
+  private audit(
+    action: string,
+    reference: string,
+    provider?: string,
+    error?: string,
+  ): void {
     if (!this.config.auditEnabled) {
       return;
     }
@@ -155,10 +173,10 @@ export class SecretManager extends EventEmitter {
       reference,
       provider,
       error,
-      masked: maskSecret(reference)
+      masked: maskSecret(reference),
     };
 
-    this.emit('audit', entry);
+    this.emit("audit", entry);
   }
 
   public getProviders(): string[] {
@@ -167,7 +185,7 @@ export class SecretManager extends EventEmitter {
 
   public clearCache(): void {
     this.cache.clear();
-    this.emit('cache:cleared');
+    this.emit("cache:cleared");
   }
 
   public getStats(): Record<string, unknown> {
@@ -175,7 +193,7 @@ export class SecretManager extends EventEmitter {
       providers: this.getProviders(),
       cacheSize: this.cache.size,
       primaryProvider: this.primaryProvider?.getName(),
-      fallbackProvider: this.fallbackProvider?.getName()
+      fallbackProvider: this.fallbackProvider?.getName(),
     };
   }
 }

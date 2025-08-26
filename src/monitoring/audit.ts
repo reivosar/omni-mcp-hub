@@ -2,7 +2,7 @@
  * Structured audit logging for profile application operations
  */
 
-import { ILogger, SilentLogger } from '../utils/logger.js';
+import { ILogger, SilentLogger } from "../utils/logger.js";
 
 export interface AuditEvent {
   ts: string;
@@ -10,7 +10,7 @@ export interface AuditEvent {
   profile: string;
   sourcePath?: string;
   hash: string;
-  result: 'applied' | 'noop' | 'rolled_back' | 'error';
+  result: "applied" | "noop" | "rolled_back" | "error";
   durationMs: number;
   error?: string;
   metadata?: Record<string, unknown>;
@@ -26,44 +26,46 @@ export class AuditLogger {
   /**
    * Log successful application
    */
-  logApplied(event: Omit<AuditEvent, 'ts' | 'result'>): void {
+  logApplied(event: Omit<AuditEvent, "ts" | "result">): void {
     this.log({
       ...event,
       ts: new Date().toISOString(),
-      result: 'applied'
+      result: "applied",
     });
   }
 
   /**
    * Log no-operation (unchanged hash)
    */
-  logNoop(event: Omit<AuditEvent, 'ts' | 'result'>): void {
+  logNoop(event: Omit<AuditEvent, "ts" | "result">): void {
     this.log({
       ...event,
       ts: new Date().toISOString(),
-      result: 'noop'
+      result: "noop",
     });
   }
 
   /**
    * Log rollback due to error
    */
-  logRolledBack(event: Omit<AuditEvent, 'ts' | 'result'> & { error: string }): void {
+  logRolledBack(
+    event: Omit<AuditEvent, "ts" | "result"> & { error: string },
+  ): void {
     this.log({
       ...event,
       ts: new Date().toISOString(),
-      result: 'rolled_back'
+      result: "rolled_back",
     });
   }
 
   /**
    * Log general error
    */
-  logError(event: Omit<AuditEvent, 'ts' | 'result'> & { error: string }): void {
+  logError(event: Omit<AuditEvent, "ts" | "result"> & { error: string }): void {
     this.log({
       ...event,
       ts: new Date().toISOString(),
-      result: 'error'
+      result: "error",
     });
   }
 
@@ -73,12 +75,15 @@ export class AuditLogger {
   private log(event: AuditEvent): void {
     // Structured JSON logging
     const logEntry = {
-      level: event.result === 'error' || event.result === 'rolled_back' ? 'error' : 'info',
-      component: 'profile-apply',
-      event
+      level:
+        event.result === "error" || event.result === "rolled_back"
+          ? "error"
+          : "info",
+      component: "profile-apply",
+      event,
     };
 
-    if (event.result === 'error' || event.result === 'rolled_back') {
+    if (event.result === "error" || event.result === "rolled_back") {
       this.logger.error(JSON.stringify(logEntry));
     } else {
       this.logger.info(JSON.stringify(logEntry));
@@ -93,14 +98,14 @@ export class AuditLogger {
     profile: string,
     hash: string,
     durationMs: number,
-    additional?: Partial<AuditEvent>
-  ): Omit<AuditEvent, 'ts' | 'result'> {
+    additional?: Partial<AuditEvent>,
+  ): Omit<AuditEvent, "ts" | "result"> {
     return {
       actor,
       profile,
       hash,
       durationMs,
-      ...additional
+      ...additional,
     };
   }
 }
@@ -112,5 +117,5 @@ export const audit = new AuditLogger();
  * Set audit logger instance
  */
 export function setAuditLogger(logger: ILogger): void {
-  audit['logger'] = logger;
+  audit["logger"] = logger;
 }

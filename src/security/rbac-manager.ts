@@ -1,5 +1,5 @@
-import { EventEmitter } from 'events';
-import { PermissionConfig, PermissionValidator } from './permission-validator';
+import { EventEmitter } from "events";
+import { PermissionConfig, PermissionValidator } from "./permission-validator";
 
 export interface Role {
   name: string;
@@ -30,64 +30,69 @@ export class RBACManager extends EventEmitter {
   private initializeDefaultRoles(): void {
     const defaultRoles: Role[] = [
       {
-        name: 'viewer',
-        description: 'Read-only access to most resources',
+        name: "viewer",
+        description: "Read-only access to most resources",
         permissions: {
-          allowedTools: ['*:read', '*:get', '*:list', '*:search'],
-          deniedTools: ['*:write', '*:delete', '*:create', '*:update'],
+          allowedTools: ["*:read", "*:get", "*:list", "*:search"],
+          deniedTools: ["*:write", "*:delete", "*:create", "*:update"],
           readOnlyMode: true,
-          maxTokens: 50000
+          maxTokens: 50000,
         },
-        priority: 10
+        priority: 10,
       },
       {
-        name: 'developer',
-        description: 'Standard development permissions',
+        name: "developer",
+        description: "Standard development permissions",
         permissions: {
-          allowedTools: ['filesystem:*', 'git:*', 'serena:*'],
-          deniedTools: ['git:push', '*:delete'],
-          sandboxPaths: ['./src', './tests', './docs'],
-          maxTokens: 200000
+          allowedTools: ["filesystem:*", "git:*", "serena:*"],
+          deniedTools: ["git:push", "*:delete"],
+          sandboxPaths: ["./src", "./tests", "./docs"],
+          maxTokens: 200000,
         },
-        priority: 50
+        priority: 50,
       },
       {
-        name: 'reviewer',
-        description: 'Code review and analysis permissions',
+        name: "reviewer",
+        description: "Code review and analysis permissions",
         permissions: {
-          allowedTools: ['filesystem:read', 'git:diff', 'git:log', 'serena:search'],
-          deniedTools: ['*:write', '*:delete'],
-          sandboxPaths: ['./src', './tests'],
+          allowedTools: [
+            "filesystem:read",
+            "git:diff",
+            "git:log",
+            "serena:search",
+          ],
+          deniedTools: ["*:write", "*:delete"],
+          sandboxPaths: ["./src", "./tests"],
           readOnlyMode: true,
-          maxTokens: 100000
+          maxTokens: 100000,
         },
-        priority: 30
+        priority: 30,
       },
       {
-        name: 'admin',
-        description: 'Full system access',
+        name: "admin",
+        description: "Full system access",
         permissions: {
-          allowedTools: ['*'],
+          allowedTools: ["*"],
           deniedTools: [],
-          maxTokens: 1000000
+          maxTokens: 1000000,
         },
-        priority: 100
-      }
+        priority: 100,
+      },
     ];
 
-    defaultRoles.forEach(role => {
+    defaultRoles.forEach((role) => {
       this.roles.set(role.name, role);
     });
 
-    this.emit('roles:initialized', {
+    this.emit("roles:initialized", {
       count: defaultRoles.length,
-      roles: defaultRoles.map(r => r.name)
+      roles: defaultRoles.map((r) => r.name),
     });
   }
 
   public createRole(role: Role): void {
     this.roles.set(role.name, role);
-    this.emit('role:created', { name: role.name });
+    this.emit("role:created", { name: role.name });
   }
 
   public updateRole(name: string, updates: Partial<Role>): void {
@@ -100,7 +105,7 @@ export class RBACManager extends EventEmitter {
     this.roles.set(name, updated);
 
     this.recomputeUserPermissions(name);
-    this.emit('role:updated', { name });
+    this.emit("role:updated", { name });
   }
 
   public deleteRole(name: string): void {
@@ -108,7 +113,7 @@ export class RBACManager extends EventEmitter {
       throw new Error(`Role '${name}' not found`);
     }
 
-    const protectedRoles = ['admin', 'viewer'];
+    const protectedRoles = ["admin", "viewer"];
     if (protectedRoles.includes(name)) {
       throw new Error(`Cannot delete protected role '${name}'`);
     }
@@ -117,12 +122,12 @@ export class RBACManager extends EventEmitter {
 
     for (const [userId, userRole] of this.userRoles) {
       if (userRole.roles.includes(name)) {
-        userRole.roles = userRole.roles.filter(r => r !== name);
+        userRole.roles = userRole.roles.filter((r) => r !== name);
         this.recomputeUserPermissions(userId);
       }
     }
 
-    this.emit('role:deleted', { name });
+    this.emit("role:deleted", { name });
   }
 
   public assignRole(userId: string, roleName: string, expiresAt?: Date): void {
@@ -148,7 +153,7 @@ export class RBACManager extends EventEmitter {
     if (!expiresAt || new Date() <= expiresAt) {
       this.recomputeUserPermissions(userId);
     }
-    this.emit('role:assigned', { userId, role: roleName, expiresAt });
+    this.emit("role:assigned", { userId, role: roleName, expiresAt });
   }
 
   public revokeRole(userId: string, roleName: string): void {
@@ -157,18 +162,21 @@ export class RBACManager extends EventEmitter {
       return;
     }
 
-    userRole.roles = userRole.roles.filter(r => r !== roleName);
-    
+    userRole.roles = userRole.roles.filter((r) => r !== roleName);
+
     if (userRole.roles.length === 0 && !userRole.customPermissions) {
       this.userRoles.delete(userId);
     } else {
       this.recomputeUserPermissions(userId);
     }
 
-    this.emit('role:revoked', { userId, role: roleName });
+    this.emit("role:revoked", { userId, role: roleName });
   }
 
-  public setCustomPermissions(userId: string, _permissions: PermissionConfig): void {
+  public setCustomPermissions(
+    userId: string,
+    _permissions: PermissionConfig,
+  ): void {
     let userRole = this.userRoles.get(userId);
     if (!userRole) {
       userRole = { userId, roles: [] };
@@ -177,7 +185,7 @@ export class RBACManager extends EventEmitter {
 
     userRole.customPermissions = _permissions;
     this.recomputeUserPermissions(userId);
-    this.emit('permissions:customized', { userId });
+    this.emit("permissions:customized", { userId });
   }
 
   public getUserPermissions(userId: string): PermissionConfig {
@@ -192,9 +200,12 @@ export class RBACManager extends EventEmitter {
     }
 
     const rolePermissions = this.computeRolePermissions(userRole.roles);
-    
+
     if (userRole.customPermissions) {
-      return this.inheritPermissions(rolePermissions, userRole.customPermissions);
+      return this.inheritPermissions(
+        rolePermissions,
+        userRole.customPermissions,
+      );
     }
 
     return rolePermissions;
@@ -202,10 +213,10 @@ export class RBACManager extends EventEmitter {
 
   private getDefaultPermissions(): PermissionConfig {
     return {
-      allowedTools: ['*:read', '*:get', '*:list', '*:search'],
-      deniedTools: ['*:write', '*:delete', '*:create', '*:update'],
+      allowedTools: ["*:read", "*:get", "*:list", "*:search"],
+      deniedTools: ["*:write", "*:delete", "*:create", "*:update"],
       readOnlyMode: true,
-      maxTokens: 50000
+      maxTokens: 50000,
     };
   }
 
@@ -215,7 +226,7 @@ export class RBACManager extends EventEmitter {
     }
 
     const roles = roleNames
-      .map(name => this.roles.get(name))
+      .map((name) => this.roles.get(name))
       .filter((role): role is Role => !!role)
       .sort((a, b) => a.priority - b.priority);
 
@@ -224,31 +235,40 @@ export class RBACManager extends EventEmitter {
     for (const role of roles) {
       if (role.inherits && role.inherits.length > 0) {
         const inheritedPermissions = this.computeRolePermissions(role.inherits);
-        basePermissions = this.inheritPermissions(basePermissions, inheritedPermissions);
+        basePermissions = this.inheritPermissions(
+          basePermissions,
+          inheritedPermissions,
+        );
       }
-      
-      basePermissions = this.inheritPermissions(basePermissions, role.permissions);
+
+      basePermissions = this.inheritPermissions(
+        basePermissions,
+        role.permissions,
+      );
     }
 
     return basePermissions;
   }
 
-  private inheritPermissions(base: PermissionConfig, override: PermissionConfig): PermissionConfig {
+  private inheritPermissions(
+    base: PermissionConfig,
+    override: PermissionConfig,
+  ): PermissionConfig {
     return {
       ...base,
       ...override,
       allowedTools: [
         ...(base.allowedTools || []),
-        ...(override.allowedTools || [])
+        ...(override.allowedTools || []),
       ],
       deniedTools: [
         ...(base.deniedTools || []),
-        ...(override.deniedTools || [])
+        ...(override.deniedTools || []),
       ],
       sandboxPaths: [
         ...(base.sandboxPaths || []),
-        ...(override.sandboxPaths || [])
-      ]
+        ...(override.sandboxPaths || []),
+      ],
     };
   }
 
@@ -259,7 +279,7 @@ export class RBACManager extends EventEmitter {
 
   private cleanupExpiredRole(userId: string): void {
     this.userRoles.delete(userId);
-    this.emit('role:expired', { userId });
+    this.emit("role:expired", { userId });
   }
 
   public getUserRoles(userId: string): string[] {
@@ -268,19 +288,25 @@ export class RBACManager extends EventEmitter {
   }
 
   public listRoles(): Role[] {
-    return Array.from(this.roles.values()).sort((a, b) => a.priority - b.priority);
+    return Array.from(this.roles.values()).sort(
+      (a, b) => a.priority - b.priority,
+    );
   }
 
   public getRole(name: string): Role | undefined {
     return this.roles.get(name);
   }
 
-  public checkPermission(userId: string, toolName: string, methodName?: string): boolean {
+  public checkPermission(
+    userId: string,
+    toolName: string,
+    methodName?: string,
+  ): boolean {
     const result = this.validator.validateToolAccess({
       userId,
       profileName: `user:${userId}`,
       toolName,
-      methodName
+      methodName,
     });
 
     return result.allowed;
@@ -289,19 +315,22 @@ export class RBACManager extends EventEmitter {
   public getUserStats(): Record<string, unknown> {
     const now = new Date();
     const users = Array.from(this.userRoles.values());
-    
+
     return {
       totalUsers: users.length,
-      activeUsers: users.filter(u => !u.expiresAt || u.expiresAt > now).length,
-      expiredUsers: users.filter(u => u.expiresAt && u.expiresAt <= now).length,
-      usersWithCustomPermissions: users.filter(u => u.customPermissions).length,
-      roleDistribution: this.getRoleDistribution()
+      activeUsers: users.filter((u) => !u.expiresAt || u.expiresAt > now)
+        .length,
+      expiredUsers: users.filter((u) => u.expiresAt && u.expiresAt <= now)
+        .length,
+      usersWithCustomPermissions: users.filter((u) => u.customPermissions)
+        .length,
+      roleDistribution: this.getRoleDistribution(),
     };
   }
 
   private getRoleDistribution(): Record<string, number> {
     const distribution: Record<string, number> = {};
-    
+
     for (const role of this.roles.keys()) {
       distribution[role] = 0;
     }
@@ -329,7 +358,7 @@ export class RBACManager extends EventEmitter {
     }
 
     if (cleaned > 0) {
-      this.emit('cleanup:expired', { count: cleaned });
+      this.emit("cleanup:expired", { count: cleaned });
     }
 
     return cleaned;

@@ -5,7 +5,7 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const rootDir = path.dirname(__dirname);
+const rootDir = path.resolve(__dirname, '../..');
 
 describe('Integration Tests', () => {
   beforeAll(async () => {
@@ -31,8 +31,8 @@ describe('Integration Tests', () => {
       const requiredFiles = [
         'package.json',
         'tsconfig.json',
-        'src/index.js',
-        'src/utils/claude-config.js',
+        'src/index.ts',
+        'src/utils/claude-config.ts',
         'examples/local-resources/start.sh',
         'examples/local-resources/lum-behavior.md'
       ];
@@ -45,8 +45,7 @@ describe('Integration Tests', () => {
 
     it('should have built files in dist directory', async () => {
       const distFiles = [
-        'dist/index.js',
-        'dist/utils/claude-config.js'
+        'dist/index.js'
       ];
 
       for (const file of distFiles) {

@@ -1,12 +1,19 @@
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as yaml from 'js-yaml';
-import { fileURLToPath } from 'url';
-import { minimatch } from 'minimatch';
-import { ILogger, SilentLogger } from '../utils/logger.js';
-import { PathResolver } from '../utils/path-resolver.js';
-import { SchemaValidator, ValidationResult } from '../validation/schema-validator.js';
-import { defaultPathValidator, safeResolve, containsDangerousPatterns } from '../utils/path-security.js';
+import * as fs from "fs/promises";
+import * as path from "path";
+import * as yaml from "js-yaml";
+import { fileURLToPath } from "url";
+import { minimatch } from "minimatch";
+import { ILogger, SilentLogger } from "../utils/logger.js";
+import { PathResolver } from "../utils/path-resolver.js";
+import {
+  SchemaValidator,
+  ValidationResult,
+} from "../validation/schema-validator.js";
+import {
+  defaultPathValidator,
+  safeResolve,
+  containsDangerousPatterns,
+} from "../utils/path-security.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -21,8 +28,8 @@ export interface ExternalServerConfig {
 
 // YAML configuration file type definitions
 export interface YamlConfig {
-  mode?: 'minimal' | 'standard' | 'advanced';
-  preset?: 'claude-basic' | 'claude-enterprise' | 'custom';
+  mode?: "minimal" | "standard" | "advanced";
+  preset?: "claude-basic" | "claude-enterprise" | "custom";
   autoLoad?: {
     profiles?: Array<{
       name: string;
@@ -52,7 +59,7 @@ export interface YamlConfig {
     defaultProfile?: string;
   };
   logging?: {
-    level?: 'debug' | 'info' | 'warn' | 'error';
+    level?: "debug" | "info" | "warn" | "error";
     verboseFileLoading?: boolean;
     verboseProfileSwitching?: boolean;
   };
@@ -69,36 +76,43 @@ export interface YamlConfig {
 
 // Default configuration
 const DEFAULT_CONFIG: YamlConfig = {
-  mode: 'minimal',
-  preset: 'claude-basic',
+  mode: "minimal",
+  preset: "claude-basic",
   autoLoad: {
-    profiles: []
+    profiles: [],
   },
   fileSettings: {
     configFiles: {
       claude: "CLAUDE.md",
       behavior: "*-behavior.md",
-      custom: "*-config.md"
+      custom: "*-config.md",
     },
     includePaths: ["./configs/", "./profiles/"],
-    excludePatterns: ["*.tmp", "*.backup", "*~", ".git/**", "node_modules/**", "dist/**"],
-    allowedExtensions: [".md", ".markdown", ".txt"]
+    excludePatterns: [
+      "*.tmp",
+      "*.backup",
+      "*~",
+      ".git/**",
+      "node_modules/**",
+      "dist/**",
+    ],
+    allowedExtensions: [".md", ".markdown", ".txt"],
   },
   directoryScanning: {
     recursive: true,
     maxDepth: 3,
     includeHidden: false,
-    followSymlinks: false
+    followSymlinks: false,
   },
   profileManagement: {
     allowDuplicateNames: false,
     autoNamePattern: "%filename%",
-    defaultProfile: "default"
+    defaultProfile: "default",
   },
   logging: {
     level: "info",
     verboseFileLoading: true,
-    verboseProfileSwitching: false
+    verboseProfileSwitching: false,
   },
   externalServers: {
     enabled: true,
@@ -106,14 +120,14 @@ const DEFAULT_CONFIG: YamlConfig = {
     autoConnect: true,
     retry: {
       maxAttempts: 3,
-      delayMs: 1000
-    }
-  }
+      delayMs: 1000,
+    },
+  },
 };
 
 export class YamlConfigManager {
   private config: YamlConfig = DEFAULT_CONFIG;
-  private configPath: string = '';
+  private configPath: string = "";
   private logger: ILogger;
   private validator?: SchemaValidator;
 
@@ -141,7 +155,7 @@ export class YamlConfigManager {
     if (!this.validator) {
       await this.enableValidation();
     }
-    
+
     const yamlPath = configPath || this.configPath || this.findYamlConfigFile();
     return this.validator!.validateConfig(yamlPath);
   }
@@ -149,28 +163,34 @@ export class YamlConfigManager {
   /**
    * Load YAML configuration file
    */
-  async loadYamlConfig(configPath?: string, options?: { validate?: boolean }): Promise<YamlConfig> {
+  async loadYamlConfig(
+    configPath?: string,
+    options?: { validate?: boolean },
+  ): Promise<YamlConfig> {
     const yamlPath = configPath || this.configPath || this.findYamlConfigFile();
-    
+
     try {
-      const content = await fs.readFile(yamlPath, 'utf-8');
+      const content = await fs.readFile(yamlPath, "utf-8");
       const yamlData = yaml.load(content) as YamlConfig;
-      
+
       // Perform validation if requested
       if (options?.validate) {
         try {
           if (!this.validator) {
             await this.enableValidation();
           }
-          const validationResult = await this.validator!.validateConfig(yamlPath);
-          
+          const validationResult =
+            await this.validator!.validateConfig(yamlPath);
+
           if (!validationResult.valid) {
-            this.logger.warn(`Configuration validation failed for ${yamlPath}:`);
+            this.logger.warn(
+              `Configuration validation failed for ${yamlPath}:`,
+            );
             for (const error of validationResult.errors) {
               this.logger.warn(`  - ${error.field}: ${error.message}`);
             }
           }
-          
+
           if (validationResult.warnings.length > 0) {
             this.logger.info(`Configuration warnings for ${yamlPath}:`);
             for (const warning of validationResult.warnings) {
@@ -181,15 +201,15 @@ export class YamlConfigManager {
           this.logger.warn(`Schema validation failed: ${validationError}`);
         }
       }
-      
+
       // Merge with default configuration
       this.config = this.mergeConfig(DEFAULT_CONFIG, yamlData);
       this.configPath = yamlPath;
-      
+
       if (this.config.logging?.verboseFileLoading) {
         this.logger.debug(`Loaded YAML config: ${yamlPath}`);
       }
-      
+
       return this.config;
     } catch (_error) {
       if (this.config.logging?.verboseFileLoading) {
@@ -204,30 +224,37 @@ export class YamlConfigManager {
    */
   private findYamlConfigFile(): string {
     let configPath: string;
-    
+
     // Check for environment variable first
     if (process.env.OMNI_CONFIG_PATH) {
       configPath = process.env.OMNI_CONFIG_PATH;
-      console.log(`[YAML-CONFIG] Using config from OMNI_CONFIG_PATH: ${configPath}`);
-      
+      console.log(
+        `[YAML-CONFIG] Using config from OMNI_CONFIG_PATH: ${configPath}`,
+      );
+
       // Validate environment-provided path
       if (!defaultPathValidator.isPathSafe(configPath)) {
-        throw new Error(`OMNI_CONFIG_PATH contains dangerous patterns: ${configPath}`);
+        throw new Error(
+          `OMNI_CONFIG_PATH contains dangerous patterns: ${configPath}`,
+        );
       }
     } else {
       const pathResolver = PathResolver.getInstance();
-      configPath = pathResolver.resolveAbsolutePath('omni-config.yaml');
+      configPath = pathResolver.resolveAbsolutePath("omni-config.yaml");
       console.log(`[YAML-CONFIG] Looking for config file at: ${configPath}`);
       console.log(`[YAML-CONFIG] Current working directory: ${process.cwd()}`);
     }
-    
+
     return configPath;
   }
 
   /**
    * Deep merge configurations
    */
-  private mergeConfig(defaultConfig: YamlConfig, userConfig: YamlConfig): YamlConfig {
+  private mergeConfig(
+    defaultConfig: YamlConfig,
+    userConfig: YamlConfig,
+  ): YamlConfig {
     const merged = { ...defaultConfig };
 
     if (userConfig.autoLoad) {
@@ -240,17 +267,23 @@ export class YamlConfigManager {
         ...userConfig.fileSettings,
         configFiles: {
           ...defaultConfig.fileSettings?.configFiles,
-          ...userConfig.fileSettings.configFiles
-        }
+          ...userConfig.fileSettings.configFiles,
+        },
       };
     }
 
     if (userConfig.directoryScanning) {
-      merged.directoryScanning = { ...defaultConfig.directoryScanning, ...userConfig.directoryScanning };
+      merged.directoryScanning = {
+        ...defaultConfig.directoryScanning,
+        ...userConfig.directoryScanning,
+      };
     }
 
     if (userConfig.profileManagement) {
-      merged.profileManagement = { ...defaultConfig.profileManagement, ...userConfig.profileManagement };
+      merged.profileManagement = {
+        ...defaultConfig.profileManagement,
+        ...userConfig.profileManagement,
+      };
     }
 
     if (userConfig.logging) {
@@ -258,7 +291,10 @@ export class YamlConfigManager {
     }
 
     if (userConfig.externalServers) {
-      merged.externalServers = { ...defaultConfig.externalServers, ...userConfig.externalServers };
+      merged.externalServers = {
+        ...defaultConfig.externalServers,
+        ...userConfig.externalServers,
+      };
     }
 
     return merged;
@@ -274,8 +310,8 @@ export class YamlConfigManager {
   /**
    * Check if logging should be output based on level
    */
-  shouldLog(level: 'debug' | 'info' | 'warn' | 'error'): boolean {
-    const configLevel = this.config.logging?.level || 'info';
+  shouldLog(level: "debug" | "info" | "warn" | "error"): boolean {
+    const configLevel = this.config.logging?.level || "info";
     const levels = { debug: 0, info: 1, warn: 2, error: 3 };
     return levels[level] >= levels[configLevel];
   }
@@ -283,7 +319,7 @@ export class YamlConfigManager {
   /**
    * Log message with level check
    */
-  log(level: 'debug' | 'info' | 'warn' | 'error', message: string): void {
+  log(level: "debug" | "info" | "warn" | "error", message: string): void {
     if (this.shouldLog(level)) {
       this.logger.debug(`[${level.toUpperCase()}] ${message}`);
     }
@@ -293,7 +329,7 @@ export class YamlConfigManager {
    * Get default profile name
    */
   getDefaultProfile(): string {
-    return this.config.profileManagement?.defaultProfile || 'default';
+    return this.config.profileManagement?.defaultProfile || "default";
   }
 
   /**
@@ -315,7 +351,10 @@ export class YamlConfigManager {
   /**
    * Create a YamlConfigManager for specific config file path
    */
-  static createWithPath(configPath: string, logger?: ILogger): YamlConfigManager {
+  static createWithPath(
+    configPath: string,
+    logger?: ILogger,
+  ): YamlConfigManager {
     return new YamlConfigManager(configPath, logger);
   }
 
@@ -332,20 +371,20 @@ export class YamlConfigManager {
    */
   isExcluded(filePath: string): boolean {
     const excludePatterns = this.config.fileSettings?.excludePatterns || [];
-    return excludePatterns.some(pattern => {
+    return excludePatterns.some((pattern) => {
       try {
         // Check filename match
         if (this.matchesPattern(filePath, pattern)) return true;
-        
+
         // Check full path match (for directory patterns)
         let regexPattern = pattern
-          .replace(/\*/g, '__ASTERISK__')
-          .replace(/\?/g, '__QUESTION__')
-          .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-          .replace(/__ASTERISK__/g, '.*')
-          .replace(/__QUESTION__/g, '.');
-        
-        const regex = new RegExp(regexPattern, 'i');
+          .replace(/\*/g, "__ASTERISK__")
+          .replace(/\?/g, "__QUESTION__")
+          .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+          .replace(/__ASTERISK__/g, ".*")
+          .replace(/__QUESTION__/g, ".");
+
+        const regex = new RegExp(regexPattern, "i");
         return regex.test(filePath);
       } catch (_error) {
         // Fallback to simple string comparison on regex error
@@ -370,23 +409,29 @@ export class YamlConfigManager {
     // Validate directory path security (but allow simple paths)
     if (containsDangerousPatterns(dirPath)) {
       if (this.config.logging?.verboseFileLoading) {
-        this.logger.debug(`Directory path contains dangerous patterns: ${dirPath}`);
+        this.logger.debug(
+          `Directory path contains dangerous patterns: ${dirPath}`,
+        );
       }
       return false;
     }
-    
+
     const includePaths = this.config.fileSettings?.includePaths || [];
     if (includePaths.length === 0) return true;
 
-    return includePaths.some(includePath => {
+    return includePaths.some((includePath) => {
       try {
         const pathResolver = PathResolver.getInstance();
-        const resolvedIncludePath = pathResolver.resolveAbsolutePath(includePath);
+        const resolvedIncludePath =
+          pathResolver.resolveAbsolutePath(includePath);
         const resolvedDirPath = pathResolver.resolveAbsolutePath(dirPath);
         return resolvedDirPath.startsWith(resolvedIncludePath);
       } catch (error) {
         if (this.config.logging?.verboseFileLoading) {
-          this.logger.debug(`Path resolution failed for include check: ${includePath} -> ${dirPath}`, error);
+          this.logger.debug(
+            `Path resolution failed for include check: ${includePath} -> ${dirPath}`,
+            error,
+          );
         }
         return false;
       }
@@ -397,14 +442,15 @@ export class YamlConfigManager {
    * Auto-generate profile name
    */
   generateProfileName(filePath: string): string {
-    const pattern = this.config.profileManagement?.autoNamePattern || '%filename%';
+    const pattern =
+      this.config.profileManagement?.autoNamePattern || "%filename%";
     const filename = path.basename(filePath, path.extname(filePath));
     const dirname = path.basename(path.dirname(filePath));
 
     return pattern
-      .replace('%filename%', filename)
-      .replace('%dirname%', dirname)
-      .replace('%path%', filePath);
+      .replace("%filename%", filename)
+      .replace("%dirname%", dirname)
+      .replace("%path%", filePath);
   }
 
   /**
@@ -412,29 +458,39 @@ export class YamlConfigManager {
    */
   async saveYamlConfig(configPath?: string): Promise<void> {
     const pathResolver = PathResolver.getInstance();
-    const savePath = configPath || this.configPath || pathResolver.resolveAbsolutePath('omni-config.yaml');
-    
+    const savePath =
+      configPath ||
+      this.configPath ||
+      pathResolver.resolveAbsolutePath("omni-config.yaml");
+
     // Validate save path security (but allow simple paths)
     if (containsDangerousPatterns(savePath)) {
-      throw new Error(`Configuration save path contains dangerous patterns: ${savePath}`);
+      throw new Error(
+        `Configuration save path contains dangerous patterns: ${savePath}`,
+      );
     }
-    
+
     try {
       // Ensure path is within allowed roots with flexible validation
       safeResolve(savePath, {
         allowAbsolutePaths: true,
-        allowedRoots: [process.cwd(), '/tmp', '/var/folders', '/private/var/folders'],
-        maxDepth: 20
+        allowedRoots: [
+          process.cwd(),
+          "/tmp",
+          "/var/folders",
+          "/private/var/folders",
+        ],
+        maxDepth: 20,
       });
-      
+
       const yamlContent = yaml.dump(this.config, {
         indent: 2,
         lineWidth: 80,
-        noRefs: true
+        noRefs: true,
       });
 
-      await fs.writeFile(savePath, yamlContent, 'utf-8');
-      
+      await fs.writeFile(savePath, yamlContent, "utf-8");
+
       if (this.config.logging?.verboseFileLoading) {
         this.logger.debug(`Saved YAML config: ${savePath}`);
       }
@@ -453,11 +509,13 @@ export class YamlConfigManager {
   /**
    * Perform dry-run validation
    */
-  async dryRun(configPath?: string): Promise<import('../validation/schema-validator.js').DryRunResult> {
+  async dryRun(
+    configPath?: string,
+  ): Promise<import("../validation/schema-validator.js").DryRunResult> {
     if (!this.validator) {
       await this.enableValidation();
     }
-    
+
     const yamlPath = configPath || this.configPath || this.findYamlConfigFile();
     return this.validator!.dryRun(yamlPath, this.config);
   }
@@ -467,7 +525,7 @@ export class YamlConfigManager {
    */
   formatValidationResult(result: ValidationResult): string {
     if (!this.validator) {
-      return 'Validator not initialized';
+      return "Validator not initialized";
     }
     return this.validator.formatValidationResult(result);
   }

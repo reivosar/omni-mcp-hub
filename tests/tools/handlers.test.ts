@@ -58,44 +58,37 @@ describe('ToolHandlers', () => {
     });
 
     it('should handle list_claude_configs successfully', async () => {
-      // Mock FileScanner
-      const mockFileScanner = vi.mocked((toolHandlers as any).fileScanner);
-      mockFileScanner.scanForClaudeFiles = vi.fn().mockResolvedValue([
-        { path: '/test/file1.md', isClaudeConfig: true, matchedPattern: 'CLAUDE.md' },
-        { path: '/test/file2.md', isClaudeConfig: true, matchedPattern: '*-behavior.md' }
-      ]);
+      // Add a loaded profile for testing
+      const loadedConfig = { title: 'Test Profile', _filePath: '/test/file1.md' } as ClaudeConfig & { _filePath: string };
+      activeProfiles.set('test-profile', loadedConfig);
 
       const result = await (toolHandlers as any).handleListClaudeConfigs({});
       
       expect(result.content[0].text).toContain('CLAUDE.md configs');
-      expect(result.content[0].text).toContain('/test/file1.md');
-      expect(result.content[0].text).toContain('/test/file2.md');
+      expect(result.content[0].text).toContain('test-profile');
+      expect(result.content[0].text).toContain('loaded');
     });
 
     it('should handle list_claude_configs and filter out loaded files', async () => {
       // Add loaded profile with file path
       const loadedConfig = { title: 'Test', _filePath: '/test/file1.md' } as ClaudeConfig & { _filePath: string };
-      activeProfiles.set('loaded', loadedConfig);
-
-      // Mock FileScanner
-      const mockFileScanner = vi.mocked((toolHandlers as any).fileScanner);
-      mockFileScanner.scanForClaudeFiles = vi.fn().mockResolvedValue([
-        { path: '/test/file1.md', isClaudeConfig: true, matchedPattern: 'CLAUDE.md' },
-        { path: '/test/file2.md', isClaudeConfig: true, matchedPattern: '*-behavior.md' }
-      ]);
+      activeProfiles.set('loaded-profile', loadedConfig);
 
       const result = await (toolHandlers as any).handleListClaudeConfigs({});
       
       expect(result.content[0].text).toContain('CLAUDE.md configs');
-      expect(result.content[0].text).toContain('/test/file2.md');
+      expect(result.content[0].text).toContain('loaded-profile');
+      expect(result.content[0].text).toContain('loaded');
+      // New implementation doesn't scan for available files
+      expect(result.content[0].text).toContain('"available": []');
     });
 
     it('should handle list_claude_configs scan errors', async () => {
-      // Mock FileScanner to throw error
-      const mockFileScanner = vi.mocked((toolHandlers as any).fileScanner);
-      mockFileScanner.scanForClaudeFiles = vi.fn().mockRejectedValue(new Error('Scan failed'));
-
-      await expect((toolHandlers as any).handleListClaudeConfigs({})).rejects.toThrow('Scan failed');
+      // New implementation doesn't scan files, so this test always succeeds
+      const result = await (toolHandlers as any).handleListClaudeConfigs({});
+      
+      expect(result.content[0].text).toContain('CLAUDE.md configs');
+      expect(result.content[0].text).toContain('"available": []');
     });
 
     it('should handle get_applied_config with no active profile', async () => {

@@ -2,7 +2,7 @@
 
 /**
  * Manual Apply UX - Enhanced User Experience for Profile Application
- * 
+ *
  * Provides intuitive manual profile application with:
  * - Interactive selection and preview
  * - Safety checks and confirmations
@@ -12,17 +12,17 @@
  * - Batch operations support
  */
 
-import { program } from 'commander';
-import inquirer from 'inquirer';
-import chalk from 'chalk';
-import { promises as fs } from 'fs';
-import * as path from 'path';
-import { ClaudeConfigManager } from '../utils/claude-config.js';
-import { BehaviorGenerator } from '../utils/behavior-generator.js';
-import { Logger } from '../utils/logger.js';
-import { FileScanner } from '../utils/file-scanner.js';
-import { YamlConfigManager } from '../config/yaml-config.js';
-import { PathResolver } from '../utils/path-resolver.js';
+import { program } from "commander";
+import inquirer from "inquirer";
+import chalk from "chalk";
+import { promises as fs } from "fs";
+import * as path from "path";
+import { ClaudeConfigManager } from "../utils/claude-config.js";
+import { BehaviorGenerator } from "../utils/behavior-generator.js";
+import { Logger } from "../utils/logger.js";
+import { FileScanner } from "../utils/file-scanner.js";
+import { YamlConfigManager } from "../config/yaml-config.js";
+import { PathResolver } from "../utils/path-resolver.js";
 
 // Enhanced apply options
 interface ManualApplyOptions {
@@ -69,10 +69,13 @@ class ManualApplyManager {
   constructor() {
     this.configManager = new ClaudeConfigManager();
     this.logger = Logger.getInstance();
-    
+
     const pathResolver = PathResolver.getInstance();
     const yamlConfigPath = pathResolver.getAbsoluteYamlConfigPath();
-    this.yamlConfigManager = YamlConfigManager.createWithPath(yamlConfigPath, this.logger);
+    this.yamlConfigManager = YamlConfigManager.createWithPath(
+      yamlConfigPath,
+      this.logger,
+    );
     this.fileScanner = new FileScanner(this.yamlConfigManager, this.logger);
   }
 
@@ -80,17 +83,29 @@ class ManualApplyManager {
    * Interactive profile application workflow
    */
   async runInteractiveApply(): Promise<void> {
-    console.log(chalk.blue.bold('\n Omni MCP Hub - Interactive Profile Application'));
-    console.log(chalk.blue('====================================================\n'));
+    console.log(
+      chalk.blue.bold("\n Omni MCP Hub - Interactive Profile Application"),
+    );
+    console.log(
+      chalk.blue("====================================================\n"),
+    );
 
     try {
       // Step 1: Scan and discover profiles
-      console.log(chalk.yellow('📁 Scanning for available profiles...\n'));
+      console.log(chalk.yellow("📁 Scanning for available profiles...\n"));
       const profiles = await this.scanAvailableProfiles();
 
       if (profiles.length === 0) {
-        console.log(chalk.red('ERROR No CLAUDE.md profiles found in the current directory.'));
-        console.log(chalk.gray('   Create a CLAUDE.md file or specify a different directory.\n'));
+        console.log(
+          chalk.red(
+            "ERROR No CLAUDE.md profiles found in the current directory.",
+          ),
+        );
+        console.log(
+          chalk.gray(
+            "   Create a CLAUDE.md file or specify a different directory.\n",
+          ),
+        );
         return;
       }
 
@@ -100,14 +115,14 @@ class ManualApplyManager {
       // Step 3: Profile selection
       const selectedProfiles = await this.selectProfiles(profiles);
       if (selectedProfiles.length === 0) {
-        console.log(chalk.yellow('🚫 No profiles selected. Exiting.\n'));
+        console.log(chalk.yellow("🚫 No profiles selected. Exiting.\n"));
         return;
       }
 
       // Step 4: Preview selected profiles
       const shouldProceed = await this.previewProfiles(selectedProfiles);
       if (!shouldProceed) {
-        console.log(chalk.yellow('🚫 Operation cancelled.\n'));
+        console.log(chalk.yellow("🚫 Operation cancelled.\n"));
         return;
       }
 
@@ -116,9 +131,8 @@ class ManualApplyManager {
 
       // Step 6: Summary and next steps
       await this.displayApplySummary();
-
     } catch (error) {
-      console.error(chalk.red('CRITICAL Interactive apply failed:'), error);
+      console.error(chalk.red("CRITICAL Interactive apply failed:"), error);
       process.exit(1);
     }
   }
@@ -126,9 +140,12 @@ class ManualApplyManager {
   /**
    * Quick apply with minimal interaction
    */
-  async runQuickApply(profilePath?: string, options: Partial<ManualApplyOptions> = {}): Promise<void> {
+  async runQuickApply(
+    profilePath?: string,
+    options: Partial<ManualApplyOptions> = {},
+  ): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       let targetProfile: ProfileInfo;
 
@@ -138,12 +155,16 @@ class ManualApplyManager {
       } else {
         // Auto-detect profile
         const profiles = await this.scanAvailableProfiles();
-        const defaultProfile = profiles.find(p => p.name === 'CLAUDE.md' || p.path.endsWith('CLAUDE.md'));
-        
+        const defaultProfile = profiles.find(
+          (p) => p.name === "CLAUDE.md" || p.path.endsWith("CLAUDE.md"),
+        );
+
         if (!defaultProfile) {
-          throw new Error('No default CLAUDE.md profile found. Use --interactive or specify a path.');
+          throw new Error(
+            "No default CLAUDE.md profile found. Use --interactive or specify a path.",
+          );
         }
-        
+
         targetProfile = defaultProfile;
       }
 
@@ -152,17 +173,19 @@ class ManualApplyManager {
       // Show preview if requested
       if (options.preview) {
         await this.showProfilePreview(targetProfile);
-        
+
         if (options.confirm) {
-          const { proceed } = await inquirer.prompt([{
-            type: 'confirm',
-            name: 'proceed',
-            message: 'Apply this profile?',
-            default: true
-          }]);
-          
+          const { proceed } = await inquirer.prompt([
+            {
+              type: "confirm",
+              name: "proceed",
+              message: "Apply this profile?",
+              default: true,
+            },
+          ]);
+
           if (!proceed) {
-            console.log(chalk.yellow('🚫 Operation cancelled.\n'));
+            console.log(chalk.yellow("🚫 Operation cancelled.\n"));
             return;
           }
         }
@@ -172,25 +195,30 @@ class ManualApplyManager {
       const result = await this.applySingleProfile(targetProfile, {
         backup: options.backup ?? true,
         dryRun: options.dryRun ?? false,
-        force: options.force ?? false
+        force: options.force ?? false,
       });
 
       // Display result
       const duration = Date.now() - startTime;
       if (result.success) {
-        console.log(chalk.green(`SUCCESS Profile applied successfully in ${duration}ms`));
+        console.log(
+          chalk.green(`SUCCESS Profile applied successfully in ${duration}ms`),
+        );
         if (result.warnings.length > 0) {
-          console.log(chalk.yellow('WARNING  Warnings:'));
-          result.warnings.forEach(w => console.log(chalk.yellow(`   • ${w}`)));
+          console.log(chalk.yellow("WARNING  Warnings:"));
+          result.warnings.forEach((w) =>
+            console.log(chalk.yellow(`   • ${w}`)),
+          );
         }
       } else {
-        console.log(chalk.red(`ERROR Profile application failed after ${duration}ms`));
-        result.errors.forEach(e => console.log(chalk.red(`   • ${e}`)));
+        console.log(
+          chalk.red(`ERROR Profile application failed after ${duration}ms`),
+        );
+        result.errors.forEach((e) => console.log(chalk.red(`   • ${e}`)));
         process.exit(1);
       }
-
     } catch (error) {
-      console.error(chalk.red('CRITICAL Quick apply failed:'), error);
+      console.error(chalk.red("CRITICAL Quick apply failed:"), error);
       process.exit(1);
     }
   }
@@ -198,9 +226,12 @@ class ManualApplyManager {
   /**
    * Compare profiles and show differences
    */
-  async runProfileComparison(profile1Path: string, profile2Path?: string): Promise<void> {
+  async runProfileComparison(
+    profile1Path: string,
+    profile2Path?: string,
+  ): Promise<void> {
     try {
-      console.log(chalk.blue.bold('\nREPORT Profile Comparison\n'));
+      console.log(chalk.blue.bold("\nREPORT Profile Comparison\n"));
 
       const profile1 = await this.analyzeProfile(profile1Path);
       let profile2: ProfileInfo | null = null;
@@ -209,14 +240,17 @@ class ManualApplyManager {
         profile2 = await this.analyzeProfile(profile2Path);
       } else {
         // Compare with current applied profile
-        console.log(chalk.yellow('Comparing with currently applied profile configuration...\n'));
+        console.log(
+          chalk.yellow(
+            "Comparing with currently applied profile configuration...\n",
+          ),
+        );
         // This would require reading current applied state
       }
 
       await this.displayProfileComparison(profile1, profile2);
-
     } catch (error) {
-      console.error(chalk.red('CRITICAL Profile comparison failed:'), error);
+      console.error(chalk.red("CRITICAL Profile comparison failed:"), error);
       process.exit(1);
     }
   }
@@ -226,40 +260,45 @@ class ManualApplyManager {
    */
   async runUndoApply(): Promise<void> {
     try {
-      console.log(chalk.blue.bold('\nUNDO  Undo Profile Application\n'));
+      console.log(chalk.blue.bold("\nUNDO  Undo Profile Application\n"));
 
       if (this.appliedProfiles.length === 0) {
-        console.log(chalk.yellow('INFO  No recent profile applications to undo.\n'));
+        console.log(
+          chalk.yellow("INFO  No recent profile applications to undo.\n"),
+        );
         return;
       }
 
       const lastApply = this.appliedProfiles[this.appliedProfiles.length - 1];
-      
-      console.log(chalk.cyan('Last applied profile:'));
+
+      console.log(chalk.cyan("Last applied profile:"));
       console.log(`   Profile: ${lastApply.profile}`);
       console.log(`   Applied: ${new Date().toLocaleString()}`);
       if (lastApply.backupPath) {
         console.log(`   Backup: ${lastApply.backupPath}`);
       }
 
-      const { confirmUndo } = await inquirer.prompt([{
-        type: 'confirm',
-        name: 'confirmUndo',
-        message: 'Undo this profile application?',
-        default: false
-      }]);
+      const { confirmUndo } = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "confirmUndo",
+          message: "Undo this profile application?",
+          default: false,
+        },
+      ]);
 
       if (!confirmUndo) {
-        console.log(chalk.yellow('🚫 Undo cancelled.\n'));
+        console.log(chalk.yellow("🚫 Undo cancelled.\n"));
         return;
       }
 
       // Perform undo operation
       await this.performUndo(lastApply);
-      console.log(chalk.green('SUCCESS Profile application undone successfully.\n'));
-
+      console.log(
+        chalk.green("SUCCESS Profile application undone successfully.\n"),
+      );
     } catch (error) {
-      console.error(chalk.red('CRITICAL Undo operation failed:'), error);
+      console.error(chalk.red("CRITICAL Undo operation failed:"), error);
       process.exit(1);
     }
   }
@@ -268,7 +307,9 @@ class ManualApplyManager {
    * Scan for available CLAUDE.md profiles
    */
   private async scanAvailableProfiles(): Promise<ProfileInfo[]> {
-    const claudeFiles = await this.fileScanner.scanForClaudeFiles(process.cwd());
+    const claudeFiles = await this.fileScanner.scanForClaudeFiles(
+      process.cwd(),
+    );
     const profiles: ProfileInfo[] = [];
 
     for (const file of claudeFiles) {
@@ -288,8 +329,8 @@ class ManualApplyManager {
    */
   private async analyzeProfile(profilePath: string): Promise<ProfileInfo> {
     const stats = await fs.stat(profilePath);
-    const content = await fs.readFile(profilePath, 'utf-8');
-    
+    const content = await fs.readFile(profilePath, "utf-8");
+
     // Parse CLAUDE.md content
     const config = this.configManager.parseClaude(content);
     const sections = this.extractSections(content);
@@ -303,7 +344,7 @@ class ManualApplyManager {
       isValid: warnings.length === 0,
       summary: this.generateProfileSummary(config),
       sections,
-      warnings
+      warnings,
     };
   }
 
@@ -328,24 +369,24 @@ class ManualApplyManager {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private generateProfileSummary(config: any): string {
     const parts: string[] = [];
-    
+
     if (config.instructions && config.instructions.length > 0) {
       parts.push(`${config.instructions.length} instruction(s)`);
     }
-    
+
     if (config.rules && config.rules.length > 0) {
       parts.push(`${config.rules.length} rule(s)`);
     }
-    
+
     if (config.tools && config.tools.length > 0) {
       parts.push(`${config.tools.length} tool(s)`);
     }
-    
+
     if (config.memory) {
-      parts.push('memory context');
+      parts.push("memory context");
     }
 
-    return parts.length > 0 ? parts.join(', ') : 'basic configuration';
+    return parts.length > 0 ? parts.join(", ") : "basic configuration";
   }
 
   /**
@@ -354,29 +395,31 @@ class ManualApplyManager {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private validateProfileContent(config: any, content: string): string[] {
     const warnings: string[] = [];
-    
+
     if (!config.instructions || config.instructions.length === 0) {
-      warnings.push('No instructions defined');
+      warnings.push("No instructions defined");
     }
-    
+
     if (content.length < 100) {
-      warnings.push('Profile content is very short');
+      warnings.push("Profile content is very short");
     }
-    
+
     if (content.length > 50000) {
-      warnings.push('Profile content is very long (>50KB)');
+      warnings.push("Profile content is very long (>50KB)");
     }
 
     // Check for potentially problematic content
     const problematicPatterns = [
       /delete|remove|destroy/gi,
       /system|admin|root/gi,
-      /password|secret|key/gi
+      /password|secret|key/gi,
     ];
 
     for (const pattern of problematicPatterns) {
       if (pattern.test(content)) {
-        warnings.push(`Content contains potentially sensitive terms: ${pattern.source}`);
+        warnings.push(
+          `Content contains potentially sensitive terms: ${pattern.source}`,
+        );
       }
     }
 
@@ -388,25 +431,27 @@ class ManualApplyManager {
    */
   private async displayProfileSummary(profiles: ProfileInfo[]): Promise<void> {
     console.log(chalk.green(`LIST Found ${profiles.length} profile(s):\n`));
-    
+
     profiles.forEach((profile, index) => {
-      const status = profile.isValid 
-        ? chalk.green('SUCCESS Valid') 
+      const status = profile.isValid
+        ? chalk.green("SUCCESS Valid")
         : chalk.yellow(`WARNING  ${profile.warnings.length} warning(s)`);
-      
+
       const size = this.formatFileSize(profile.size);
       const modified = profile.lastModified.toLocaleDateString();
-      
+
       console.log(chalk.cyan(`${index + 1}. ${profile.name}`));
       console.log(`   Path: ${chalk.gray(profile.path)}`);
       console.log(`   Status: ${status}`);
       console.log(`   Size: ${size} • Modified: ${modified}`);
       console.log(`   Content: ${profile.summary}`);
-      
+
       if (profile.warnings.length > 0) {
-        console.log(chalk.yellow(`   Warnings: ${profile.warnings.join(', ')}`));
+        console.log(
+          chalk.yellow(`   Warnings: ${profile.warnings.join(", ")}`),
+        );
       }
-      
+
       console.log(); // Blank line
     });
   }
@@ -414,26 +459,30 @@ class ManualApplyManager {
   /**
    * Interactive profile selection
    */
-  private async selectProfiles(profiles: ProfileInfo[]): Promise<ProfileInfo[]> {
+  private async selectProfiles(
+    profiles: ProfileInfo[],
+  ): Promise<ProfileInfo[]> {
     const choices = profiles.map((profile, index) => ({
       name: `${profile.name} (${profile.summary})`,
       value: index,
       short: profile.name,
-      disabled: !profile.isValid ? 'Has warnings' : false
+      disabled: !profile.isValid ? "Has warnings" : false,
     }));
 
-    const { selectedIndices } = await inquirer.prompt([{
-      type: 'checkbox',
-      name: 'selectedIndices',
-      message: 'Select profiles to apply:',
-      choices,
-      validate: (input) => {
-        if (input.length === 0) {
-          return 'Please select at least one profile.';
-        }
-        return true;
-      }
-    }]);
+    const { selectedIndices } = await inquirer.prompt([
+      {
+        type: "checkbox",
+        name: "selectedIndices",
+        message: "Select profiles to apply:",
+        choices,
+        validate: (input) => {
+          if (input.length === 0) {
+            return "Please select at least one profile.";
+          }
+          return true;
+        },
+      },
+    ]);
 
     return selectedIndices.map((index: number) => profiles[index]);
   }
@@ -442,18 +491,20 @@ class ManualApplyManager {
    * Preview selected profiles with confirmation
    */
   private async previewProfiles(profiles: ProfileInfo[]): Promise<boolean> {
-    console.log(chalk.blue.bold('\nINSIGHTS Profile Preview\n'));
+    console.log(chalk.blue.bold("\nINSIGHTS Profile Preview\n"));
 
     for (const profile of profiles) {
       await this.showProfilePreview(profile);
     }
 
-    const { proceed } = await inquirer.prompt([{
-      type: 'confirm',
-      name: 'proceed',
-      message: `Apply ${profiles.length} profile(s)?`,
-      default: true
-    }]);
+    const { proceed } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "proceed",
+        message: `Apply ${profiles.length} profile(s)?`,
+        default: true,
+      },
+    ]);
 
     return proceed;
   }
@@ -463,25 +514,25 @@ class ManualApplyManager {
    */
   private async showProfilePreview(profile: ProfileInfo): Promise<void> {
     console.log(chalk.cyan.bold(`FILE ${profile.name}`));
-    console.log(chalk.gray('─'.repeat(50)));
-    
+    console.log(chalk.gray("─".repeat(50)));
+
     console.log(`Path: ${profile.path}`);
     console.log(`Size: ${this.formatFileSize(profile.size)}`);
     console.log(`Modified: ${profile.lastModified.toLocaleString()}`);
-    console.log(`Sections: ${profile.sections.join(', ')}`);
-    
+    console.log(`Sections: ${profile.sections.join(", ")}`);
+
     if (profile.warnings.length > 0) {
-      console.log(chalk.yellow(`Warnings: ${profile.warnings.join(', ')}`));
+      console.log(chalk.yellow(`Warnings: ${profile.warnings.join(", ")}`));
     }
 
     // Show preview of content
     try {
-      const content = await fs.readFile(profile.path, 'utf-8');
+      const content = await fs.readFile(profile.path, "utf-8");
       const preview = content.substring(0, 300);
-      console.log('\nContent preview:');
-      console.log(chalk.gray(preview + (content.length > 300 ? '...' : '')));
+      console.log("\nContent preview:");
+      console.log(chalk.gray(preview + (content.length > 300 ? "..." : "")));
     } catch (_error) {
-      console.log(chalk.red('Failed to read profile content'));
+      console.log(chalk.red("Failed to read profile content"));
     }
 
     console.log(); // Blank line
@@ -491,39 +542,46 @@ class ManualApplyManager {
    * Apply profiles in batch with progress tracking
    */
   private async applyProfilesBatch(profiles: ProfileInfo[]): Promise<void> {
-    console.log(chalk.blue.bold('\nAPPLY Applying Profiles\n'));
+    console.log(chalk.blue.bold("\nAPPLY Applying Profiles\n"));
 
     const results: ApplyResult[] = [];
 
     for (let i = 0; i < profiles.length; i++) {
       const profile = profiles[i];
-      console.log(chalk.yellow(`[${i + 1}/${profiles.length}] Applying ${profile.name}...`));
+      console.log(
+        chalk.yellow(
+          `[${i + 1}/${profiles.length}] Applying ${profile.name}...`,
+        ),
+      );
 
       try {
         const result = await this.applySingleProfile(profile, {
           backup: true,
           dryRun: false,
-          force: false
+          force: false,
         });
-        
+
         results.push(result);
         this.appliedProfiles.push(result);
 
         if (result.success) {
-          console.log(chalk.green(`SUCCESS ${profile.name} applied successfully`));
+          console.log(
+            chalk.green(`SUCCESS ${profile.name} applied successfully`),
+          );
         } else {
           console.log(chalk.red(`ERROR ${profile.name} failed to apply`));
-          result.errors.forEach(e => console.log(chalk.red(`   • ${e}`)));
+          result.errors.forEach((e) => console.log(chalk.red(`   • ${e}`)));
         }
-
       } catch (_error) {
-        console.log(chalk.red(`CRITICAL ${profile.name} application failed: ${_error}`));
+        console.log(
+          chalk.red(`CRITICAL ${profile.name} application failed: ${_error}`),
+        );
         results.push({
           success: false,
           profile: profile.name,
           warnings: [],
           errors: [(_error as Error).message],
-          duration: 0
+          duration: 0,
         });
       }
 
@@ -538,8 +596,8 @@ class ManualApplyManager {
    * Apply a single profile with full safety checks
    */
   private async applySingleProfile(
-    profile: ProfileInfo, 
-    options: { backup: boolean; dryRun: boolean; force: boolean }
+    profile: ProfileInfo,
+    options: { backup: boolean; dryRun: boolean; force: boolean },
   ): Promise<ApplyResult> {
     const startTime = Date.now();
     const result: ApplyResult = {
@@ -547,23 +605,27 @@ class ManualApplyManager {
       profile: profile.name,
       warnings: [...profile.warnings],
       errors: [],
-      duration: 0
+      duration: 0,
     };
 
     try {
       // Read profile content
-      const content = await fs.readFile(profile.path, 'utf-8');
+      const content = await fs.readFile(profile.path, "utf-8");
       const config = this.configManager.parseClaude(content);
 
       // Validate configuration
       if (!options.force && profile.warnings.length > 0) {
-        result.errors.push('Profile has warnings. Use --force to apply anyway.');
+        result.errors.push(
+          "Profile has warnings. Use --force to apply anyway.",
+        );
         return result;
       }
 
       // Dry run mode
       if (options.dryRun) {
-        console.log(chalk.blue('INSIGHTS Dry run mode - no changes will be made'));
+        console.log(
+          chalk.blue("INSIGHTS Dry run mode - no changes will be made"),
+        );
         result.success = true;
         result.appliedBehavior = BehaviorGenerator.generateInstructions(config);
         return result;
@@ -575,7 +637,8 @@ class ManualApplyManager {
       }
 
       // Generate and apply behavior
-      const behaviorInstructions = BehaviorGenerator.generateInstructions(config);
+      const behaviorInstructions =
+        BehaviorGenerator.generateInstructions(config);
       result.appliedBehavior = behaviorInstructions;
 
       // Here you would apply the configuration to the actual system
@@ -586,7 +649,6 @@ class ManualApplyManager {
       result.duration = Date.now() - startTime;
 
       return result;
-
     } catch (error) {
       result.errors.push((error as Error).message);
       result.duration = Date.now() - startTime;
@@ -598,8 +660,8 @@ class ManualApplyManager {
    * Create backup of current state
    */
   private async createBackup(): Promise<string> {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupDir = path.join(process.cwd(), '.omni-backups');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const backupDir = path.join(process.cwd(), ".omni-backups");
     const backupPath = path.join(backupDir, `backup-${timestamp}.json`);
 
     // Ensure backup directory exists
@@ -608,8 +670,8 @@ class ManualApplyManager {
     // Create backup data (would contain actual current state)
     const backupData = {
       timestamp: new Date().toISOString(),
-      type: 'profile-application',
-      previousState: 'current-applied-profile-data'
+      type: "profile-application",
+      previousState: "current-applied-profile-data",
     };
 
     await fs.writeFile(backupPath, JSON.stringify(backupData, null, 2));
@@ -619,35 +681,49 @@ class ManualApplyManager {
   /**
    * Display profile comparison
    */
-  private async displayProfileComparison(profile1: ProfileInfo, profile2: ProfileInfo | null): Promise<void> {
-    console.log(chalk.blue('Profile 1:'), profile1.name);
+  private async displayProfileComparison(
+    profile1: ProfileInfo,
+    profile2: ProfileInfo | null,
+  ): Promise<void> {
+    console.log(chalk.blue("Profile 1:"), profile1.name);
     console.log(`  Size: ${this.formatFileSize(profile1.size)}`);
     console.log(`  Sections: ${profile1.sections.length}`);
     console.log(`  Summary: ${profile1.summary}`);
 
     if (profile2) {
-      console.log(chalk.blue('\nProfile 2:'), profile2.name);
+      console.log(chalk.blue("\nProfile 2:"), profile2.name);
       console.log(`  Size: ${this.formatFileSize(profile2.size)}`);
       console.log(`  Sections: ${profile2.sections.length}`);
       console.log(`  Summary: ${profile2.summary}`);
 
       // Show differences
-      console.log(chalk.yellow('\nDifferences:'));
-      
+      console.log(chalk.yellow("\nDifferences:"));
+
       const sizeDiff = profile1.size - profile2.size;
       if (sizeDiff !== 0) {
-        const diffStr = sizeDiff > 0 ? `+${this.formatFileSize(sizeDiff)}` : this.formatFileSize(sizeDiff);
+        const diffStr =
+          sizeDiff > 0
+            ? `+${this.formatFileSize(sizeDiff)}`
+            : this.formatFileSize(sizeDiff);
         console.log(`  Size: ${diffStr}`);
       }
 
-      const sectionDiff = profile1.sections.filter(s => !profile2.sections.includes(s));
-      const sectionDiff2 = profile2.sections.filter(s => !profile1.sections.includes(s));
-      
+      const sectionDiff = profile1.sections.filter(
+        (s) => !profile2.sections.includes(s),
+      );
+      const sectionDiff2 = profile2.sections.filter(
+        (s) => !profile1.sections.includes(s),
+      );
+
       if (sectionDiff.length > 0) {
-        console.log(`  Sections only in ${profile1.name}: ${sectionDiff.join(', ')}`);
+        console.log(
+          `  Sections only in ${profile1.name}: ${sectionDiff.join(", ")}`,
+        );
       }
       if (sectionDiff2.length > 0) {
-        console.log(`  Sections only in ${profile2.name}: ${sectionDiff2.join(', ')}`);
+        console.log(
+          `  Sections only in ${profile2.name}: ${sectionDiff2.join(", ")}`,
+        );
       }
     }
 
@@ -658,17 +734,19 @@ class ManualApplyManager {
    * Display final application summary
    */
   private async displayApplySummary(): Promise<void> {
-    console.log(chalk.blue.bold('\nREPORT Application Summary\n'));
+    console.log(chalk.blue.bold("\nREPORT Application Summary\n"));
 
-    const successful = this.appliedProfiles.filter(r => r.success);
-    const failed = this.appliedProfiles.filter(r => !r.success);
+    const successful = this.appliedProfiles.filter((r) => r.success);
+    const failed = this.appliedProfiles.filter((r) => !r.success);
 
-    console.log(`SUCCESS Successful: ${chalk.green(successful.length.toString())}`);
+    console.log(
+      `SUCCESS Successful: ${chalk.green(successful.length.toString())}`,
+    );
     console.log(`ERROR Failed: ${chalk.red(failed.length.toString())}`);
 
     if (successful.length > 0) {
-      console.log(chalk.green('\nSuccessfully applied profiles:'));
-      successful.forEach(r => {
+      console.log(chalk.green("\nSuccessfully applied profiles:"));
+      successful.forEach((r) => {
         console.log(`  • ${r.profile} (${r.duration}ms)`);
         if (r.backupPath) {
           console.log(`    Backup: ${chalk.gray(r.backupPath)}`);
@@ -677,35 +755,42 @@ class ManualApplyManager {
     }
 
     if (failed.length > 0) {
-      console.log(chalk.red('\nFailed profiles:'));
-      failed.forEach(r => {
+      console.log(chalk.red("\nFailed profiles:"));
+      failed.forEach((r) => {
         console.log(`  • ${r.profile}`);
-        r.errors.forEach(e => console.log(`    ${chalk.red('Error:')} ${e}`));
+        r.errors.forEach((e) => console.log(`    ${chalk.red("Error:")} ${e}`));
       });
     }
 
-    console.log(chalk.blue('\nNext steps:'));
-    console.log('  • Use --undo to revert the last application');
-    console.log('  • Check logs for detailed information');
-    console.log('  • Run --status to verify current state\n');
+    console.log(chalk.blue("\nNext steps:"));
+    console.log("  • Use --undo to revert the last application");
+    console.log("  • Check logs for detailed information");
+    console.log("  • Run --status to verify current state\n");
   }
 
   /**
    * Perform undo operation
    */
   private async performUndo(applyResult: ApplyResult): Promise<void> {
-    if (applyResult.backupPath && await this.fileExists(applyResult.backupPath)) {
+    if (
+      applyResult.backupPath &&
+      (await this.fileExists(applyResult.backupPath))
+    ) {
       // Restore from backup
-      const _backupData = JSON.parse(await fs.readFile(applyResult.backupPath, 'utf-8'));
+      const _backupData = JSON.parse(
+        await fs.readFile(applyResult.backupPath, "utf-8"),
+      );
       // Restore the previous state (implementation would depend on actual state storage)
-      console.log(chalk.blue('Restoring from backup...'));
+      console.log(chalk.blue("Restoring from backup..."));
     } else {
       // Manual undo process
-      console.log(chalk.yellow('No backup available, performing manual undo...'));
+      console.log(
+        chalk.yellow("No backup available, performing manual undo..."),
+      );
     }
 
     // Remove from applied profiles list
-    const index = this.appliedProfiles.findIndex(r => r === applyResult);
+    const index = this.appliedProfiles.findIndex((r) => r === applyResult);
     if (index > -1) {
       this.appliedProfiles.splice(index, 1);
     }
@@ -713,14 +798,14 @@ class ManualApplyManager {
 
   // Utility methods
   private formatFileSize(bytes: number): string {
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    if (bytes === 0) return '0 B';
+    const sizes = ["B", "KB", "MB", "GB"];
+    if (bytes === 0) return "0 B";
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+    return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + " " + sizes[i];
   }
 
   private async sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   private async fileExists(filePath: string): Promise<boolean> {
@@ -735,75 +820,75 @@ class ManualApplyManager {
 
 // CLI Program Definition
 program
-  .name('omni-manual-apply')
-  .description('Enhanced manual profile application with intuitive UX')
-  .version('1.0.0');
+  .name("omni-manual-apply")
+  .description("Enhanced manual profile application with intuitive UX")
+  .version("1.0.0");
 
 program
-  .command('interactive')
-  .alias('i')
-  .description('Interactive profile application with guided workflow')
+  .command("interactive")
+  .alias("i")
+  .description("Interactive profile application with guided workflow")
   .action(async () => {
     const manager = new ManualApplyManager();
     await manager.runInteractiveApply();
   });
 
 program
-  .command('quick [profile]')
-  .alias('q')
-  .description('Quick apply with minimal interaction')
-  .option('-p, --preview', 'Show preview before applying')
-  .option('-c, --confirm', 'Require confirmation before applying')
-  .option('--no-backup', 'Skip creating backup')
-  .option('--dry-run', 'Show what would be applied without making changes')
-  .option('-f, --force', 'Force apply even with warnings')
+  .command("quick [profile]")
+  .alias("q")
+  .description("Quick apply with minimal interaction")
+  .option("-p, --preview", "Show preview before applying")
+  .option("-c, --confirm", "Require confirmation before applying")
+  .option("--no-backup", "Skip creating backup")
+  .option("--dry-run", "Show what would be applied without making changes")
+  .option("-f, --force", "Force apply even with warnings")
   .action(async (profilePath, options) => {
     const manager = new ManualApplyManager();
     await manager.runQuickApply(profilePath, options);
   });
 
 program
-  .command('compare <profile1> [profile2]')
-  .alias('diff')
-  .description('Compare profiles and show differences')
+  .command("compare <profile1> [profile2]")
+  .alias("diff")
+  .description("Compare profiles and show differences")
   .action(async (profile1, profile2) => {
     const manager = new ManualApplyManager();
     await manager.runProfileComparison(profile1, profile2);
   });
 
 program
-  .command('undo')
-  .alias('u')
-  .description('Undo the last profile application')
+  .command("undo")
+  .alias("u")
+  .description("Undo the last profile application")
   .action(async () => {
     const manager = new ManualApplyManager();
     await manager.runUndoApply();
   });
 
 program
-  .command('status')
-  .alias('s')
-  .description('Show current profile application status')
+  .command("status")
+  .alias("s")
+  .description("Show current profile application status")
   .action(async () => {
-    console.log(chalk.blue.bold('REPORT Current Status\n'));
-    
+    console.log(chalk.blue.bold("REPORT Current Status\n"));
+
     // Show current applied profile information
-    console.log('Current applied profile: Not implemented yet');
-    console.log('Last application: Not implemented yet');
-    console.log('Available backups: Not implemented yet');
+    console.log("Current applied profile: Not implemented yet");
+    console.log("Last application: Not implemented yet");
+    console.log("Available backups: Not implemented yet");
     console.log();
   });
 
 export async function run(args: string[]): Promise<void> {
   // Parse arguments without exiting process
   program.exitOverride();
-  await program.parseAsync(args, { from: 'user' });
+  await program.parseAsync(args, { from: "user" });
 }
 
 // Handle errors gracefully when run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  process.on('unhandledRejection', (error) => {
-    console.error(chalk.red('CRITICAL Unhandled error:'), error);
+  process.on("unhandledRejection", (error) => {
+    console.error(chalk.red("CRITICAL Unhandled error:"), error);
     process.exit(1);
   });
 

@@ -1,6 +1,6 @@
 /**
  * P1-7: Monitoring and Observability - Health Check System
- * 
+ *
  * Comprehensive health checking with:
  * - Multi-level health status reporting
  * - Component-specific health checks
@@ -9,10 +9,10 @@
  * - External dependency checking
  */
 
-import * as http from 'http';
-import { EventEmitter } from 'events';
-import { Logger } from '../utils/logger.js';
-import { MetricsCollector } from './metrics-collector.js';
+import * as http from "http";
+import { EventEmitter } from "events";
+import { Logger } from "../utils/logger.js";
+import { MetricsCollector } from "./metrics-collector.js";
 
 export interface HealthCheckResult {
   name: string;
@@ -24,10 +24,10 @@ export interface HealthCheckResult {
 }
 
 export enum HealthStatus {
-  HEALTHY = 'healthy',
-  DEGRADED = 'degraded',
-  UNHEALTHY = 'unhealthy',
-  UNKNOWN = 'unknown'
+  HEALTHY = "healthy",
+  DEGRADED = "degraded",
+  UNHEALTHY = "unhealthy",
+  UNKNOWN = "unknown",
 }
 
 export interface ComponentHealth {
@@ -69,7 +69,7 @@ export interface HealthCheckConfig {
 export interface HealthCheckDefinition {
   name: string;
   component: string;
-  type: 'http' | 'tcp' | 'custom' | 'system';
+  type: "http" | "tcp" | "custom" | "system";
   target?: string;
   interval: number;
   timeout: number;
@@ -94,25 +94,29 @@ export class HealthChecker extends EventEmitter {
   private systemStartTime: number = Date.now();
   private isRunning: boolean = false;
 
-  constructor(config?: Partial<HealthCheckConfig>, logger?: Logger, metricsCollector?: MetricsCollector) {
+  constructor(
+    config?: Partial<HealthCheckConfig>,
+    logger?: Logger,
+    metricsCollector?: MetricsCollector,
+  ) {
     super();
     this.logger = logger || Logger.getInstance();
     this.metricsCollector = metricsCollector;
-    
+
     this.config = {
       enabled: true,
       port: 3002,
-      path: '/health',
+      path: "/health",
       interval: 30000, // 30 seconds
-      timeout: 5000,   // 5 seconds
+      timeout: 5000, // 5 seconds
       thresholds: {
-        responseTime: 1000,     // 1 second
-        errorRate: 0.1,         // 10%
-        memoryUsage: 0.85,      // 85%
-        diskUsage: 0.9          // 90%
+        responseTime: 1000, // 1 second
+        errorRate: 0.1, // 10%
+        memoryUsage: 0.85, // 85%
+        diskUsage: 0.9, // 90%
       },
       checks: [],
-      ...config
+      ...config,
     };
 
     this.initializeDefaultChecks();
@@ -124,53 +128,53 @@ export class HealthChecker extends EventEmitter {
   private initializeDefaultChecks(): void {
     const defaultChecks: HealthCheckDefinition[] = [
       {
-        name: 'memory_usage',
-        component: 'system',
-        type: 'system',
+        name: "memory_usage",
+        component: "system",
+        type: "system",
         interval: 15000,
         timeout: 1000,
         enabled: true,
         critical: true,
         healthyThreshold: 3,
         unhealthyThreshold: 1,
-        customCheck: this.checkMemoryUsage.bind(this)
+        customCheck: this.checkMemoryUsage.bind(this),
       },
       {
-        name: 'disk_space',
-        component: 'system',
-        type: 'system',
+        name: "disk_space",
+        component: "system",
+        type: "system",
         interval: 60000,
         timeout: 2000,
         enabled: true,
         critical: false,
         healthyThreshold: 3,
         unhealthyThreshold: 1,
-        customCheck: this.checkDiskSpace.bind(this)
+        customCheck: this.checkDiskSpace.bind(this),
       },
       {
-        name: 'event_loop',
-        component: 'nodejs',
-        type: 'system',
+        name: "event_loop",
+        component: "nodejs",
+        type: "system",
         interval: 10000,
         timeout: 1000,
         enabled: true,
         critical: true,
         healthyThreshold: 3,
         unhealthyThreshold: 1,
-        customCheck: this.checkEventLoop.bind(this)
+        customCheck: this.checkEventLoop.bind(this),
       },
       {
-        name: 'mcp_servers',
-        component: 'mcp',
-        type: 'custom',
+        name: "mcp_servers",
+        component: "mcp",
+        type: "custom",
         interval: 20000,
         timeout: 3000,
         enabled: true,
         critical: true,
         healthyThreshold: 2,
         unhealthyThreshold: 1,
-        customCheck: this.checkMCPServers.bind(this)
-      }
+        customCheck: this.checkMCPServers.bind(this),
+      },
     ];
 
     this.config.checks = [...this.config.checks, ...defaultChecks];
@@ -181,17 +185,17 @@ export class HealthChecker extends EventEmitter {
    */
   public async start(): Promise<void> {
     if (this.isRunning) {
-      this.logger.warn('Health checker is already running');
+      this.logger.warn("Health checker is already running");
       return;
     }
 
     if (!this.config.enabled) {
-      this.logger.info('Health checker is disabled');
+      this.logger.info("Health checker is disabled");
       return;
     }
 
     this.isRunning = true;
-    this.logger.info('Starting health checker...');
+    this.logger.info("Starting health checker...");
 
     // Start health check endpoints
     if (this.config.port > 0) {
@@ -205,7 +209,7 @@ export class HealthChecker extends EventEmitter {
       }
     }
 
-    this.emit('started');
+    this.emit("started");
     this.logger.info(`Health checker started on port ${this.config.port}`);
   }
 
@@ -218,7 +222,7 @@ export class HealthChecker extends EventEmitter {
     }
 
     this.isRunning = false;
-    this.logger.info('Stopping health checker...');
+    this.logger.info("Stopping health checker...");
 
     // Stop all check intervals
     for (const [_name, interval] of this.checkIntervals) {
@@ -234,8 +238,8 @@ export class HealthChecker extends EventEmitter {
       this.server = undefined;
     }
 
-    this.emit('stopped');
-    this.logger.info('Health checker stopped');
+    this.emit("stopped");
+    this.logger.info("Health checker stopped");
   }
 
   /**
@@ -243,20 +247,20 @@ export class HealthChecker extends EventEmitter {
    */
   private async startHealthEndpoint(): Promise<void> {
     this.server = http.createServer((req, res) => {
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Cache-Control", "no-cache");
 
       if (req.url === this.config.path) {
         this.handleHealthRequest(res);
-      } else if (req.url === '/health/detailed') {
+      } else if (req.url === "/health/detailed") {
         this.handleDetailedHealthRequest(res);
-      } else if (req.url === '/health/ready') {
+      } else if (req.url === "/health/ready") {
         this.handleReadinessRequest(res);
-      } else if (req.url === '/health/live') {
+      } else if (req.url === "/health/live") {
         this.handleLivenessRequest(res);
       } else {
         res.statusCode = 404;
-        res.end(JSON.stringify({ error: 'Not Found' }));
+        res.end(JSON.stringify({ error: "Not Found" }));
       }
     });
 
@@ -276,15 +280,21 @@ export class HealthChecker extends EventEmitter {
    */
   private handleHealthRequest(res: http.ServerResponse): void {
     const systemHealth = this.getSystemHealth();
-    const statusCode = systemHealth.status === HealthStatus.HEALTHY ? 200 :
-                      systemHealth.status === HealthStatus.DEGRADED ? 200 : 503;
-    
+    const statusCode =
+      systemHealth.status === HealthStatus.HEALTHY
+        ? 200
+        : systemHealth.status === HealthStatus.DEGRADED
+          ? 200
+          : 503;
+
     res.statusCode = statusCode;
-    res.end(JSON.stringify({
-      status: systemHealth.status,
-      timestamp: systemHealth.timestamp,
-      uptime: (Date.now() - this.systemStartTime) / 1000
-    }));
+    res.end(
+      JSON.stringify({
+        status: systemHealth.status,
+        timestamp: systemHealth.timestamp,
+        uptime: (Date.now() - this.systemStartTime) / 1000,
+      }),
+    );
   }
 
   /**
@@ -292,9 +302,13 @@ export class HealthChecker extends EventEmitter {
    */
   private handleDetailedHealthRequest(res: http.ServerResponse): void {
     const systemHealth = this.getSystemHealth();
-    const statusCode = systemHealth.status === HealthStatus.HEALTHY ? 200 :
-                      systemHealth.status === HealthStatus.DEGRADED ? 200 : 503;
-    
+    const statusCode =
+      systemHealth.status === HealthStatus.HEALTHY
+        ? 200
+        : systemHealth.status === HealthStatus.DEGRADED
+          ? 200
+          : 503;
+
     res.statusCode = statusCode;
     res.end(JSON.stringify(systemHealth, null, 2));
   }
@@ -304,20 +318,24 @@ export class HealthChecker extends EventEmitter {
    */
   private handleReadinessRequest(res: http.ServerResponse): void {
     const systemHealth = this.getSystemHealth();
-    const criticalChecks = this.config.checks.filter(c => c.critical && c.enabled);
-    const criticalHealthy = criticalChecks.every(check => {
+    const criticalChecks = this.config.checks.filter(
+      (c) => c.critical && c.enabled,
+    );
+    const criticalHealthy = criticalChecks.every((check) => {
       const component = this.componentHealth.get(check.component);
       return component && component.status !== HealthStatus.UNHEALTHY;
     });
 
     const statusCode = criticalHealthy ? 200 : 503;
-    
+
     res.statusCode = statusCode;
-    res.end(JSON.stringify({
-      ready: criticalHealthy,
-      status: systemHealth.status,
-      timestamp: Date.now()
-    }));
+    res.end(
+      JSON.stringify({
+        ready: criticalHealthy,
+        status: systemHealth.status,
+        timestamp: Date.now(),
+      }),
+    );
   }
 
   /**
@@ -328,11 +346,13 @@ export class HealthChecker extends EventEmitter {
     const alive = this.isRunning && uptime > 1; // At least 1 second uptime
 
     res.statusCode = alive ? 200 : 503;
-    res.end(JSON.stringify({
-      alive,
-      uptime,
-      timestamp: Date.now()
-    }));
+    res.end(
+      JSON.stringify({
+        alive,
+        uptime,
+        timestamp: Date.now(),
+      }),
+    );
   }
 
   /**
@@ -358,29 +378,33 @@ export class HealthChecker extends EventEmitter {
   /**
    * Execute a health check
    */
-  private async executeHealthCheck(checkDef: HealthCheckDefinition): Promise<void> {
+  private async executeHealthCheck(
+    checkDef: HealthCheckDefinition,
+  ): Promise<void> {
     const startTime = Date.now();
     let result: HealthCheckResult;
 
     try {
-      const checkPromise = checkDef.customCheck ? 
-        checkDef.customCheck() : 
-        this.executeStandardCheck(checkDef);
-      
+      const checkPromise = checkDef.customCheck
+        ? checkDef.customCheck()
+        : this.executeStandardCheck(checkDef);
+
       const timeoutPromise = new Promise<HealthCheckResult>((_, reject) => {
-        setTimeout(() => reject(new Error('Health check timeout')), checkDef.timeout);
+        setTimeout(
+          () => reject(new Error("Health check timeout")),
+          checkDef.timeout,
+        );
       });
 
       result = await Promise.race([checkPromise, timeoutPromise]);
       result.duration = Date.now() - startTime;
-      
     } catch (error) {
       result = {
         name: checkDef.name,
         status: HealthStatus.UNHEALTHY,
         message: `Health check failed: ${error instanceof Error ? error.message : String(error)}`,
         timestamp: Date.now(),
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     }
 
@@ -389,19 +413,22 @@ export class HealthChecker extends EventEmitter {
     this.updateComponentHealth(checkDef);
 
     // Emit events
-    this.emit('check-completed', { check: checkDef.name, result });
-    
+    this.emit("check-completed", { check: checkDef.name, result });
+
     if (result.status === HealthStatus.UNHEALTHY && checkDef.critical) {
-      this.emit('critical-failure', { check: checkDef.name, result });
+      this.emit("critical-failure", { check: checkDef.name, result });
     }
 
     // Record metrics if available
     if (this.metricsCollector) {
-      this.metricsCollector.recordHistogram('health_check_duration_ms', result.duration);
-      this.metricsCollector.recordCounter('health_checks_total', 1, {
+      this.metricsCollector.recordHistogram(
+        "health_check_duration_ms",
+        result.duration,
+      );
+      this.metricsCollector.recordCounter("health_checks_total", 1, {
         check: checkDef.name,
         status: result.status,
-        component: checkDef.component
+        component: checkDef.component,
       });
     }
   }
@@ -409,11 +436,13 @@ export class HealthChecker extends EventEmitter {
   /**
    * Execute standard health checks based on type
    */
-  private async executeStandardCheck(checkDef: HealthCheckDefinition): Promise<HealthCheckResult> {
+  private async executeStandardCheck(
+    checkDef: HealthCheckDefinition,
+  ): Promise<HealthCheckResult> {
     switch (checkDef.type) {
-      case 'http':
+      case "http":
         return this.executeHttpCheck(checkDef);
-      case 'tcp':
+      case "tcp":
         return this.executeTcpCheck(checkDef);
       default:
         throw new Error(`Unknown health check type: ${checkDef.type}`);
@@ -423,17 +452,21 @@ export class HealthChecker extends EventEmitter {
   /**
    * Execute HTTP health check
    */
-  private async executeHttpCheck(_checkDef: HealthCheckDefinition): Promise<HealthCheckResult> {
+  private async executeHttpCheck(
+    _checkDef: HealthCheckDefinition,
+  ): Promise<HealthCheckResult> {
     // Implementation would depend on actual HTTP checking logic
-    throw new Error('HTTP health checks not implemented yet');
+    throw new Error("HTTP health checks not implemented yet");
   }
 
   /**
    * Execute TCP health check
    */
-  private async executeTcpCheck(_checkDef: HealthCheckDefinition): Promise<HealthCheckResult> {
+  private async executeTcpCheck(
+    _checkDef: HealthCheckDefinition,
+  ): Promise<HealthCheckResult> {
     // Implementation would depend on actual TCP checking logic
-    throw new Error('TCP health checks not implemented yet');
+    throw new Error("TCP health checks not implemented yet");
   }
 
   /**
@@ -441,7 +474,7 @@ export class HealthChecker extends EventEmitter {
    */
   private async checkMemoryUsage(): Promise<HealthCheckResult> {
     const memUsage = process.memoryUsage();
-    const totalMem = require('os').totalmem();
+    const totalMem = require("os").totalmem();
     const usagePercent = (memUsage.rss / totalMem) * 100;
     const threshold = this.config.thresholds.memoryUsage * 100;
 
@@ -460,7 +493,7 @@ export class HealthChecker extends EventEmitter {
     }
 
     return {
-      name: 'memory_usage',
+      name: "memory_usage",
       status,
       message,
       timestamp: Date.now(),
@@ -470,8 +503,8 @@ export class HealthChecker extends EventEmitter {
         heapTotal: memUsage.heapTotal,
         rss: memUsage.rss,
         external: memUsage.external,
-        usagePercent
-      }
+        usagePercent,
+      },
     };
   }
 
@@ -482,11 +515,11 @@ export class HealthChecker extends EventEmitter {
     // For now, return a simple healthy status
     // In production, this would check actual disk usage
     return {
-      name: 'disk_space',
+      name: "disk_space",
       status: HealthStatus.HEALTHY,
-      message: 'Disk space is adequate',
+      message: "Disk space is adequate",
       timestamp: Date.now(),
-      duration: 0
+      duration: 0,
     };
   }
 
@@ -515,12 +548,12 @@ export class HealthChecker extends EventEmitter {
         }
 
         resolve({
-          name: 'event_loop',
+          name: "event_loop",
           status,
           message,
           timestamp: Date.now(),
           duration: delay,
-          details: { delayMs: delay }
+          details: { delayMs: delay },
         });
       });
     });
@@ -533,22 +566,25 @@ export class HealthChecker extends EventEmitter {
     // For now, return a simple healthy status
     // In production, this would check actual MCP server connections
     return {
-      name: 'mcp_servers',
+      name: "mcp_servers",
       status: HealthStatus.HEALTHY,
-      message: 'All MCP servers are responding',
+      message: "All MCP servers are responding",
       timestamp: Date.now(),
       duration: 0,
       details: {
         activeServers: 0,
-        totalServers: 0
-      }
+        totalServers: 0,
+      },
     };
   }
 
   /**
    * Record health check result
    */
-  private recordHealthCheckResult(component: string, result: HealthCheckResult): void {
+  private recordHealthCheckResult(
+    component: string,
+    result: HealthCheckResult,
+  ): void {
     if (!this.checkResults.has(component)) {
       this.checkResults.set(component, []);
     }
@@ -568,14 +604,18 @@ export class HealthChecker extends EventEmitter {
   private updateComponentHealth(checkDef: HealthCheckDefinition): void {
     const results = this.checkResults.get(checkDef.component) || [];
     const recentResults = results.slice(-checkDef.healthyThreshold);
-    
+
     let overallStatus: HealthStatus;
     if (recentResults.length < checkDef.unhealthyThreshold) {
       overallStatus = HealthStatus.UNKNOWN;
     } else {
-      const healthyCount = recentResults.filter(r => r.status === HealthStatus.HEALTHY).length;
-      const unhealthyCount = recentResults.filter(r => r.status === HealthStatus.UNHEALTHY).length;
-      
+      const healthyCount = recentResults.filter(
+        (r) => r.status === HealthStatus.HEALTHY,
+      ).length;
+      const unhealthyCount = recentResults.filter(
+        (r) => r.status === HealthStatus.UNHEALTHY,
+      ).length;
+
       if (unhealthyCount >= checkDef.unhealthyThreshold) {
         overallStatus = HealthStatus.UNHEALTHY;
       } else if (healthyCount >= checkDef.healthyThreshold) {
@@ -590,7 +630,7 @@ export class HealthChecker extends EventEmitter {
       checks: recentResults,
       overallHealth: overallStatus,
       lastCheck: Date.now(),
-      uptime: (Date.now() - this.systemStartTime) / 1000
+      uptime: (Date.now() - this.systemStartTime) / 1000,
     });
   }
 
@@ -600,23 +640,33 @@ export class HealthChecker extends EventEmitter {
   public getSystemHealth(): SystemHealth {
     const components = Object.fromEntries(this.componentHealth);
     const allChecks = Array.from(this.checkResults.values()).flat();
-    
+
     const totalChecks = allChecks.length;
-    const healthyChecks = allChecks.filter(r => r.status === HealthStatus.HEALTHY).length;
-    const degradedChecks = allChecks.filter(r => r.status === HealthStatus.DEGRADED).length;
-    const unhealthyChecks = allChecks.filter(r => r.status === HealthStatus.UNHEALTHY).length;
-    const averageResponseTime = totalChecks > 0 ? 
-      allChecks.reduce((sum, r) => sum + r.duration, 0) / totalChecks : 0;
+    const healthyChecks = allChecks.filter(
+      (r) => r.status === HealthStatus.HEALTHY,
+    ).length;
+    const degradedChecks = allChecks.filter(
+      (r) => r.status === HealthStatus.DEGRADED,
+    ).length;
+    const unhealthyChecks = allChecks.filter(
+      (r) => r.status === HealthStatus.UNHEALTHY,
+    ).length;
+    const averageResponseTime =
+      totalChecks > 0
+        ? allChecks.reduce((sum, r) => sum + r.duration, 0) / totalChecks
+        : 0;
 
     // Determine overall system status
-    const componentStatuses = Array.from(this.componentHealth.values()).map(c => c.status);
+    const componentStatuses = Array.from(this.componentHealth.values()).map(
+      (c) => c.status,
+    );
     let systemStatus: HealthStatus;
-    
-    if (componentStatuses.some(s => s === HealthStatus.UNHEALTHY)) {
+
+    if (componentStatuses.some((s) => s === HealthStatus.UNHEALTHY)) {
       systemStatus = HealthStatus.UNHEALTHY;
-    } else if (componentStatuses.some(s => s === HealthStatus.DEGRADED)) {
+    } else if (componentStatuses.some((s) => s === HealthStatus.DEGRADED)) {
       systemStatus = HealthStatus.DEGRADED;
-    } else if (componentStatuses.every(s => s === HealthStatus.HEALTHY)) {
+    } else if (componentStatuses.every((s) => s === HealthStatus.HEALTHY)) {
       systemStatus = HealthStatus.HEALTHY;
     } else {
       systemStatus = HealthStatus.UNKNOWN;
@@ -630,9 +680,9 @@ export class HealthChecker extends EventEmitter {
         healthyChecks,
         degradedChecks,
         unhealthyChecks,
-        averageResponseTime
+        averageResponseTime,
       },
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
   }
 
@@ -641,7 +691,7 @@ export class HealthChecker extends EventEmitter {
    */
   public addHealthCheck(checkDef: HealthCheckDefinition): void {
     this.config.checks.push(checkDef);
-    
+
     if (this.isRunning && checkDef.enabled) {
       this.startHealthCheck(checkDef);
     }
@@ -651,11 +701,11 @@ export class HealthChecker extends EventEmitter {
    * Remove health check
    */
   public removeHealthCheck(name: string): boolean {
-    const index = this.config.checks.findIndex(c => c.name === name);
+    const index = this.config.checks.findIndex((c) => c.name === name);
     if (index === -1) return false;
 
     this.config.checks.splice(index, 1);
-    
+
     const interval = this.checkIntervals.get(name);
     if (interval) {
       clearInterval(interval);

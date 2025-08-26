@@ -3,12 +3,23 @@
  * Provides comprehensive input validation, sanitization, and security filtering
  */
 
-import * as path from 'path';
-import { EventEmitter } from 'events';
-import { ILogger, SilentLogger } from '../utils/logger.js';
+import * as path from "path";
+import { EventEmitter } from "events";
+import { ILogger, SilentLogger } from "../utils/logger.js";
 
 export interface ValidationRule {
-  type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'email' | 'url' | 'filepath' | 'json' | 'regex' | 'custom';
+  type:
+    | "string"
+    | "number"
+    | "boolean"
+    | "array"
+    | "object"
+    | "email"
+    | "url"
+    | "filepath"
+    | "json"
+    | "regex"
+    | "custom";
   required?: boolean;
   minLength?: number;
   maxLength?: number;
@@ -68,7 +79,7 @@ export class InputSanitizer extends EventEmitter {
     /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT)\b)|('|(\\|;|--|\/\*|\*\/))/gi,
     /((%27)|('))(.*)((%27)|('))/gi,
     /exec(\s|\+)+(s|x)p\w+/gi,
-    /union.*(select|all|from)/gi
+    /union.*(select|all|from)/gi,
   ];
 
   private readonly XSS_PATTERNS = [
@@ -79,14 +90,14 @@ export class InputSanitizer extends EventEmitter {
     /<object[^>]*>.*?<\/object>/gi,
     /<embed[^>]*>/gi,
     /expression\s*\(/gi,
-    /<style[^>]*>.*?<\/style>/gi
+    /<style[^>]*>.*?<\/style>/gi,
   ];
 
   private readonly COMMAND_INJECTION_PATTERNS = [
     /[;&|`$<>]/g,
     /\b(rm|del|format|shutdown|reboot|kill|ps|ls|dir|cat|type|more|less|head|tail|grep|find|locate)\b/gi,
     /\|\s*(curl|wget|nc|netcat|telnet|ssh|scp|rsync)/gi,
-    /(>|>>|\||&|;|`|\$\(|\${)/g
+    /(>|>>|\||&|;|`|\$\(|\${)/g,
   ];
 
   private readonly PATH_TRAVERSAL_PATTERNS = [
@@ -94,13 +105,13 @@ export class InputSanitizer extends EventEmitter {
     /[/\\]\.\.[/\\]/g,
     /%2e%2e[/\\]/gi,
     /\.{2,}[/\\]/g,
-    /[/\\]\.{2,}/g
+    /[/\\]\.{2,}/g,
   ];
 
   constructor(config?: Partial<SanitizationConfig>, logger?: ILogger) {
     super();
     this.logger = logger || new SilentLogger();
-    
+
     this.config = {
       enableHtmlEscape: true,
       enableSqlInjectionPrevention: true,
@@ -109,10 +120,10 @@ export class InputSanitizer extends EventEmitter {
       enablePathTraversalPrevention: true,
       maxStringLength: 10000,
       maxObjectDepth: 10,
-      allowedFileExtensions: ['.txt', '.json', '.yaml', '.yml', '.md', '.csv'],
+      allowedFileExtensions: [".txt", ".json", ".yaml", ".yml", ".md", ".csv"],
       blockedPatterns: [],
       customSanitizers: [],
-      ...config
+      ...config,
     };
 
     this.metrics = {
@@ -122,7 +133,7 @@ export class InputSanitizer extends EventEmitter {
       injectionAttemptsBlocked: 0,
       pathTraversalAttemptsBlocked: 0,
       xssAttemptsBlocked: 0,
-      suspiciousPatterns: []
+      suspiciousPatterns: [],
     };
   }
 
@@ -130,7 +141,7 @@ export class InputSanitizer extends EventEmitter {
    * Sanitize a string input
    */
   sanitizeString(input: string): string {
-    if (typeof input !== 'string') {
+    if (typeof input !== "string") {
       return String(input);
     }
 
@@ -144,7 +155,9 @@ export class InputSanitizer extends EventEmitter {
       // Length check
       if (sanitized.length > this.config.maxStringLength) {
         sanitized = sanitized.substring(0, this.config.maxStringLength);
-        this.logger.warn(`String truncated to ${this.config.maxStringLength} characters`);
+        this.logger.warn(
+          `String truncated to ${this.config.maxStringLength} characters`,
+        );
       }
 
       // SQL injection prevention (before HTML escaping to catch raw patterns)
@@ -181,25 +194,25 @@ export class InputSanitizer extends EventEmitter {
       for (const pattern of this.config.blockedPatterns) {
         if (pattern.test(sanitized)) {
           this.recordSuspiciousPattern(pattern.toString());
-          sanitized = sanitized.replace(pattern, '[BLOCKED]');
+          sanitized = sanitized.replace(pattern, "[BLOCKED]");
         }
       }
 
       return sanitized;
     } catch (error) {
-      this.logger.error('Error during string sanitization:', error);
-      return '[SANITIZATION_ERROR]';
+      this.logger.error("Error during string sanitization:", error);
+      return "[SANITIZATION_ERROR]";
     }
   }
 
   private escapeHtml(input: string): string {
     return input
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#x27;')
-      .replace(/\//g, '&#x2F;');
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#x27;")
+      .replace(/\//g, "&#x2F;");
   }
 
   private preventSqlInjection(input: string): string {
@@ -209,14 +222,14 @@ export class InputSanitizer extends EventEmitter {
     for (const pattern of this.SQL_INJECTION_PATTERNS) {
       if (pattern.test(sanitized)) {
         detected = true;
-        sanitized = sanitized.replace(pattern, '[SQL_BLOCKED]');
+        sanitized = sanitized.replace(pattern, "[SQL_BLOCKED]");
       }
     }
 
     if (detected) {
       this.metrics.injectionAttemptsBlocked++;
-      this.emit('injection-attempt', { type: 'sql', input, sanitized });
-      this.logger.warn('SQL injection attempt detected and blocked');
+      this.emit("injection-attempt", { type: "sql", input, sanitized });
+      this.logger.warn("SQL injection attempt detected and blocked");
     }
 
     return sanitized;
@@ -229,14 +242,14 @@ export class InputSanitizer extends EventEmitter {
     for (const pattern of this.XSS_PATTERNS) {
       if (pattern.test(sanitized)) {
         detected = true;
-        sanitized = sanitized.replace(pattern, '[XSS_BLOCKED]');
+        sanitized = sanitized.replace(pattern, "[XSS_BLOCKED]");
       }
     }
 
     if (detected) {
       this.metrics.xssAttemptsBlocked++;
-      this.emit('xss-attempt', { input, sanitized });
-      this.logger.warn('XSS attempt detected and blocked');
+      this.emit("xss-attempt", { input, sanitized });
+      this.logger.warn("XSS attempt detected and blocked");
     }
 
     return sanitized;
@@ -249,14 +262,14 @@ export class InputSanitizer extends EventEmitter {
     for (const pattern of this.COMMAND_INJECTION_PATTERNS) {
       if (pattern.test(sanitized)) {
         detected = true;
-        sanitized = sanitized.replace(pattern, '[CMD_BLOCKED]');
+        sanitized = sanitized.replace(pattern, "[CMD_BLOCKED]");
       }
     }
 
     if (detected) {
       this.metrics.injectionAttemptsBlocked++;
-      this.emit('command-injection-attempt', { input, sanitized });
-      this.logger.warn('Command injection attempt detected and blocked');
+      this.emit("command-injection-attempt", { input, sanitized });
+      this.logger.warn("Command injection attempt detected and blocked");
     }
 
     return sanitized;
@@ -269,21 +282,23 @@ export class InputSanitizer extends EventEmitter {
     for (const pattern of this.PATH_TRAVERSAL_PATTERNS) {
       if (pattern.test(sanitized)) {
         detected = true;
-        sanitized = sanitized.replace(pattern, '[PATH_BLOCKED]');
+        sanitized = sanitized.replace(pattern, "[PATH_BLOCKED]");
       }
     }
 
     if (detected) {
       this.metrics.pathTraversalAttemptsBlocked++;
-      this.emit('path-traversal-attempt', { input, sanitized });
-      this.logger.warn('Path traversal attempt detected and blocked');
+      this.emit("path-traversal-attempt", { input, sanitized });
+      this.logger.warn("Path traversal attempt detected and blocked");
     }
 
     return sanitized;
   }
 
   private recordSuspiciousPattern(pattern: string): void {
-    const existing = this.metrics.suspiciousPatterns.find(p => p.pattern === pattern);
+    const existing = this.metrics.suspiciousPatterns.find(
+      (p) => p.pattern === pattern,
+    );
     if (existing) {
       existing.count++;
       existing.lastSeen = new Date();
@@ -291,7 +306,7 @@ export class InputSanitizer extends EventEmitter {
       this.metrics.suspiciousPatterns.push({
         pattern,
         count: 1,
-        lastSeen: new Date()
+        lastSeen: new Date(),
       });
     }
   }
@@ -300,8 +315,8 @@ export class InputSanitizer extends EventEmitter {
    * Sanitize file path
    */
   sanitizeFilePath(filePath: string): string {
-    if (typeof filePath !== 'string') {
-      return '';
+    if (typeof filePath !== "string") {
+      return "";
     }
 
     let sanitized = filePath.trim();
@@ -314,9 +329,12 @@ export class InputSanitizer extends EventEmitter {
 
     // Check file extension
     const ext = path.extname(sanitized).toLowerCase();
-    if (this.config.allowedFileExtensions.length > 0 && !this.config.allowedFileExtensions.includes(ext)) {
+    if (
+      this.config.allowedFileExtensions.length > 0 &&
+      !this.config.allowedFileExtensions.includes(ext)
+    ) {
       this.logger.warn(`File extension ${ext} not allowed`);
-      return '';
+      return "";
     }
 
     return sanitized;
@@ -327,27 +345,29 @@ export class InputSanitizer extends EventEmitter {
    */
   sanitizeObject(obj: unknown, depth: number = 0): unknown {
     if (depth > this.config.maxObjectDepth) {
-      this.logger.warn(`Object depth exceeded limit of ${this.config.maxObjectDepth}`);
-      return '[DEPTH_EXCEEDED]';
+      this.logger.warn(
+        `Object depth exceeded limit of ${this.config.maxObjectDepth}`,
+      );
+      return "[DEPTH_EXCEEDED]";
     }
 
     if (obj === null || obj === undefined) {
       return obj;
     }
 
-    if (typeof obj === 'string') {
+    if (typeof obj === "string") {
       return this.sanitizeString(obj);
     }
 
-    if (typeof obj === 'number' || typeof obj === 'boolean') {
+    if (typeof obj === "number" || typeof obj === "boolean") {
       return obj;
     }
 
     if (Array.isArray(obj)) {
-      return obj.map(item => this.sanitizeObject(item, depth + 1));
+      return obj.map((item) => this.sanitizeObject(item, depth + 1));
     }
 
-    if (typeof obj === 'object') {
+    if (typeof obj === "object") {
       const sanitized: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(obj)) {
         const sanitizedKey = this.sanitizeString(key);
@@ -377,7 +397,7 @@ export class InputSanitizer extends EventEmitter {
       injectionAttemptsBlocked: 0,
       pathTraversalAttemptsBlocked: 0,
       xssAttemptsBlocked: 0,
-      suspiciousPatterns: []
+      suspiciousPatterns: [],
     };
   }
 }
@@ -400,13 +420,13 @@ export class InputValidator extends EventEmitter {
       isValid: true,
       value,
       errors: [],
-      warnings: []
+      warnings: [],
     };
 
     try {
       // Check if required
       if (rule.required && (value === null || value === undefined)) {
-        result.errors.push('Value is required');
+        result.errors.push("Value is required");
         result.isValid = false;
         return result;
       }
@@ -424,27 +444,27 @@ export class InputValidator extends EventEmitter {
 
       // Type-specific validation
       switch (rule.type) {
-        case 'string':
+        case "string":
           return this.validateString(value, rule, result);
-        case 'number':
+        case "number":
           return this.validateNumber(value, rule, result);
-        case 'boolean':
+        case "boolean":
           return this.validateBoolean(value, rule, result);
-        case 'array':
+        case "array":
           return this.validateArray(value, rule, result);
-        case 'object':
+        case "object":
           return this.validateObject(value, rule, result);
-        case 'email':
+        case "email":
           return this.validateEmail(value, rule, result);
-        case 'url':
+        case "url":
           return this.validateUrl(value, rule, result);
-        case 'filepath':
+        case "filepath":
           return this.validateFilePath(value, rule, result);
-        case 'json':
+        case "json":
           return this.validateJson(value, rule, result);
-        case 'regex':
+        case "regex":
           return this.validateRegex(value, rule, result);
-        case 'custom':
+        case "custom":
           return rule.custom ? rule.custom(value) : result;
         default:
           result.errors.push(`Unknown validation type: ${rule.type}`);
@@ -453,15 +473,21 @@ export class InputValidator extends EventEmitter {
 
       return result;
     } catch (error) {
-      result.errors.push(`Validation error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      result.errors.push(
+        `Validation error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
       result.isValid = false;
       return result;
     }
   }
 
-  private validateString(value: unknown, rule: ValidationRule, result: ValidationResult): ValidationResult {
-    if (typeof value !== 'string') {
-      result.errors.push('Value must be a string');
+  private validateString(
+    value: unknown,
+    rule: ValidationRule,
+    result: ValidationResult,
+  ): ValidationResult {
+    if (typeof value !== "string") {
+      result.errors.push("Value must be a string");
       result.isValid = false;
       return result;
     }
@@ -470,13 +496,15 @@ export class InputValidator extends EventEmitter {
 
     // Empty string check
     if (!rule.allowEmpty && str.length === 0) {
-      result.errors.push('String cannot be empty');
+      result.errors.push("String cannot be empty");
       result.isValid = false;
     }
 
     // Length checks
     if (rule.minLength !== undefined && str.length < rule.minLength) {
-      result.errors.push(`String must be at least ${rule.minLength} characters long`);
+      result.errors.push(
+        `String must be at least ${rule.minLength} characters long`,
+      );
       result.isValid = false;
     }
 
@@ -487,17 +515,21 @@ export class InputValidator extends EventEmitter {
 
     // Pattern check
     if (rule.pattern && !rule.pattern.test(str)) {
-      result.errors.push('String does not match required pattern');
+      result.errors.push("String does not match required pattern");
       result.isValid = false;
     }
 
     return result;
   }
 
-  private validateNumber(value: unknown, rule: ValidationRule, result: ValidationResult): ValidationResult {
+  private validateNumber(
+    value: unknown,
+    rule: ValidationRule,
+    result: ValidationResult,
+  ): ValidationResult {
     const num = Number(value);
     if (isNaN(num)) {
-      result.errors.push('Value must be a number');
+      result.errors.push("Value must be a number");
       result.isValid = false;
       return result;
     }
@@ -517,31 +549,39 @@ export class InputValidator extends EventEmitter {
     return result;
   }
 
-  private validateBoolean(value: unknown, rule: ValidationRule, result: ValidationResult): ValidationResult {
-    if (typeof value === 'boolean') {
+  private validateBoolean(
+    value: unknown,
+    rule: ValidationRule,
+    result: ValidationResult,
+  ): ValidationResult {
+    if (typeof value === "boolean") {
       return result;
     }
 
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       const lowerStr = value.toLowerCase();
-      if (lowerStr === 'true' || lowerStr === '1' || lowerStr === 'yes') {
+      if (lowerStr === "true" || lowerStr === "1" || lowerStr === "yes") {
         result.value = true;
         return result;
       }
-      if (lowerStr === 'false' || lowerStr === '0' || lowerStr === 'no') {
+      if (lowerStr === "false" || lowerStr === "0" || lowerStr === "no") {
         result.value = false;
         return result;
       }
     }
 
-    result.errors.push('Value must be a boolean');
+    result.errors.push("Value must be a boolean");
     result.isValid = false;
     return result;
   }
 
-  private validateArray(value: unknown, rule: ValidationRule, result: ValidationResult): ValidationResult {
+  private validateArray(
+    value: unknown,
+    rule: ValidationRule,
+    result: ValidationResult,
+  ): ValidationResult {
     if (!Array.isArray(value)) {
-      result.errors.push('Value must be an array');
+      result.errors.push("Value must be an array");
       result.isValid = false;
       return result;
     }
@@ -555,7 +595,9 @@ export class InputValidator extends EventEmitter {
     }
 
     if (rule.maxLength !== undefined && arr.length > rule.maxLength) {
-      result.errors.push(`Array must not contain more than ${rule.maxLength} items`);
+      result.errors.push(
+        `Array must not contain more than ${rule.maxLength} items`,
+      );
       result.isValid = false;
     }
 
@@ -570,7 +612,7 @@ export class InputValidator extends EventEmitter {
 
         if (!itemResult.isValid) {
           hasErrors = true;
-          result.errors.push(`Item ${i}: ${itemResult.errors.join(', ')}`);
+          result.errors.push(`Item ${i}: ${itemResult.errors.join(", ")}`);
         }
       }
 
@@ -584,9 +626,13 @@ export class InputValidator extends EventEmitter {
     return result;
   }
 
-  private validateObject(value: unknown, rule: ValidationRule, result: ValidationResult): ValidationResult {
-    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-      result.errors.push('Value must be an object');
+  private validateObject(
+    value: unknown,
+    rule: ValidationRule,
+    result: ValidationResult,
+  ): ValidationResult {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      result.errors.push("Value must be an object");
       result.isValid = false;
       return result;
     }
@@ -602,7 +648,9 @@ export class InputValidator extends EventEmitter {
 
         if (!propResult.isValid) {
           result.isValid = false;
-          result.errors.push(`Property '${propName}': ${propResult.errors.join(', ')}`);
+          result.errors.push(
+            `Property '${propName}': ${propResult.errors.join(", ")}`,
+          );
         }
       }
 
@@ -610,7 +658,9 @@ export class InputValidator extends EventEmitter {
       if (!rule.allowAdditionalProperties) {
         for (const key of Object.keys(obj)) {
           if (!(key in rule.properties)) {
-            result.warnings.push(`Unexpected property '${key}' will be ignored`);
+            result.warnings.push(
+              `Unexpected property '${key}' will be ignored`,
+            );
           }
         }
       } else {
@@ -628,25 +678,33 @@ export class InputValidator extends EventEmitter {
     return result;
   }
 
-  private validateEmail(value: unknown, rule: ValidationRule, result: ValidationResult): ValidationResult {
-    if (typeof value !== 'string') {
-      result.errors.push('Email must be a string');
+  private validateEmail(
+    value: unknown,
+    rule: ValidationRule,
+    result: ValidationResult,
+  ): ValidationResult {
+    if (typeof value !== "string") {
+      result.errors.push("Email must be a string");
       result.isValid = false;
       return result;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(value)) {
-      result.errors.push('Invalid email format');
+      result.errors.push("Invalid email format");
       result.isValid = false;
     }
 
     return result;
   }
 
-  private validateUrl(value: unknown, rule: ValidationRule, result: ValidationResult): ValidationResult {
-    if (typeof value !== 'string') {
-      result.errors.push('URL must be a string');
+  private validateUrl(
+    value: unknown,
+    rule: ValidationRule,
+    result: ValidationResult,
+  ): ValidationResult {
+    if (typeof value !== "string") {
+      result.errors.push("URL must be a string");
       result.isValid = false;
       return result;
     }
@@ -654,23 +712,27 @@ export class InputValidator extends EventEmitter {
     try {
       new URL(value);
     } catch {
-      result.errors.push('Invalid URL format');
+      result.errors.push("Invalid URL format");
       result.isValid = false;
     }
 
     return result;
   }
 
-  private validateFilePath(value: unknown, rule: ValidationRule, result: ValidationResult): ValidationResult {
-    if (typeof value !== 'string') {
-      result.errors.push('File path must be a string');
+  private validateFilePath(
+    value: unknown,
+    rule: ValidationRule,
+    result: ValidationResult,
+  ): ValidationResult {
+    if (typeof value !== "string") {
+      result.errors.push("File path must be a string");
       result.isValid = false;
       return result;
     }
 
     const sanitizedPath = this.sanitizer.sanitizeFilePath(value);
-    if (sanitizedPath === '') {
-      result.errors.push('Invalid or unsafe file path');
+    if (sanitizedPath === "") {
+      result.errors.push("Invalid or unsafe file path");
       result.isValid = false;
     } else {
       result.value = sanitizedPath;
@@ -679,13 +741,17 @@ export class InputValidator extends EventEmitter {
     return result;
   }
 
-  private validateJson(value: unknown, rule: ValidationRule, result: ValidationResult): ValidationResult {
-    if (typeof value === 'object') {
+  private validateJson(
+    value: unknown,
+    rule: ValidationRule,
+    result: ValidationResult,
+  ): ValidationResult {
+    if (typeof value === "object") {
       return result; // Already parsed
     }
 
-    if (typeof value !== 'string') {
-      result.errors.push('JSON must be a string or object');
+    if (typeof value !== "string") {
+      result.errors.push("JSON must be a string or object");
       result.isValid = false;
       return result;
     }
@@ -694,22 +760,26 @@ export class InputValidator extends EventEmitter {
       const parsed = JSON.parse(value);
       result.value = parsed;
     } catch {
-      result.errors.push('Invalid JSON format');
+      result.errors.push("Invalid JSON format");
       result.isValid = false;
     }
 
     return result;
   }
 
-  private validateRegex(value: unknown, rule: ValidationRule, result: ValidationResult): ValidationResult {
-    if (typeof value !== 'string') {
-      result.errors.push('Value must be a string for regex validation');
+  private validateRegex(
+    value: unknown,
+    rule: ValidationRule,
+    result: ValidationResult,
+  ): ValidationResult {
+    if (typeof value !== "string") {
+      result.errors.push("Value must be a string for regex validation");
       result.isValid = false;
       return result;
     }
 
     if (rule.pattern && !rule.pattern.test(value)) {
-      result.errors.push('Value does not match required pattern');
+      result.errors.push("Value does not match required pattern");
       result.isValid = false;
     }
 
@@ -719,12 +789,15 @@ export class InputValidator extends EventEmitter {
   /**
    * Validate multiple values against rules
    */
-  validateBatch(data: Record<string, unknown>, rules: Record<string, ValidationRule>): ValidationResult {
+  validateBatch(
+    data: Record<string, unknown>,
+    rules: Record<string, ValidationRule>,
+  ): ValidationResult {
     const result: ValidationResult = {
       isValid: true,
       value: {},
       errors: [],
-      warnings: []
+      warnings: [],
     };
 
     const validatedData: Record<string, unknown> = {};
@@ -735,7 +808,7 @@ export class InputValidator extends EventEmitter {
 
       if (!fieldResult.isValid) {
         result.isValid = false;
-        result.errors.push(`Field '${key}': ${fieldResult.errors.join(', ')}`);
+        result.errors.push(`Field '${key}': ${fieldResult.errors.join(", ")}`);
       }
 
       result.warnings.push(...fieldResult.warnings);
@@ -748,11 +821,13 @@ export class InputValidator extends EventEmitter {
   /**
    * Create validation schema
    */
-  static createSchema(properties: Record<string, ValidationRule>): ValidationRule {
+  static createSchema(
+    properties: Record<string, ValidationRule>,
+  ): ValidationRule {
     return {
-      type: 'object',
+      type: "object",
       properties,
-      allowAdditionalProperties: false
+      allowAdditionalProperties: false,
     };
   }
 }
@@ -770,10 +845,18 @@ export class InputSecurityManager extends EventEmitter {
     this.validator = new InputValidator(this.sanitizer, logger);
 
     // Forward events
-    this.sanitizer.on('injection-attempt', (data) => this.emit('security-violation', { type: 'injection', ...data }));
-    this.sanitizer.on('xss-attempt', (data) => this.emit('security-violation', { type: 'xss', ...data }));
-    this.sanitizer.on('command-injection-attempt', (data) => this.emit('security-violation', { type: 'command-injection', ...data }));
-    this.sanitizer.on('path-traversal-attempt', (data) => this.emit('security-violation', { type: 'path-traversal', ...data }));
+    this.sanitizer.on("injection-attempt", (data) =>
+      this.emit("security-violation", { type: "injection", ...data }),
+    );
+    this.sanitizer.on("xss-attempt", (data) =>
+      this.emit("security-violation", { type: "xss", ...data }),
+    );
+    this.sanitizer.on("command-injection-attempt", (data) =>
+      this.emit("security-violation", { type: "command-injection", ...data }),
+    );
+    this.sanitizer.on("path-traversal-attempt", (data) =>
+      this.emit("security-violation", { type: "path-traversal", ...data }),
+    );
   }
 
   /**
@@ -801,7 +884,10 @@ export class InputSecurityManager extends EventEmitter {
   /**
    * Validate batch data
    */
-  validateBatch(data: Record<string, unknown>, rules: Record<string, ValidationRule>): ValidationResult {
+  validateBatch(
+    data: Record<string, unknown>,
+    rules: Record<string, ValidationRule>,
+  ): ValidationResult {
     return this.validator.validateBatch(data, rules);
   }
 

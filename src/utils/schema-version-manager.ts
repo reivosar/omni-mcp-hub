@@ -1,7 +1,7 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { ClaudeConfig } from './claude-config.js';
-import { ILogger, SilentLogger } from './logger.js';
+import * as fs from "fs";
+import * as path from "path";
+import { ClaudeConfig } from "./claude-config.js";
+import { ILogger, SilentLogger } from "./logger.js";
 
 export interface SchemaVersion {
   major: number;
@@ -39,9 +39,14 @@ export interface CompatibilityInfo {
 }
 
 export class SchemaVersionManager {
-  private static readonly CURRENT_VERSION: SchemaVersion = { major: 1, minor: 0, patch: 0 };
-  private static readonly SCHEMA_URL_TEMPLATE = 'https://schemas.omni-mcp-hub.dev/v{major}.{minor}.{patch}/claude-config.json';
-  
+  private static readonly CURRENT_VERSION: SchemaVersion = {
+    major: 1,
+    minor: 0,
+    patch: 0,
+  };
+  private static readonly SCHEMA_URL_TEMPLATE =
+    "https://schemas.omni-mcp-hub.dev/v{major}.{minor}.{patch}/claude-config.json";
+
   private migrationRules: MigrationRule[] = [];
   private logger: ILogger;
 
@@ -65,11 +70,11 @@ export class SchemaVersionManager {
     if (!match) {
       throw new Error(`Invalid version format: ${versionString}`);
     }
-    
+
     return {
       major: parseInt(match[1], 10),
       minor: parseInt(match[2], 10),
-      patch: parseInt(match[3], 10)
+      patch: parseInt(match[3], 10),
     };
   }
 
@@ -101,10 +106,12 @@ export class SchemaVersionManager {
    * Generate schema URL for a given version
    */
   static getSchemaUrl(version: SchemaVersion): string {
-    return SchemaVersionManager.SCHEMA_URL_TEMPLATE
-      .replace('{major}', version.major.toString())
-      .replace('{minor}', version.minor.toString())
-      .replace('{patch}', version.patch.toString());
+    return SchemaVersionManager.SCHEMA_URL_TEMPLATE.replace(
+      "{major}",
+      version.major.toString(),
+    )
+      .replace("{minor}", version.minor.toString())
+      .replace("{patch}", version.patch.toString());
   }
 
   /**
@@ -118,8 +125,8 @@ export class SchemaVersionManager {
       $version: SchemaVersionManager.versionToString(currentVersion),
       _metadata: {
         version: currentVersion,
-        migrationDate: new Date().toISOString()
-      }
+        migrationDate: new Date().toISOString(),
+      },
     };
 
     return versionedConfig;
@@ -144,7 +151,7 @@ export class SchemaVersionManager {
     }
 
     // Default to v1.0.0 for legacy configs
-    this.logger.warn('No version information found, assuming v1.0.0');
+    this.logger.warn("No version information found, assuming v1.0.0");
     return { major: 1, minor: 0, patch: 0 };
   }
 
@@ -154,13 +161,22 @@ export class SchemaVersionManager {
   checkCompatibility(config: VersionedConfig): CompatibilityInfo {
     const configVersion = this.extractVersion(config);
     const currentVersion = SchemaVersionManager.getCurrentVersion();
-    
-    const compatible = SchemaVersionManager.isCompatible(configVersion, currentVersion);
-    const requiresMigration = SchemaVersionManager.compareVersions(configVersion, currentVersion) < 0;
-    
-    const migrationPath = requiresMigration ? this.findMigrationPath(configVersion, currentVersion) : undefined;
+
+    const compatible = SchemaVersionManager.isCompatible(
+      configVersion,
+      currentVersion,
+    );
+    const requiresMigration =
+      SchemaVersionManager.compareVersions(configVersion, currentVersion) < 0;
+
+    const migrationPath = requiresMigration
+      ? this.findMigrationPath(configVersion, currentVersion)
+      : undefined;
     const deprecationWarnings = this.getDeprecationWarnings(configVersion);
-    const breakingChanges = this.getBreakingChanges(configVersion, currentVersion);
+    const breakingChanges = this.getBreakingChanges(
+      configVersion,
+      currentVersion,
+    );
 
     return {
       version: configVersion,
@@ -168,7 +184,7 @@ export class SchemaVersionManager {
       requiresMigration,
       migrationPath,
       deprecationWarnings,
-      breakingChanges
+      breakingChanges,
     };
   }
 
@@ -177,26 +193,35 @@ export class SchemaVersionManager {
    */
   async migrateConfig(config: VersionedConfig): Promise<VersionedConfig> {
     const compatInfo = this.checkCompatibility(config);
-    
+
     if (!compatInfo.requiresMigration) {
-      this.logger.debug('No migration required');
+      this.logger.debug("No migration required");
       return config;
     }
 
     if (!compatInfo.migrationPath || compatInfo.migrationPath.length === 0) {
-      throw new Error(`No migration path found from ${SchemaVersionManager.versionToString(compatInfo.version)} to ${SchemaVersionManager.versionToString(SchemaVersionManager.getCurrentVersion())}`);
+      throw new Error(
+        `No migration path found from ${SchemaVersionManager.versionToString(compatInfo.version)} to ${SchemaVersionManager.versionToString(SchemaVersionManager.getCurrentVersion())}`,
+      );
     }
 
-    this.logger.info(`Migrating config from ${SchemaVersionManager.versionToString(compatInfo.version)} to ${SchemaVersionManager.versionToString(SchemaVersionManager.getCurrentVersion())}`);
-    
+    this.logger.info(
+      `Migrating config from ${SchemaVersionManager.versionToString(compatInfo.version)} to ${SchemaVersionManager.versionToString(SchemaVersionManager.getCurrentVersion())}`,
+    );
+
     let migratedConfig = { ...config };
     const originalVersion = compatInfo.version;
 
     // Apply each migration step
     for (const targetVersion of compatInfo.migrationPath) {
-      const rule = this.findMigrationRule(this.extractVersion(migratedConfig), targetVersion);
+      const rule = this.findMigrationRule(
+        this.extractVersion(migratedConfig),
+        targetVersion,
+      );
       if (!rule) {
-        throw new Error(`No migration rule found for ${SchemaVersionManager.versionToString(this.extractVersion(migratedConfig))} -> ${SchemaVersionManager.versionToString(targetVersion)}`);
+        throw new Error(
+          `No migration rule found for ${SchemaVersionManager.versionToString(this.extractVersion(migratedConfig))} -> ${SchemaVersionManager.versionToString(targetVersion)}`,
+        );
       }
 
       this.logger.debug(`Applying migration: ${rule.description}`);
@@ -214,11 +239,15 @@ export class SchemaVersionManager {
       version: SchemaVersionManager.getCurrentVersion(),
       migratedFrom: originalVersion,
       migrationDate: new Date().toISOString(),
-      migrationReason: 'Automatic migration to current schema version'
+      migrationReason: "Automatic migration to current schema version",
     };
 
-    migratedConfig.$version = SchemaVersionManager.versionToString(SchemaVersionManager.getCurrentVersion());
-    migratedConfig.$schema = SchemaVersionManager.getSchemaUrl(SchemaVersionManager.getCurrentVersion());
+    migratedConfig.$version = SchemaVersionManager.versionToString(
+      SchemaVersionManager.getCurrentVersion(),
+    );
+    migratedConfig.$schema = SchemaVersionManager.getSchemaUrl(
+      SchemaVersionManager.getCurrentVersion(),
+    );
 
     return migratedConfig;
   }
@@ -226,17 +255,25 @@ export class SchemaVersionManager {
   /**
    * Create a backup of config before migration
    */
-  async createBackup(config: VersionedConfig, originalPath: string): Promise<string> {
-    const backupDir = path.join(path.dirname(originalPath), '.migrations');
+  async createBackup(
+    config: VersionedConfig,
+    originalPath: string,
+  ): Promise<string> {
+    const backupDir = path.join(path.dirname(originalPath), ".migrations");
     await fs.promises.mkdir(backupDir, { recursive: true });
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const version = SchemaVersionManager.versionToString(this.extractVersion(config));
-    const backupPath = path.join(backupDir, `${path.basename(originalPath, '.md')}-v${version}-${timestamp}.md`);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const version = SchemaVersionManager.versionToString(
+      this.extractVersion(config),
+    );
+    const backupPath = path.join(
+      backupDir,
+      `${path.basename(originalPath, ".md")}-v${version}-${timestamp}.md`,
+    );
 
     // Convert config back to CLAUDE.md format for backup
     const claudeContent = this.configToClaudeFormat(config);
-    await fs.promises.writeFile(backupPath, claudeContent, 'utf-8');
+    await fs.promises.writeFile(backupPath, claudeContent, "utf-8");
 
     this.logger.info(`Created backup: ${backupPath}`);
     return backupPath;
@@ -247,7 +284,9 @@ export class SchemaVersionManager {
    */
   registerMigrationRule(rule: MigrationRule): void {
     this.migrationRules.push(rule);
-    this.logger.debug(`Registered migration rule: ${SchemaVersionManager.versionToString(rule.fromVersion)} -> ${SchemaVersionManager.versionToString(rule.toVersion)}`);
+    this.logger.debug(
+      `Registered migration rule: ${SchemaVersionManager.versionToString(rule.fromVersion)} -> ${SchemaVersionManager.versionToString(rule.toVersion)}`,
+    );
   }
 
   /**
@@ -255,15 +294,19 @@ export class SchemaVersionManager {
    */
   getAvailableVersions(): SchemaVersion[] {
     const versions = new Set<string>();
-    versions.add(SchemaVersionManager.versionToString(SchemaVersionManager.getCurrentVersion()));
-    
-    this.migrationRules.forEach(rule => {
+    versions.add(
+      SchemaVersionManager.versionToString(
+        SchemaVersionManager.getCurrentVersion(),
+      ),
+    );
+
+    this.migrationRules.forEach((rule) => {
       versions.add(SchemaVersionManager.versionToString(rule.fromVersion));
       versions.add(SchemaVersionManager.versionToString(rule.toVersion));
     });
 
     return Array.from(versions)
-      .map(v => SchemaVersionManager.parseVersion(v))
+      .map((v) => SchemaVersionManager.parseVersion(v))
       .sort(SchemaVersionManager.compareVersions);
   }
 
@@ -275,20 +318,20 @@ export class SchemaVersionManager {
     this.registerMigrationRule({
       fromVersion: { major: 1, minor: 0, patch: 0 },
       toVersion: { major: 1, minor: 1, patch: 0 },
-      description: 'Add support for profile inheritance',
+      description: "Add support for profile inheritance",
       migrate: (config: VersionedConfig) => {
         // Add new inheritance field if it doesn't exist
         if (!config.inheritance) {
           config.inheritance = {
             enabled: false,
-            baseProfiles: []
+            baseProfiles: [],
           };
         }
         return config;
       },
       validate: (config: VersionedConfig) => {
         return config.inheritance !== undefined;
-      }
+      },
     });
 
     // Add more migration rules as needed...
@@ -297,14 +340,23 @@ export class SchemaVersionManager {
   /**
    * Find migration path between two versions
    */
-  private findMigrationPath(fromVersion: SchemaVersion, toVersion: SchemaVersion): SchemaVersion[] | undefined {
+  private findMigrationPath(
+    fromVersion: SchemaVersion,
+    toVersion: SchemaVersion,
+  ): SchemaVersion[] | undefined {
     const path: SchemaVersion[] = [];
     let currentVersion = fromVersion;
 
-    while (SchemaVersionManager.compareVersions(currentVersion, toVersion) < 0) {
-      const nextRule = this.migrationRules.find(rule => 
-        SchemaVersionManager.compareVersions(rule.fromVersion, currentVersion) === 0 &&
-        SchemaVersionManager.compareVersions(rule.toVersion, toVersion) <= 0
+    while (
+      SchemaVersionManager.compareVersions(currentVersion, toVersion) < 0
+    ) {
+      const nextRule = this.migrationRules.find(
+        (rule) =>
+          SchemaVersionManager.compareVersions(
+            rule.fromVersion,
+            currentVersion,
+          ) === 0 &&
+          SchemaVersionManager.compareVersions(rule.toVersion, toVersion) <= 0,
       );
 
       if (!nextRule) {
@@ -321,10 +373,15 @@ export class SchemaVersionManager {
   /**
    * Find specific migration rule
    */
-  private findMigrationRule(fromVersion: SchemaVersion, toVersion: SchemaVersion): MigrationRule | undefined {
-    return this.migrationRules.find(rule =>
-      SchemaVersionManager.compareVersions(rule.fromVersion, fromVersion) === 0 &&
-      SchemaVersionManager.compareVersions(rule.toVersion, toVersion) === 0
+  private findMigrationRule(
+    fromVersion: SchemaVersion,
+    toVersion: SchemaVersion,
+  ): MigrationRule | undefined {
+    return this.migrationRules.find(
+      (rule) =>
+        SchemaVersionManager.compareVersions(rule.fromVersion, fromVersion) ===
+          0 &&
+        SchemaVersionManager.compareVersions(rule.toVersion, toVersion) === 0,
     );
   }
 
@@ -336,8 +393,12 @@ export class SchemaVersionManager {
 
     // Add version-specific warnings
     if (version.major === 1 && version.minor === 0) {
-      warnings.push('The "rules" section is deprecated, use "guidelines" instead');
-      warnings.push('String arrays for instructions are deprecated, use objects with title and content');
+      warnings.push(
+        'The "rules" section is deprecated, use "guidelines" instead',
+      );
+      warnings.push(
+        "String arrays for instructions are deprecated, use objects with title and content",
+      );
     }
 
     return warnings;
@@ -346,11 +407,14 @@ export class SchemaVersionManager {
   /**
    * Get breaking changes between versions
    */
-  private getBreakingChanges(fromVersion: SchemaVersion, toVersion: SchemaVersion): string[] {
+  private getBreakingChanges(
+    fromVersion: SchemaVersion,
+    toVersion: SchemaVersion,
+  ): string[] {
     const changes: string[] = [];
 
     if (fromVersion.major < toVersion.major) {
-      changes.push('Major version upgrade may contain breaking changes');
+      changes.push("Major version upgrade may contain breaking changes");
     }
 
     return changes;
@@ -377,25 +441,25 @@ export class SchemaVersionManager {
     }
 
     if (config.instructions && Array.isArray(config.instructions)) {
-      sections.push(`## Instructions\n${config.instructions.join('\n')}\n`);
+      sections.push(`## Instructions\n${config.instructions.join("\n")}\n`);
     }
 
     if (config.guidelines && Array.isArray(config.guidelines)) {
-      sections.push(`## Guidelines\n${config.guidelines.join('\n')}\n`);
+      sections.push(`## Guidelines\n${config.guidelines.join("\n")}\n`);
     }
 
     if (config.context && Array.isArray(config.context)) {
-      sections.push(`## Context\n${config.context.join('\n')}\n`);
+      sections.push(`## Context\n${config.context.join("\n")}\n`);
     }
 
     if (config.tools && Array.isArray(config.tools)) {
-      sections.push(`## Tools\n${config.tools.join('\n')}\n`);
+      sections.push(`## Tools\n${config.tools.join("\n")}\n`);
     }
 
     if (config.memory && Array.isArray(config.memory)) {
-      sections.push(`## Memory\n${config.memory.join('\n')}\n`);
+      sections.push(`## Memory\n${config.memory.join("\n")}\n`);
     }
 
-    return sections.join('\n');
+    return sections.join("\n");
   }
 }

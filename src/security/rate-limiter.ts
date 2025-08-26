@@ -3,8 +3,8 @@
  * Provides comprehensive rate limiting, request throttling, and DoS attack mitigation
  */
 
-import { EventEmitter } from 'events';
-import { ILogger, SilentLogger } from '../utils/logger.js';
+import { EventEmitter } from "events";
+import { ILogger, SilentLogger } from "../utils/logger.js";
 
 export interface RateLimitConfig {
   windowMs: number;
@@ -54,9 +54,9 @@ interface ClientInfo {
 }
 
 export enum RateLimitResult {
-  ALLOWED = 'allowed',
-  BLOCKED = 'blocked',
-  SUSPICIOUS = 'suspicious'
+  ALLOWED = "allowed",
+  BLOCKED = "blocked",
+  SUSPICIOUS = "suspicious",
 }
 
 export class RateLimiter extends EventEmitter {
@@ -68,7 +68,7 @@ export class RateLimiter extends EventEmitter {
   constructor(config: RateLimitConfig, logger?: ILogger) {
     super();
     this.logger = logger || new SilentLogger();
-    
+
     // Extract config initialization to reduce complexity
     this.config = this.initializeConfig(config);
 
@@ -86,7 +86,7 @@ export class RateLimiter extends EventEmitter {
       keyGenerator: config.keyGenerator || this.defaultKeyGenerator,
       skipSuccessfulRequests: config.skipSuccessfulRequests || false,
       skipFailedRequests: config.skipFailedRequests || false,
-      onLimitReached: config.onLimitReached || (() => {})
+      onLimitReached: config.onLimitReached || (() => {}),
     };
   }
 
@@ -95,16 +95,22 @@ export class RateLimiter extends EventEmitter {
    */
   private defaultKeyGenerator(req: unknown): string {
     const request = req as Record<string, unknown>;
-    return (request?.ip as string) || (request?.remoteAddress as string) || 'unknown';
+    return (
+      (request?.ip as string) || (request?.remoteAddress as string) || "unknown"
+    );
   }
 
   /**
    * Check if request should be allowed
    */
-  checkLimit(request: unknown, success: boolean = true, responseTime: number = 0): RateLimitResult {
+  checkLimit(
+    request: unknown,
+    success: boolean = true,
+    responseTime: number = 0,
+  ): RateLimitResult {
     const key = this.config.keyGenerator(request);
     const now = Date.now();
-    
+
     let client = this.clients.get(key);
     if (!client) {
       client = {
@@ -112,37 +118,45 @@ export class RateLimiter extends EventEmitter {
         blocked: false,
         blockedUntil: 0,
         suspicionLevel: 0,
-        consecutiveFailures: 0
+        consecutiveFailures: 0,
       };
       this.clients.set(key, client);
     }
 
     // Check if client is blocked
     if (client.blocked && now < client.blockedUntil) {
-      this.emit('blocked', { key, reason: 'rate-limited', remainingTime: client.blockedUntil - now });
+      this.emit("blocked", {
+        key,
+        reason: "rate-limited",
+        remainingTime: client.blockedUntil - now,
+      });
       return RateLimitResult.BLOCKED;
     } else if (client.blocked && now >= client.blockedUntil) {
       client.blocked = false;
       client.blockedUntil = 0;
-      this.emit('unblocked', { key });
+      this.emit("unblocked", { key });
     }
 
     // Skip counting if configured
-    if ((success && this.config.skipSuccessfulRequests) || 
-        (!success && this.config.skipFailedRequests)) {
+    if (
+      (success && this.config.skipSuccessfulRequests) ||
+      (!success && this.config.skipFailedRequests)
+    ) {
       return RateLimitResult.ALLOWED;
     }
 
     // Clean old requests outside window
     const windowStart = now - this.config.windowMs;
-    client.requests = client.requests.filter(req => req.timestamp > windowStart);
+    client.requests = client.requests.filter(
+      (req) => req.timestamp > windowStart,
+    );
 
     // Add current request
     const requestRecord: RequestRecord = {
       timestamp: now,
       success,
       responseTime,
-      size: ((request as Record<string, unknown>)?.body as string)?.length || 0
+      size: ((request as Record<string, unknown>)?.body as string)?.length || 0,
     };
     client.requests.push(requestRecord);
 
@@ -152,18 +166,18 @@ export class RateLimiter extends EventEmitter {
     if (requestCount > this.config.maxRequests) {
       client.blocked = true;
       client.blockedUntil = now + this.config.windowMs;
-      
+
       const info: RateLimitInfo = {
         totalHits: requestCount,
         totalRequests: requestCount,
         resetTime: client.blockedUntil,
         remaining: 0,
-        msBeforeNext: this.config.windowMs
+        msBeforeNext: this.config.windowMs,
       };
 
       this.config.onLimitReached(key, info);
-      this.emit('limit-exceeded', { key, info });
-      
+      this.emit("limit-exceeded", { key, info });
+
       return RateLimitResult.BLOCKED;
     }
 
@@ -178,7 +192,7 @@ export class RateLimiter extends EventEmitter {
 
     // Check for suspicious activity
     if (this.isSuspicious(client)) {
-      this.emit('suspicious', { key, client: client });
+      this.emit("suspicious", { key, client: client });
       return RateLimitResult.SUSPICIOUS;
     }
 
@@ -199,20 +213,31 @@ export class RateLimiter extends EventEmitter {
         totalRequests: 0,
         resetTime: now + this.config.windowMs,
         remaining: this.config.maxRequests,
-        msBeforeNext: 0
+        msBeforeNext: 0,
       };
     }
 
     const windowStart = now - this.config.windowMs;
-    const recentRequests = client.requests.filter(req => req.timestamp > windowStart);
-    const remaining = Math.max(0, this.config.maxRequests - recentRequests.length);
-    
+    const recentRequests = client.requests.filter(
+      (req) => req.timestamp > windowStart,
+    );
+    const remaining = Math.max(
+      0,
+      this.config.maxRequests - recentRequests.length,
+    );
+
     return {
       totalHits: recentRequests.length,
       totalRequests: client.requests.length,
-      resetTime: recentRequests.length > 0 ? recentRequests[0].timestamp + this.config.windowMs : now + this.config.windowMs,
+      resetTime:
+        recentRequests.length > 0
+          ? recentRequests[0].timestamp + this.config.windowMs
+          : now + this.config.windowMs,
       remaining,
-      msBeforeNext: remaining === 0 ? this.config.windowMs - (now - recentRequests[0].timestamp) : 0
+      msBeforeNext:
+        remaining === 0
+          ? this.config.windowMs - (now - recentRequests[0].timestamp)
+          : 0,
     };
   }
 
@@ -227,26 +252,30 @@ export class RateLimiter extends EventEmitter {
       client.blockedUntil = 0;
       client.suspicionLevel = 0;
       client.consecutiveFailures = 0;
-      this.emit('reset', { key });
+      this.emit("reset", { key });
     }
   }
 
   /**
    * Get all active clients
    */
-  getActiveClients(): Array<{key: string, info: ClientInfo}> {
+  getActiveClients(): Array<{ key: string; info: ClientInfo }> {
     const now = Date.now();
     const windowStart = now - this.config.windowMs;
-    
+
     return Array.from(this.clients.entries())
-      .filter(([, client]) => client.requests.some(req => req.timestamp > windowStart))
+      .filter(([, client]) =>
+        client.requests.some((req) => req.timestamp > windowStart),
+      )
       .map(([key, client]) => ({ key, info: client }));
   }
 
   private isSuspicious(client: ClientInfo): boolean {
     const now = Date.now();
-    const recentRequests = client.requests.filter(req => req.timestamp > now - 10000); // Last 10 seconds
-    
+    const recentRequests = client.requests.filter(
+      (req) => req.timestamp > now - 10000,
+    ); // Last 10 seconds
+
     // High frequency in short time (more aggressive threshold)
     if (recentRequests.length > this.config.maxRequests * 2) {
       return true;
@@ -264,8 +293,11 @@ export class RateLimiter extends EventEmitter {
 
     // Unusual patterns (only if we have response times)
     if (recentRequests.length > 0) {
-      const avgResponseTime = recentRequests.reduce((sum, req) => sum + req.responseTime, 0) / recentRequests.length;
-      if (avgResponseTime > 10000) { // Very slow responses might indicate automated scanning
+      const avgResponseTime =
+        recentRequests.reduce((sum, req) => sum + req.responseTime, 0) /
+        recentRequests.length;
+      if (avgResponseTime > 10000) {
+        // Very slow responses might indicate automated scanning
         return true;
       }
     }
@@ -278,15 +310,19 @@ export class RateLimiter extends EventEmitter {
     const cutoff = now - this.config.windowMs * 2; // Keep data for 2 windows
 
     for (const [key, client] of this.clients.entries()) {
-      client.requests = client.requests.filter(req => req.timestamp > cutoff);
-      
+      client.requests = client.requests.filter((req) => req.timestamp > cutoff);
+
       // Remove inactive clients
-      if (client.requests.length === 0 && !client.blocked && client.suspicionLevel === 0) {
+      if (
+        client.requests.length === 0 &&
+        !client.blocked &&
+        client.suspicionLevel === 0
+      ) {
         this.clients.delete(key);
       }
     }
 
-    this.emit('cleanup', { activeClients: this.clients.size });
+    this.emit("cleanup", { activeClients: this.clients.size });
   }
 
   destroy(): void {
@@ -309,14 +345,17 @@ export class DoSProtection extends EventEmitter {
     super();
     this.config = config;
     this.logger = logger || new SilentLogger();
-    
+
     // Initialize blacklisted IPs
     if (config.blacklistedIPs) {
-      config.blacklistedIPs.forEach(ip => this.blockedIPs.add(ip));
+      config.blacklistedIPs.forEach((ip) => this.blockedIPs.add(ip));
     }
 
     // Cleanup blocked IPs periodically
-    this.cleanupInterval = setInterval(() => this.cleanupBlockedIPs(), config.blockDuration);
+    this.cleanupInterval = setInterval(
+      () => this.cleanupBlockedIPs(),
+      config.blockDuration,
+    );
   }
 
   /**
@@ -334,14 +373,18 @@ export class DoSProtection extends EventEmitter {
 
     // Check blacklist
     if (this.blockedIPs.has(clientIP)) {
-      this.emit('blocked', { ip: clientIP, reason: 'blacklisted' });
+      this.emit("blocked", { ip: clientIP, reason: "blacklisted" });
       return false;
     }
 
     // Check concurrent connections
     const connections = this.activeConnections.get(clientIP) || 0;
     if (connections >= this.config.maxConcurrentRequests) {
-      this.emit('blocked', { ip: clientIP, reason: 'max-concurrent', connections });
+      this.emit("blocked", {
+        ip: clientIP,
+        reason: "max-concurrent",
+        connections,
+      });
       return false;
     }
 
@@ -359,10 +402,10 @@ export class DoSProtection extends EventEmitter {
 
     // Check for suspicious activity
     if (current + 1 >= this.config.suspiciousThreshold) {
-      this.emit('suspicious', { 
-        ip: clientIP, 
+      this.emit("suspicious", {
+        ip: clientIP,
         connections: current + 1,
-        threshold: this.config.suspiciousThreshold
+        threshold: this.config.suspiciousThreshold,
       });
     }
   }
@@ -382,9 +425,9 @@ export class DoSProtection extends EventEmitter {
   /**
    * Block an IP address
    */
-  blockIP(clientIP: string, reason: string = 'manual'): void {
+  blockIP(clientIP: string, reason: string = "manual"): void {
     this.blockedIPs.add(clientIP);
-    this.emit('ip-blocked', { ip: clientIP, reason });
+    this.emit("ip-blocked", { ip: clientIP, reason });
     this.logger.warn(`IP ${clientIP} blocked: ${reason}`);
   }
 
@@ -393,7 +436,7 @@ export class DoSProtection extends EventEmitter {
    */
   unblockIP(clientIP: string): void {
     this.blockedIPs.delete(clientIP);
-    this.emit('ip-unblocked', { ip: clientIP });
+    this.emit("ip-unblocked", { ip: clientIP });
     this.logger.info(`IP ${clientIP} unblocked`);
   }
 
@@ -408,14 +451,17 @@ export class DoSProtection extends EventEmitter {
     return {
       activeConnections: Object.fromEntries(this.activeConnections),
       blockedIPs: Array.from(this.blockedIPs),
-      totalConnections: Array.from(this.activeConnections.values()).reduce((sum, count) => sum + count, 0)
+      totalConnections: Array.from(this.activeConnections.values()).reduce(
+        (sum, count) => sum + count,
+        0,
+      ),
     };
   }
 
   private cleanupBlockedIPs(): void {
     // This is a simplified cleanup - in production, you'd want to track block times
     // and automatically unblock after the block duration
-    this.emit('cleanup', { blockedCount: this.blockedIPs.size });
+    this.emit("cleanup", { blockedCount: this.blockedIPs.size });
   }
 
   destroy(): void {
@@ -432,7 +478,7 @@ export class CircuitBreaker extends EventEmitter {
   private config: CircuitBreakerConfig;
   private failures: number = 0;
   private lastFailureTime: number = 0;
-  private state: 'closed' | 'open' | 'half-open' = 'closed';
+  private state: "closed" | "open" | "half-open" = "closed";
   private logger: ILogger;
 
   constructor(config: CircuitBreakerConfig, logger?: ILogger) {
@@ -445,12 +491,12 @@ export class CircuitBreaker extends EventEmitter {
    * Execute a function with circuit breaker protection
    */
   async execute<T>(operation: () => Promise<T>): Promise<T> {
-    if (this.state === 'open') {
+    if (this.state === "open") {
       if (Date.now() - this.lastFailureTime > this.config.recoveryTimeout) {
-        this.state = 'half-open';
-        this.emit('state-change', { state: this.state });
+        this.state = "half-open";
+        this.emit("state-change", { state: this.state });
       } else {
-        throw new Error('Circuit breaker is open');
+        throw new Error("Circuit breaker is open");
       }
     }
 
@@ -477,16 +523,19 @@ export class CircuitBreaker extends EventEmitter {
       state: this.state,
       failures: this.failures,
       lastFailureTime: this.lastFailureTime,
-      nextRetryTime: this.state === 'open' ? this.lastFailureTime + this.config.recoveryTimeout : undefined
+      nextRetryTime:
+        this.state === "open"
+          ? this.lastFailureTime + this.config.recoveryTimeout
+          : undefined,
     };
   }
 
   private onSuccess(): void {
     this.failures = 0;
-    if (this.state === 'half-open') {
-      this.state = 'closed';
-      this.emit('state-change', { state: this.state });
-      this.logger.info('Circuit breaker closed');
+    if (this.state === "half-open") {
+      this.state = "closed";
+      this.emit("state-change", { state: this.state });
+      this.logger.info("Circuit breaker closed");
     }
   }
 
@@ -495,18 +544,18 @@ export class CircuitBreaker extends EventEmitter {
     this.lastFailureTime = Date.now();
 
     if (this.failures >= this.config.failureThreshold) {
-      this.state = 'open';
-      this.emit('state-change', { state: this.state });
-      this.logger.warn('Circuit breaker opened');
+      this.state = "open";
+      this.emit("state-change", { state: this.state });
+      this.logger.warn("Circuit breaker opened");
     }
   }
 
   reset(): void {
     this.failures = 0;
     this.lastFailureTime = 0;
-    this.state = 'closed';
-    this.emit('reset');
-    this.logger.info('Circuit breaker reset');
+    this.state = "closed";
+    this.emit("reset");
+    this.logger.info("Circuit breaker reset");
   }
 }
 
@@ -523,7 +572,11 @@ export class RequestThrottler extends EventEmitter {
   private maxQueueSize: number;
   private logger: ILogger;
 
-  constructor(maxConcurrent: number = 10, maxQueueSize: number = 100, logger?: ILogger) {
+  constructor(
+    maxConcurrent: number = 10,
+    maxQueueSize: number = 100,
+    logger?: ILogger,
+  ) {
     super();
     this.maxConcurrent = maxConcurrent;
     this.maxQueueSize = maxQueueSize;
@@ -533,11 +586,14 @@ export class RequestThrottler extends EventEmitter {
   /**
    * Throttle request processing
    */
-  async process<T>(request: unknown, handler: (req: unknown) => Promise<T>): Promise<T> {
+  async process<T>(
+    request: unknown,
+    handler: (req: unknown) => Promise<T>,
+  ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       // Check queue size
       if (this.queue.length >= this.maxQueueSize) {
-        reject(new Error('Request queue full'));
+        reject(new Error("Request queue full"));
         return;
       }
 
@@ -547,7 +603,7 @@ export class RequestThrottler extends EventEmitter {
         handler: handler as (req: unknown) => Promise<unknown>,
         resolve: resolve as (value: unknown) => void,
         reject,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
 
       this.processNext();
@@ -563,7 +619,10 @@ export class RequestThrottler extends EventEmitter {
     if (!item) return;
 
     this.processing++;
-    this.emit('processing-start', { queueSize: this.queue.length, processing: this.processing });
+    this.emit("processing-start", {
+      queueSize: this.queue.length,
+      processing: this.processing,
+    });
 
     try {
       const result = await item.handler(item.request);
@@ -572,8 +631,11 @@ export class RequestThrottler extends EventEmitter {
       item.reject(error);
     } finally {
       this.processing--;
-      this.emit('processing-end', { queueSize: this.queue.length, processing: this.processing });
-      
+      this.emit("processing-end", {
+        queueSize: this.queue.length,
+        processing: this.processing,
+      });
+
       // Process next item
       setImmediate(() => this.processNext());
     }
@@ -592,7 +654,7 @@ export class RequestThrottler extends EventEmitter {
       queueSize: this.queue.length,
       processing: this.processing,
       maxConcurrent: this.maxConcurrent,
-      maxQueueSize: this.maxQueueSize
+      maxQueueSize: this.maxQueueSize,
     };
   }
 
@@ -601,11 +663,11 @@ export class RequestThrottler extends EventEmitter {
    */
   clearQueue(): void {
     const cleared = this.queue.length;
-    this.queue.forEach(item => {
-      item.reject(new Error('Queue cleared'));
+    this.queue.forEach((item) => {
+      item.reject(new Error("Queue cleared"));
     });
     this.queue = [];
-    this.emit('queue-cleared', { cleared });
+    this.emit("queue-cleared", { cleared });
   }
 }
 
@@ -622,32 +684,48 @@ export class SecurityMiddleware extends EventEmitter {
     dosConfig: DoSProtectionConfig,
     circuitBreakerConfig: CircuitBreakerConfig,
     throttlerConfig: { maxConcurrent: number; maxQueueSize: number },
-    logger?: ILogger
+    logger?: ILogger,
   ) {
     super();
     this.logger = logger || new SilentLogger();
-    
+
     this.rateLimiter = new RateLimiter(rateLimitConfig, logger);
     this.dosProtection = new DoSProtection(dosConfig, logger);
     this.circuitBreaker = new CircuitBreaker(circuitBreakerConfig, logger);
-    this.throttler = new RequestThrottler(throttlerConfig.maxConcurrent, throttlerConfig.maxQueueSize, logger);
+    this.throttler = new RequestThrottler(
+      throttlerConfig.maxConcurrent,
+      throttlerConfig.maxQueueSize,
+      logger,
+    );
 
     // Forward events
-    this.rateLimiter.on('limit-exceeded', (data) => this.emit('rate-limit-exceeded', data));
-    this.dosProtection.on('blocked', (data) => this.emit('dos-blocked', data));
-    this.circuitBreaker.on('state-change', (data) => this.emit('circuit-breaker-change', data));
-    this.throttler.on('queue-cleared', (data) => this.emit('throttler-cleared', data));
+    this.rateLimiter.on("limit-exceeded", (data) =>
+      this.emit("rate-limit-exceeded", data),
+    );
+    this.dosProtection.on("blocked", (data) => this.emit("dos-blocked", data));
+    this.circuitBreaker.on("state-change", (data) =>
+      this.emit("circuit-breaker-change", data),
+    );
+    this.throttler.on("queue-cleared", (data) =>
+      this.emit("throttler-cleared", data),
+    );
   }
 
   /**
    * Process request through all security layers
    */
-  async processRequest(request: unknown, handler: (req: unknown) => Promise<unknown>): Promise<unknown> {
-    const clientIP = (request as Record<string, unknown>)?.ip as string || (request as Record<string, unknown>)?.remoteAddress as string || 'unknown';
+  async processRequest(
+    request: unknown,
+    handler: (req: unknown) => Promise<unknown>,
+  ): Promise<unknown> {
+    const clientIP =
+      ((request as Record<string, unknown>)?.ip as string) ||
+      ((request as Record<string, unknown>)?.remoteAddress as string) ||
+      "unknown";
 
     // DoS protection check
     if (!this.dosProtection.checkRequest(clientIP)) {
-      throw new Error('Request blocked by DoS protection');
+      throw new Error("Request blocked by DoS protection");
     }
 
     // Track connection
@@ -657,14 +735,13 @@ export class SecurityMiddleware extends EventEmitter {
       // Rate limiting check
       const rateLimitResult = this.rateLimiter.checkLimit(request, true, 0);
       if (rateLimitResult === RateLimitResult.BLOCKED) {
-        throw new Error('Rate limit exceeded');
+        throw new Error("Rate limit exceeded");
       }
 
       // Process through circuit breaker and throttler
       return await this.circuitBreaker.execute(async () => {
         return await this.throttler.process(request, handler);
       });
-
     } finally {
       this.dosProtection.releaseConnection(clientIP);
     }
@@ -674,16 +751,30 @@ export class SecurityMiddleware extends EventEmitter {
    * Get comprehensive security stats
    */
   getStats(): {
-    rateLimiter: Array<{key: string, info: ClientInfo}>;
-    dosProtection: {activeConnections: Record<string, number>; blockedIPs: string[]; totalConnections: number};
-    circuitBreaker: {state: string; failures: number; lastFailureTime: number; nextRetryTime?: number};
-    throttler: {queueSize: number; processing: number; maxConcurrent: number; maxQueueSize: number};
+    rateLimiter: Array<{ key: string; info: ClientInfo }>;
+    dosProtection: {
+      activeConnections: Record<string, number>;
+      blockedIPs: string[];
+      totalConnections: number;
+    };
+    circuitBreaker: {
+      state: string;
+      failures: number;
+      lastFailureTime: number;
+      nextRetryTime?: number;
+    };
+    throttler: {
+      queueSize: number;
+      processing: number;
+      maxConcurrent: number;
+      maxQueueSize: number;
+    };
   } {
     return {
       rateLimiter: this.rateLimiter.getActiveClients(),
       dosProtection: this.dosProtection.getStats(),
       circuitBreaker: this.circuitBreaker.getState(),
-      throttler: this.throttler.getStats()
+      throttler: this.throttler.getStats(),
     };
   }
 

@@ -100,18 +100,18 @@ describe('AdminUI', () => {
       
       // Verify all expected menu options are mapped
       const expectedMappings = [
-        '"list": () => this.listProfiles()',
-        '"add": () => this.addProfile()',
-        '"edit": () => this.editProfile()',
-        '"remove": () => this.removeProfile()', 
-        '"validate": () => this.validateProfile()',
-        '"import": () => this.importProfiles()',
-        '"export": () => this.exportProfiles()',
-        '"inheritance_chain": () => this.showInheritanceChain()',
-        '"check_circular": () => this.checkCircularDependencies()',
-        '"export_resolved": () => this.exportResolvedProfile()',
-        '"preview_resolution": () => this.previewResolution()',
-        '"status": () => this.showSystemStatus()'
+        'list: () => this.listProfiles()',
+        'add: () => this.addProfile()',
+        'edit: () => this.editProfile()',
+        'remove: () => this.removeProfile()', 
+        'validate: () => this.validateProfile()',
+        'import: () => this.importProfiles()',
+        'export: () => this.exportProfiles()',
+        'inheritance_chain: () => this.showInheritanceChain()',
+        'check_circular: () => this.checkCircularDependencies()',
+        'export_resolved: () => this.exportResolvedProfile()',
+        'preview_resolution: () => this.previewResolution()',
+        'status: () => this.showSystemStatus()'
       ];
       
       expectedMappings.forEach(mapping => {
@@ -119,8 +119,8 @@ describe('AdminUI', () => {
       });
       
       // Verify exit handler
-      expect(showMainMenuCode).toContain('"exit": async () => {');
-      expect(showMainMenuCode).toContain("process.exit(0)");
+      expect(showMainMenuCode).toContain('exit: async () => {');
+      expect(showMainMenuCode).toContain('process.env.NODE_ENV !== "test"');
     });
 
     it('should call pressAnyKey after non-exit actions', () => {

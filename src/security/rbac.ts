@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from "events";
 
 export interface Permission {
   resource: string;
@@ -47,64 +47,62 @@ export class RBACManager extends EventEmitter {
   private roles: Map<string, Role> = new Map();
   private users: Map<string, User> = new Map();
   private usageStats: Map<string, UsageStats> = new Map();
-  
+
   // Default roles
   private defaultRoles: Role[] = [
     {
-      name: 'read-only',
+      name: "read-only",
       permissions: [
-        { resource: 'resources', action: 'read' },
-        { resource: 'profiles', action: 'read' }
+        { resource: "resources", action: "read" },
+        { resource: "profiles", action: "read" },
       ],
       quotas: {
         maxRequestsPerMinute: 60,
         maxRequestsPerHour: 1000,
         maxRequestsPerDay: 10000,
-        maxConcurrentRequests: 5
-      }
+        maxConcurrentRequests: 5,
+      },
     },
     {
-      name: 'developer',
+      name: "developer",
       permissions: [
-        { resource: 'resources', action: 'read' },
-        { resource: 'tools', action: 'execute' },
-        { resource: 'profiles', action: 'read' },
-        { resource: 'profiles', action: 'switch' }
+        { resource: "resources", action: "read" },
+        { resource: "tools", action: "execute" },
+        { resource: "profiles", action: "read" },
+        { resource: "profiles", action: "switch" },
       ],
       quotas: {
         maxRequestsPerMinute: 120,
         maxRequestsPerHour: 5000,
         maxRequestsPerDay: 50000,
         maxConcurrentRequests: 10,
-        maxToolExecutions: 1000
-      }
+        maxToolExecutions: 1000,
+      },
     },
     {
-      name: 'admin',
-      permissions: [
-        { resource: '*', action: '*' }
-      ],
+      name: "admin",
+      permissions: [{ resource: "*", action: "*" }],
       quotas: {
         maxRequestsPerMinute: 300,
         maxRequestsPerHour: 10000,
         maxRequestsPerDay: 100000,
         maxConcurrentRequests: 20,
         maxResourceAccess: 10000,
-        maxToolExecutions: 5000
-      }
-    }
+        maxToolExecutions: 5000,
+      },
+    },
   ];
 
   constructor() {
     super();
     this.initializeDefaultRoles();
-    
+
     // Cleanup expired usage stats every minute
     setInterval(() => this.cleanupExpiredStats(), 60 * 1000);
   }
 
   private initializeDefaultRoles(): void {
-    this.defaultRoles.forEach(role => {
+    this.defaultRoles.forEach((role) => {
       this.roles.set(role.name, role);
     });
   }
@@ -112,13 +110,13 @@ export class RBACManager extends EventEmitter {
   // Role Management
   public addRole(role: Role): void {
     this.roles.set(role.name, role);
-    this.emit('roleAdded', role);
+    this.emit("roleAdded", role);
   }
 
   public removeRole(roleName: string): boolean {
     const removed = this.roles.delete(roleName);
     if (removed) {
-      this.emit('roleRemoved', roleName);
+      this.emit("roleRemoved", roleName);
     }
     return removed;
   }
@@ -135,14 +133,14 @@ export class RBACManager extends EventEmitter {
   public addUser(user: User): void {
     this.users.set(user.id, user);
     this.initializeUserStats(user.id);
-    this.emit('userAdded', user);
+    this.emit("userAdded", user);
   }
 
   public removeUser(userId: string): boolean {
     const removed = this.users.delete(userId);
     this.usageStats.delete(userId);
     if (removed) {
-      this.emit('userRemoved', userId);
+      this.emit("userRemoved", userId);
     }
     return removed;
   }
@@ -154,33 +152,37 @@ export class RBACManager extends EventEmitter {
   public updateUserRoles(userId: string, roles: string[]): boolean {
     const user = this.users.get(userId);
     if (!user) return false;
-    
+
     user.roles = roles;
-    this.emit('userRolesUpdated', userId, roles);
+    this.emit("userRolesUpdated", userId, roles);
     return true;
   }
 
   // Permission Checking
-  public hasPermission(userId: string, resource: string, action: string): boolean {
+  public hasPermission(
+    userId: string,
+    resource: string,
+    action: string,
+  ): boolean {
     const user = this.users.get(userId);
     if (!user) return false;
 
-    return user.roles.some(roleName => {
+    return user.roles.some((roleName) => {
       const role = this.roles.get(roleName);
       if (!role) return false;
 
-      return role.permissions.some(permission => {
+      return role.permissions.some((permission) => {
         // Check wildcard permissions
-        if (permission.resource === '*' && permission.action === '*') {
+        if (permission.resource === "*" && permission.action === "*") {
           return true;
         }
-        if (permission.resource === '*' && permission.action === action) {
+        if (permission.resource === "*" && permission.action === action) {
           return true;
         }
-        if (permission.resource === resource && permission.action === '*') {
+        if (permission.resource === resource && permission.action === "*") {
           return true;
         }
-        
+
         // Check exact match
         return permission.resource === resource && permission.action === action;
       });
@@ -194,7 +196,7 @@ export class RBACManager extends EventEmitter {
 
     const stats = this.getOrCreateUserStats(userId);
     const quotas = this.getUserQuotas(userId);
-    
+
     const now = Date.now();
     const currentMinute = Math.floor(now / 60000);
     const currentHour = Math.floor(now / 3600000);
@@ -215,31 +217,49 @@ export class RBACManager extends EventEmitter {
     }
 
     // Check quotas
-    if (operation === 'request') {
-      if (quotas.maxRequestsPerMinute && stats.requestsThisMinute >= quotas.maxRequestsPerMinute) {
-        this.emit('quotaExceeded', userId, 'requestsPerMinute');
+    if (operation === "request") {
+      if (
+        quotas.maxRequestsPerMinute &&
+        stats.requestsThisMinute >= quotas.maxRequestsPerMinute
+      ) {
+        this.emit("quotaExceeded", userId, "requestsPerMinute");
         return false;
       }
-      if (quotas.maxRequestsPerHour && stats.requestsThisHour >= quotas.maxRequestsPerHour) {
-        this.emit('quotaExceeded', userId, 'requestsPerHour');
+      if (
+        quotas.maxRequestsPerHour &&
+        stats.requestsThisHour >= quotas.maxRequestsPerHour
+      ) {
+        this.emit("quotaExceeded", userId, "requestsPerHour");
         return false;
       }
-      if (quotas.maxRequestsPerDay && stats.requestsThisDay >= quotas.maxRequestsPerDay) {
-        this.emit('quotaExceeded', userId, 'requestsPerDay');
+      if (
+        quotas.maxRequestsPerDay &&
+        stats.requestsThisDay >= quotas.maxRequestsPerDay
+      ) {
+        this.emit("quotaExceeded", userId, "requestsPerDay");
         return false;
       }
-      if (quotas.maxConcurrentRequests && stats.concurrentRequests >= quotas.maxConcurrentRequests) {
-        this.emit('quotaExceeded', userId, 'concurrentRequests');
+      if (
+        quotas.maxConcurrentRequests &&
+        stats.concurrentRequests >= quotas.maxConcurrentRequests
+      ) {
+        this.emit("quotaExceeded", userId, "concurrentRequests");
         return false;
       }
-    } else if (operation === 'tool_execution') {
-      if (quotas.maxToolExecutions && stats.toolExecutions >= quotas.maxToolExecutions) {
-        this.emit('quotaExceeded', userId, 'toolExecutions');
+    } else if (operation === "tool_execution") {
+      if (
+        quotas.maxToolExecutions &&
+        stats.toolExecutions >= quotas.maxToolExecutions
+      ) {
+        this.emit("quotaExceeded", userId, "toolExecutions");
         return false;
       }
-    } else if (operation === 'resource_access') {
-      if (quotas.maxResourceAccess && stats.resourceAccesses >= quotas.maxResourceAccess) {
-        this.emit('quotaExceeded', userId, 'resourceAccess');
+    } else if (operation === "resource_access") {
+      if (
+        quotas.maxResourceAccess &&
+        stats.resourceAccesses >= quotas.maxResourceAccess
+      ) {
+        this.emit("quotaExceeded", userId, "resourceAccess");
         return false;
       }
     }
@@ -249,27 +269,27 @@ export class RBACManager extends EventEmitter {
 
   public recordUsage(userId: string, operation: string): void {
     const stats = this.getOrCreateUserStats(userId);
-    
+
     switch (operation) {
-      case 'request_start':
+      case "request_start":
         stats.requestsThisMinute++;
         stats.requestsThisHour++;
         stats.requestsThisDay++;
         stats.concurrentRequests++;
         stats.lastRequestTime = Date.now();
         break;
-      case 'request_end':
+      case "request_end":
         stats.concurrentRequests = Math.max(0, stats.concurrentRequests - 1);
         break;
-      case 'tool_execution':
+      case "tool_execution":
         stats.toolExecutions++;
         break;
-      case 'resource_access':
+      case "resource_access":
         stats.resourceAccesses++;
         break;
     }
 
-    this.emit('usageRecorded', userId, operation, stats);
+    this.emit("usageRecorded", userId, operation, stats);
   }
 
   public getUserQuotas(userId: string): ResourceQuotas {
@@ -287,7 +307,7 @@ export class RBACManager extends EventEmitter {
   private getRoleQuotas(roleNames: string[]): ResourceQuotas {
     const combinedQuotas: ResourceQuotas = {};
 
-    roleNames.forEach(roleName => {
+    roleNames.forEach((roleName) => {
       const role = this.roles.get(roleName);
       if (role?.quotas) {
         // Take the maximum quota from all roles
@@ -295,7 +315,10 @@ export class RBACManager extends EventEmitter {
           if (value !== undefined) {
             const quotaKey = key as keyof ResourceQuotas;
             const currentValue = combinedQuotas[quotaKey] as number;
-            combinedQuotas[quotaKey] = Math.max(currentValue || 0, value) as never;
+            combinedQuotas[quotaKey] = Math.max(
+              currentValue || 0,
+              value,
+            ) as never;
           }
         });
       }
@@ -317,8 +340,8 @@ export class RBACManager extends EventEmitter {
       windowStart: {
         minute: Math.floor(now / 60000),
         hour: Math.floor(now / 3600000),
-        day: Math.floor(now / 86400000)
-      }
+        day: Math.floor(now / 86400000),
+      },
     });
   }
 
@@ -339,7 +362,7 @@ export class RBACManager extends EventEmitter {
       // Remove stats for inactive users (no requests in last hour)
       if (now - stats.lastRequestTime > oneHour) {
         this.usageStats.delete(userId);
-        this.emit('statsExpired', userId);
+        this.emit("statsExpired", userId);
       }
     }
   }
@@ -356,43 +379,57 @@ export class RBACManager extends EventEmitter {
   public getQuotaUtilization(userId: string): Record<string, number> {
     const stats = this.usageStats.get(userId);
     const quotas = this.getUserQuotas(userId);
-    
+
     if (!stats || !quotas) return {};
 
     const utilization: Record<string, number> = {};
 
     if (quotas.maxRequestsPerMinute) {
-      utilization.requestsPerMinute = (stats.requestsThisMinute / quotas.maxRequestsPerMinute) * 100;
+      utilization.requestsPerMinute =
+        (stats.requestsThisMinute / quotas.maxRequestsPerMinute) * 100;
     }
     if (quotas.maxRequestsPerHour) {
-      utilization.requestsPerHour = (stats.requestsThisHour / quotas.maxRequestsPerHour) * 100;
+      utilization.requestsPerHour =
+        (stats.requestsThisHour / quotas.maxRequestsPerHour) * 100;
     }
     if (quotas.maxRequestsPerDay) {
-      utilization.requestsPerDay = (stats.requestsThisDay / quotas.maxRequestsPerDay) * 100;
+      utilization.requestsPerDay =
+        (stats.requestsThisDay / quotas.maxRequestsPerDay) * 100;
     }
     if (quotas.maxConcurrentRequests) {
-      utilization.concurrentRequests = (stats.concurrentRequests / quotas.maxConcurrentRequests) * 100;
+      utilization.concurrentRequests =
+        (stats.concurrentRequests / quotas.maxConcurrentRequests) * 100;
     }
     if (quotas.maxResourceAccess) {
-      utilization.resourceAccess = (stats.resourceAccesses / quotas.maxResourceAccess) * 100;
+      utilization.resourceAccess =
+        (stats.resourceAccesses / quotas.maxResourceAccess) * 100;
     }
     if (quotas.maxToolExecutions) {
-      utilization.toolExecutions = (stats.toolExecutions / quotas.maxToolExecutions) * 100;
+      utilization.toolExecutions =
+        (stats.toolExecutions / quotas.maxToolExecutions) * 100;
     }
 
     return utilization;
   }
 
   // Export/Import for persistence
-  public exportConfiguration(): { roles: [string, Role][]; users: [string, User][]; timestamp: number } {
+  public exportConfiguration(): {
+    roles: [string, Role][];
+    users: [string, User][];
+    timestamp: number;
+  } {
     return {
       roles: Array.from(this.roles.entries()),
       users: Array.from(this.users.entries()),
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
   }
 
-  public importConfiguration(config: { roles?: [string, Role][]; users?: [string, User][]; timestamp?: number }): void {
+  public importConfiguration(config: {
+    roles?: [string, Role][];
+    users?: [string, User][];
+    timestamp?: number;
+  }): void {
     if (config.roles) {
       this.roles = new Map(config.roles);
     }
@@ -403,6 +440,6 @@ export class RBACManager extends EventEmitter {
         this.initializeUserStats(userId);
       });
     }
-    this.emit('configurationImported', config);
+    this.emit("configurationImported", config);
   }
 }

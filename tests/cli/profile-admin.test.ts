@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { execaNode } from 'execa';
+import { execa } from 'execa';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
@@ -54,7 +54,7 @@ This is a test profile for CLI testing.
 
   describe('Help and Version', () => {
     it('should show help with --help and exit 0', async () => {
-      const { stdout, exitCode } = await execaNode(CLI_PATH, ['--help']);
+      const { stdout, exitCode } = await execa('node', [CLI_PATH, '--help']);
       
       expect(exitCode).toBe(0);
       expect(stdout).toMatch(/Usage:/);
@@ -63,7 +63,7 @@ This is a test profile for CLI testing.
     });
 
     it('should show version with --version and exit 0', async () => {
-      const { stdout, exitCode } = await execaNode(CLI_PATH, ['--version']);
+      const { stdout, exitCode } = await execa('node', [CLI_PATH, '--version']);
       
       expect(exitCode).toBe(0);
       expect(stdout).toMatch(/\d+\.\d+\.\d+/); // Version pattern
@@ -72,9 +72,7 @@ This is a test profile for CLI testing.
 
   describe('List Command', () => {
     it('should list profiles (empty initially)', async () => {
-      const { stdout, exitCode } = await execaNode(CLI_PATH, [
-        'list'
-      ]);
+      const { stdout, exitCode } = await execa('node', [CLI_PATH, 'list']);
       
       expect(exitCode).toBe(0);
       expect(stdout).toMatch(/No profiles found|Registered Profiles/);
@@ -88,9 +86,7 @@ This is a test profile for CLI testing.
         // Ignore if file doesn't exist
       }
       
-      const { stdout, exitCode } = await execaNode(CLI_PATH, [
-        'list'
-      ]);
+      const { stdout, exitCode } = await execa('node', [CLI_PATH, 'list']);
       
       expect(exitCode).toBe(0);
       expect(stdout).toMatch(/No profiles found/);
@@ -99,11 +95,7 @@ This is a test profile for CLI testing.
 
   describe('Add Command', () => {
     it('should add a profile successfully', async () => {
-      const { stdout, exitCode } = await execaNode(CLI_PATH, [
-        'add',
-        'test-profile',
-        testProfilePath
-      ]);
+      const { stdout, exitCode } = await execa('node', [CLI_PATH, 'add', 'test-profile', testProfilePath]);
       
       expect(exitCode).toBe(0);
       expect(stdout).toMatch(/Profile .* added successfully/);
@@ -116,22 +108,14 @@ This is a test profile for CLI testing.
     it('should handle non-existent profile file', async () => {
       const nonExistentProfile = path.join(tempDir, 'non-existent.md');
       
-      await expect(execaNode(CLI_PATH, [
-        'add',
-        'non-existent',
-        nonExistentProfile
-      ])).rejects.toMatchObject({
+      await expect(execa('node', [CLI_PATH, 'add', 'non-existent', nonExistentProfile])).rejects.toMatchObject({
         exitCode: 1
       });
     });
 
     it('should allow adding duplicate profile names (overwrites)', async () => {
       // Try to add the same profile again - profile-admin allows this
-      const { stdout, exitCode } = await execaNode(CLI_PATH, [
-        'add',
-        'test-profile-2',
-        testProfilePath
-      ]);
+      const { stdout, exitCode } = await execa('node', [CLI_PATH, 'add', 'test-profile-2', testProfilePath]);
       
       expect(exitCode).toBe(0);
       expect(stdout).toMatch(/Profile .* added successfully/);
@@ -140,20 +124,14 @@ This is a test profile for CLI testing.
 
   describe('Remove Command', () => {
     it('should remove an existing profile', async () => {
-      const { stdout, exitCode } = await execaNode(CLI_PATH, [
-        'remove',
-        'test-profile'
-      ]);
+      const { stdout, exitCode } = await execa('node', [CLI_PATH, 'remove', 'test-profile']);
       
       expect(exitCode).toBe(0);
       expect(stdout).toMatch(/Profile .* removed successfully/);
     });
 
     it('should handle removing non-existent profile', async () => {
-      await expect(execaNode(CLI_PATH, [
-        'remove',
-        'non-existent-profile'
-      ])).rejects.toMatchObject({
+      await expect(execa('node', [CLI_PATH, 'remove', 'non-existent-profile'])).rejects.toMatchObject({
         exitCode: 1
       });
     });
@@ -162,36 +140,24 @@ This is a test profile for CLI testing.
   describe('Verify Command', () => {
     beforeAll(async () => {
       // Re-add test profile for verification tests
-      await execaNode(CLI_PATH, [
-        'add',
-        'test-profile',
-        testProfilePath
-      ]);
+      await execa('node', [CLI_PATH, 'add', 'test-profile', testProfilePath]);
     });
 
     it('should verify an existing profile', async () => {
-      const { stdout, exitCode } = await execaNode(CLI_PATH, [
-        'verify',
-        'test-profile'
-      ]);
+      const { stdout, exitCode } = await execa('node', [CLI_PATH, 'verify', 'test-profile']);
       
       expect(exitCode).toBe(0);
       expect(stdout).toMatch(/Profile .* verified|integrity|checksum/);
     });
 
     it('should handle verifying non-existent profile', async () => {
-      await expect(execaNode(CLI_PATH, [
-        'verify',
-        'non-existent-profile'
-      ])).rejects.toMatchObject({
+      await expect(execa('node', [CLI_PATH, 'verify', 'non-existent-profile'])).rejects.toMatchObject({
         exitCode: 1
       });
     });
 
     it('should show help when verify called without profile name', async () => {
-      await expect(execaNode(CLI_PATH, [
-        'verify'
-      ])).rejects.toMatchObject({
+      await expect(execa('node', [CLI_PATH, 'verify'])).rejects.toMatchObject({
         exitCode: 1
       });
     });
@@ -199,14 +165,14 @@ This is a test profile for CLI testing.
 
   describe('Error Handling', () => {
     it('should exit with error code 1 for invalid commands', async () => {
-      await expect(execaNode(CLI_PATH, [ 'invalid-command']))
+      await expect(execa('node', [CLI_PATH, 'invalid-command']))
         .rejects.toMatchObject({
           exitCode: 1
         });
     });
 
     it('should exit with error code 1 for missing required arguments', async () => {
-      await expect(execaNode(CLI_PATH, [ 'add']))
+      await expect(execa('node', [CLI_PATH, 'add']))
         .rejects.toMatchObject({
           exitCode: 1
         });
@@ -222,9 +188,7 @@ This is a test profile for CLI testing.
         
         try {
           // Profile-admin doesn't support --config option, so test basic functionality
-          const { stdout, exitCode } = await execaNode(CLI_PATH, [
-            'list'
-          ]);
+          const { stdout, exitCode } = await execa('node', [CLI_PATH, 'list']);
           
           expect(exitCode).toBe(0);
           expect(stdout).toMatch(/No profiles found|Registered Profiles/);
@@ -238,9 +202,7 @@ This is a test profile for CLI testing.
 
   describe('JSON Output', () => {
     it('should list profiles in text format', async () => {
-      const { stdout, exitCode } = await execaNode(CLI_PATH, [
-        'list'
-      ]);
+      const { stdout, exitCode } = await execa('node', [CLI_PATH, 'list']);
       
       expect(exitCode).toBe(0);
       expect(stdout).toMatch(/Registered Profiles|No profiles found/);

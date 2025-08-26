@@ -14,8 +14,20 @@ vi.mock('fs/promises', () => ({
 // Mock path security validation
 vi.mock('../../src/utils/path-security.js', async (importOriginal) => {
   const original = await importOriginal() as any;
+  const path = require('path');
   return {
     ...original,
+    safeResolve: vi.fn().mockImplementation((inputPath: string, options?: any) => {
+      // Block obviously dangerous patterns for tests
+      if (inputPath.includes('dangerous')) {
+        throw new Error('Path contains dangerous patterns');
+      }
+      // Return realistic absolute paths
+      if (inputPath.startsWith('/')) {
+        return inputPath;
+      }
+      return path.resolve(process.cwd(), inputPath);
+    }),
     validatePathExists: vi.fn().mockImplementation((path: string, options?: any) => {
       // Return false for non-existent paths as expected by tests
       if (path.includes('/non/existent/') || path.includes('nonexistent')) {

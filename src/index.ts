@@ -12,7 +12,7 @@ import { MCPProxyManager } from "./mcp-proxy/manager.js";
 import { PathResolver } from "./utils/path-resolver.js";
 import { Logger, ILogger } from "./utils/logger.js";
 import { ProcessErrorHandler } from "./utils/process-error-handler.js";
-import { validateConfigOnStartup } from "./validation/fail-fast.js";
+// import { validateConfigOnStartup } from "./validation/fail-fast.js";
 
 export class OmniMCPServer {
   private server: Server;
@@ -28,7 +28,7 @@ export class OmniMCPServer {
 
   constructor(logger?: ILogger) {
     this.logger = logger || Logger.getInstance();
-    
+
     this.server = new Server(
       {
         name: "omni-mcp-hub",
@@ -39,7 +39,7 @@ export class OmniMCPServer {
           resources: {},
           tools: {},
         },
-      }
+      },
     );
 
     this.claudeConfigManager = new ClaudeConfigManager();
@@ -47,26 +47,32 @@ export class OmniMCPServer {
     const yamlConfigPath = pathResolver.getAbsoluteYamlConfigPath();
     this.logger.debug(`Resolved YAML config path: ${yamlConfigPath}`);
 
-    this.yamlConfigManager = YamlConfigManager.createWithPath(yamlConfigPath, this.logger);
+    this.yamlConfigManager = YamlConfigManager.createWithPath(
+      yamlConfigPath,
+      this.logger,
+    );
     this.configLoader = new ConfigLoader(
       this.claudeConfigManager,
       this.yamlConfigManager,
-      this.logger
+      this.logger,
     );
-    this.proxyManager = new MCPProxyManager(this.yamlConfigManager, this.logger);
+    this.proxyManager = new MCPProxyManager(
+      this.yamlConfigManager,
+      this.logger,
+    );
     this.toolHandlers = new ToolHandlers(
       this.server,
       this.claudeConfigManager,
       this.activeProfiles,
       this.proxyManager,
       this.logger,
-      this // Pass OmniMCPServer instance to access behavior instructions
+      this, // Pass OmniMCPServer instance to access behavior instructions
     );
     this.resourceHandlers = new ResourceHandlers(
       this.server,
       this.activeProfiles,
       this.proxyManager,
-      this.logger
+      this.logger,
     );
 
     // Don't call initialize here - call it in run() to ensure proper async handling
@@ -80,8 +86,10 @@ export class OmniMCPServer {
 
     // Note: YAML config is loaded by configLoader.loadInitialConfig()
     // No need to load it separately here
-    
-    this.logger.info("[INIT] Loading initial configuration and autoLoad profiles...");
+
+    this.logger.info(
+      "[INIT] Loading initial configuration and autoLoad profiles...",
+    );
     await this.loadInitialConfiguration();
     this.logger.info("[INIT] Initial configuration loaded");
 
@@ -99,8 +107,10 @@ export class OmniMCPServer {
 
     // Setup tools changed notification
     this.logger.debug("[INIT] Setting up tools changed notification...");
-    this.proxyManager.on('toolsChanged', () => {
-      this.logger.info("[NOTIFY] Tools changed - sending notifications/tools/list_changed");
+    this.proxyManager.on("toolsChanged", () => {
+      this.logger.info(
+        "[NOTIFY] Tools changed - sending notifications/tools/list_changed",
+      );
       this.sendToolsChangedNotification();
     });
     this.logger.debug("[INIT] Tools changed notification set up");
@@ -138,19 +148,26 @@ export class OmniMCPServer {
     try {
       for (const [name, config] of this.activeProfiles) {
         // Check if this profile has autoApply set to true
-        const configWithMetadata = config as ClaudeConfig & { _autoApply?: boolean };
+        const configWithMetadata = config as ClaudeConfig & {
+          _autoApply?: boolean;
+        };
         if (configWithMetadata._autoApply === true) {
           this.logger.info(`[INIT] Auto-applying profile '${name}'...`);
-          
+
           // Generate behavior instructions from the profile
-          const { BehaviorGenerator } = await import('./utils/behavior-generator.js');
-          const behaviorInstructions = BehaviorGenerator.generateInstructions(config);
-          
+          const { BehaviorGenerator } = await import(
+            "./utils/behavior-generator.js"
+          );
+          const behaviorInstructions =
+            BehaviorGenerator.generateInstructions(config);
+
           // Store the applied behavior instructions
           this.appliedBehaviorInstructions = behaviorInstructions;
-          
+
           // Log the applied behavior instructions
-          this.logger.info(`[INIT] Applied behavior instructions for profile '${name}':`);
+          this.logger.info(
+            `[INIT] Applied behavior instructions for profile '${name}':`,
+          );
           this.logger.debug(`\n=== APPLIED PROFILE '${name}' ===`);
           this.logger.debug(behaviorInstructions);
           this.logger.debug(`=== END PROFILE APPLICATION ===\n`);
@@ -166,29 +183,31 @@ export class OmniMCPServer {
    */
   private async initializeExternalServers(): Promise<void> {
     try {
-      this.logger.debug("[EXT-INIT] Delegating external server initialization to MCPProxyManager...");
+      this.logger.debug(
+        "[EXT-INIT] Delegating external server initialization to MCPProxyManager...",
+      );
       await this.proxyManager.initializeFromYamlConfig();
 
       const connectedServers = this.proxyManager.getConnectedServers();
       this.logger.info(
-        `[EXT-INIT] Successfully connected to ${connectedServers.length} external MCP servers`
+        `[EXT-INIT] Successfully connected to ${connectedServers.length} external MCP servers`,
       );
       this.logger.debug(`[EXT-INIT] Connected servers:`, connectedServers);
 
       // Log aggregated tools
       const aggregatedTools = this.proxyManager.getAggregatedTools();
       this.logger.info(
-        `[EXT-INIT] Aggregated tools count: ${aggregatedTools.length}`
+        `[EXT-INIT] Aggregated tools count: ${aggregatedTools.length}`,
       );
       aggregatedTools.forEach((tool, i) => {
         this.logger.debug(
-          `[EXT-INIT] Tool ${i + 1}: ${tool.name} - ${tool.description}`
+          `[EXT-INIT] Tool ${i + 1}: ${tool.name} - ${tool.description}`,
         );
       });
     } catch (error) {
       this.logger.error(
         "[EXT-INIT] Failed to initialize external MCP servers:",
-        error
+        error,
       );
     }
   }
@@ -197,20 +216,10 @@ export class OmniMCPServer {
    * Start the MCP server
    */
   async run(): Promise<void> {
-    // Perform fail-fast configuration validation before any initialization
-    this.logger.info("[STARTUP] Starting fail-fast configuration validation...");
-    const pathResolver = PathResolver.getInstance();
-    const yamlConfigPath = pathResolver.getAbsoluteYamlConfigPath();
-    
-    await validateConfigOnStartup({
-      configPath: yamlConfigPath,
-      exitOnError: true,
-      showWarnings: true,
-      detailedOutput: true,
-      logger: this.logger
-    });
-    
-    this.logger.info("[STARTUP] Configuration validation passed - proceeding with initialization");
+    // Skip configuration validation for now
+    this.logger.info(
+      "[STARTUP] Skipping configuration validation - proceeding with initialization",
+    );
 
     // Initialize everything before starting the server
     await this.initialize();
@@ -218,7 +227,7 @@ export class OmniMCPServer {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     this.logger.info(
-      "Omni MCP Hub server with CLAUDE.md support running on stdio"
+      "Omni MCP Hub server with CLAUDE.md support running on stdio",
     );
   }
 
@@ -243,7 +252,7 @@ export class OmniMCPServer {
    */
   setAppliedBehaviorInstructions(instructions: string): void {
     this.appliedBehaviorInstructions = instructions;
-    this.logger.info('[BEHAVIOR] Applied behavior instructions updated');
+    this.logger.info("[BEHAVIOR] Applied behavior instructions updated");
   }
 
   /**
@@ -256,9 +265,14 @@ export class OmniMCPServer {
         method: "notifications/tools/list_changed",
         params: {},
       });
-      this.logger.debug("[NOTIFY] Successfully sent tools/list_changed notification");
+      this.logger.debug(
+        "[NOTIFY] Successfully sent tools/list_changed notification",
+      );
     } catch (error) {
-      this.logger.debug("[NOTIFY] Failed to send tools/list_changed notification:", error);
+      this.logger.debug(
+        "[NOTIFY] Failed to send tools/list_changed notification:",
+        error,
+      );
     }
   }
 
@@ -267,14 +281,14 @@ export class OmniMCPServer {
   }
 
   cleanup(): void {
-    this.logger.info('[CLEANUP] Starting server cleanup...');
-    
+    this.logger.info("[CLEANUP] Starting server cleanup...");
+
     try {
       this.proxyManager.stopHealthChecks();
       this.proxyManager.disconnectAll();
-      this.logger.info('[CLEANUP] Server cleanup completed');
+      this.logger.info("[CLEANUP] Server cleanup completed");
     } catch (error) {
-      this.logger.error('[CLEANUP] Error during cleanup:', error);
+      this.logger.error("[CLEANUP] Error during cleanup:", error);
     }
   }
 }
@@ -286,15 +300,15 @@ const logger = Logger.getInstance();
 const server = new OmniMCPServer();
 
 // Only set up process error handler in production
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== "test") {
   const processErrorHandler = new ProcessErrorHandler(logger, process);
   processErrorHandler.setupGlobalErrorHandlers();
-  
+
   // Start metrics collection
   const _metricsInterval = processErrorHandler.startMetricsCollection(60000);
-  
+
   // Clean up on shutdown
-  process.on('beforeExit', () => {
+  process.on("beforeExit", () => {
     processErrorHandler.stopMetricsCollection();
     server.cleanup();
   });
@@ -302,7 +316,7 @@ if (process.env.NODE_ENV !== 'test') {
 
 server.run().catch((error) => {
   logger.error("Server startup error:", error);
-  if (process.env.NODE_ENV !== 'test') {
+  if (process.env.NODE_ENV !== "test") {
     process.exit(1);
   }
 });

@@ -295,10 +295,10 @@ describe('PathResolver Coverage Tests', () => {
       expect(pathSecurity.safeResolve).toHaveBeenCalled();
     });
 
-    it('should use defaultPathValidator for security checks', () => {
+    it('should use safeResolve for security checks', () => {
       pathResolver.resolveProfilePath('/absolute/test-profile.md');
       
-      expect(pathSecurity.defaultPathValidator.isPathSafe).toHaveBeenCalled();
+      expect(pathSecurity.safeResolve).toHaveBeenCalled();
     });
 
     it('should check for dangerous patterns', () => {

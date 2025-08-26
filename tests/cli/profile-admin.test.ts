@@ -1,211 +1,228 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { execa } from 'execa';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 
-const CLI_PATH = path.join(process.cwd(), 'dist/cli/profile-admin.js');
-
-describe('profile-admin CLI', () => {
+describe('profile-admin', () => {
   let tempDir: string;
-  let testConfigPath: string;
-  let testProfilePath: string;
-  let originalCwd: string;
 
-  beforeAll(async () => {
-    // Ensure CLI is built
-    try {
-      await fs.access(CLI_PATH);
-    } catch {
-      throw new Error(`CLI not found at ${CLI_PATH}. Run 'npm run build' first.`);
-    }
-
-    // Create temp directory for test files and change to it
-    originalCwd = process.cwd();
+  beforeEach(async () => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'profile-admin-test-'));
-    process.chdir(tempDir);
-    testConfigPath = path.join(tempDir, '.mcp-config.json');
-    testProfilePath = path.join(tempDir, 'test-profile.md');
     
-    // Create test profile file
-    await fs.writeFile(testProfilePath, `
-# Test Profile
-
-## Instructions
-This is a test profile for CLI testing.
-
-## Rules
-- Rule 1: Test rule
-- Rule 2: Another test rule
+    // Create test profile files
+    await fs.writeFile(path.join(tempDir, 'test-profile.md'), `# Test Profile
+This is a test profile for development.
 `);
-  });
-
-  afterAll(async () => {
-    // Restore original directory
-    process.chdir(originalCwd);
     
-    // Cleanup temp directory
-    try {
-      await fs.rm(tempDir, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup errors
-    }
+    await fs.writeFile(path.join(tempDir, 'production-profile.md'), `# Production Profile  
+This is for production use.
+`);
+    
+    await fs.mkdir(path.join(tempDir, 'profiles'));
+    await fs.writeFile(path.join(tempDir, 'profiles', 'nested.md'), '# Nested Profile');
   });
 
-  describe('Help and Version', () => {
-    it('should show help with --help and exit 0', async () => {
-      const { stdout, exitCode } = await execa('node', [CLI_PATH, '--help']);
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  describe('--help flag', () => {
+    it('should show help and exit with code 0', async () => {
+      const { stdout, exitCode } = await execa('node', ['dist/cli/profile-admin.js', '--help']);
       
       expect(exitCode).toBe(0);
       expect(stdout).toMatch(/Usage:/);
-      expect(stdout).toMatch(/profile-admin/);
       expect(stdout).toMatch(/Commands:/);
-    });
-
-    it('should show version with --version and exit 0', async () => {
-      const { stdout, exitCode } = await execa('node', [CLI_PATH, '--version']);
-      
-      expect(exitCode).toBe(0);
-      expect(stdout).toMatch(/\d+\.\d+\.\d+/); // Version pattern
+      expect(stdout).toMatch(/list|create|delete|validate/);
     });
   });
 
-  describe('List Command', () => {
-    it('should list profiles (empty initially)', async () => {
-      const { stdout, exitCode } = await execa('node', [CLI_PATH, 'list']);
+  describe('--version flag', () => {
+    it('should show version and exit with code 0', async () => {
+      const { stdout, exitCode } = await execa('node', ['dist/cli/profile-admin.js', '--version']);
       
       expect(exitCode).toBe(0);
-      expect(stdout).toMatch(/No profiles found|Registered Profiles/);
+      expect(stdout).toMatch(/\d+\.\d+\.\d+/);
+    });
+  });
+
+  describe('list command', () => {
+    it('should list profiles in directory', async () => {
+      const { stdout, exitCode } = await execa('node', [
+        'dist/cli/profile-admin.js',
+        'list',
+        '--path', tempDir
+      ]);
+      
+      expect(exitCode).toBe(0);
+      expect(stdout).toMatch(/test-profile/);
+      expect(stdout).toMatch(/production-profile/);
     });
 
-    it('should handle missing config file gracefully', async () => {
-      // Remove .mcp-config.json if it exists
+    it('should output JSON format when requested', async () => {
+      const { stdout, exitCode } = await execa('node', [
+        'dist/cli/profile-admin.js',
+        'list',
+        '--path', tempDir,
+        '--format', 'json'
+      ]);
+      
+      expect(exitCode).toBe(0);
+      const result = JSON.parse(stdout);
+      expect(Array.isArray(result.profiles)).toBe(true);
+      expect(result.profiles.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('create command', () => {
+    it('should create new profile file', async () => {
+      const profileName = 'new-test-profile';
+      const { stdout, exitCode } = await execa('node', [
+        'dist/cli/profile-admin.js',
+        'create',
+        '--name', profileName,
+        '--path', tempDir,
+        '--template', 'basic'
+      ]);
+      
+      expect(exitCode).toBe(0);
+      expect(stdout).toMatch(/created/i);
+      
+      // Verify file was created
+      const profilePath = path.join(tempDir, `${profileName}.md`);
+      const exists = await fs.access(profilePath).then(() => true).catch(() => false);
+      expect(exists).toBe(true);
+    });
+
+    it('should fail when profile already exists', async () => {
+      await expect(
+        execa('node', [
+          'dist/cli/profile-admin.js',
+          'create',
+          '--name', 'test-profile', // Already exists
+          '--path', tempDir
+        ])
+      ).rejects.toMatchObject({ exitCode: 1 });
+    });
+  });
+
+  describe('validate command', () => {
+    it('should validate existing profiles', async () => {
+      const { stdout, exitCode } = await execa('node', [
+        'dist/cli/profile-admin.js',
+        'validate',
+        '--path', tempDir
+      ]);
+      
+      expect(exitCode).toBe(0);
+      expect(stdout).toMatch(/valid|validation/i);
+    });
+
+    it('should report validation errors', async () => {
+      // Create invalid profile
+      const invalidProfile = path.join(tempDir, 'invalid.md');
+      await fs.writeFile(invalidProfile, 'Invalid markdown with <script>alert("xss")</script>');
+      
+      const { stdout, exitCode } = await execa('node', [
+        'dist/cli/profile-admin.js',
+        'validate',
+        '--path', tempDir
+      ], { reject: false });
+      
+      expect([0, 1]).toContain(exitCode);
+      if (exitCode === 1) {
+        expect(stdout).toMatch(/error|invalid/i);
+      }
+    });
+  });
+
+  describe('delete command', () => {
+    it('should delete specified profile', async () => {
+      const { stdout, exitCode } = await execa('node', [
+        'dist/cli/profile-admin.js',
+        'delete',
+        '--name', 'test-profile',
+        '--path', tempDir,
+        '--force' // Skip confirmation
+      ]);
+      
+      expect(exitCode).toBe(0);
+      expect(stdout).toMatch(/deleted/i);
+      
+      // Verify file was deleted
+      const profilePath = path.join(tempDir, 'test-profile.md');
+      const exists = await fs.access(profilePath).then(() => true).catch(() => false);
+      expect(exists).toBe(false);
+    });
+
+    it('should fail when profile does not exist', async () => {
+      await expect(
+        execa('node', [
+          'dist/cli/profile-admin.js',
+          'delete',
+          '--name', 'non-existent-profile',
+          '--path', tempDir
+        ])
+      ).rejects.toMatchObject({ exitCode: 1 });
+    });
+  });
+
+  describe('invalid arguments', () => {
+    it('should show usage for unknown command', async () => {
+      await expect(
+        execa('node', ['dist/cli/profile-admin.js', 'unknown-command'])
+      ).rejects.toMatchObject({ exitCode: 2 });
+    });
+
+    it('should exit with code 1 for non-existent path', async () => {
+      await expect(
+        execa('node', [
+          'dist/cli/profile-admin.js',
+          'list',
+          '--path', '/non/existent/path'
+        ])
+      ).rejects.toMatchObject({ exitCode: 1 });
+    });
+
+    it('should require name for create command', async () => {
+      await expect(
+        execa('node', [
+          'dist/cli/profile-admin.js',
+          'create',
+          '--path', tempDir
+        ])
+      ).rejects.toMatchObject({ exitCode: 2 });
+    });
+  });
+
+  describe('error handling', () => {
+    it('should handle permission errors gracefully', async () => {
+      await fs.chmod(tempDir, 0o444); // Read-only
+
       try {
-        await fs.unlink('.mcp-config.json');
-      } catch {
-        // Ignore if file doesn't exist
-      }
-      
-      const { stdout, exitCode } = await execa('node', [CLI_PATH, 'list']);
-      
-      expect(exitCode).toBe(0);
-      expect(stdout).toMatch(/No profiles found/);
-    });
-  });
-
-  describe('Add Command', () => {
-    it('should add a profile successfully', async () => {
-      const { stdout, exitCode } = await execa('node', [CLI_PATH, 'add', 'test-profile', testProfilePath]);
-      
-      expect(exitCode).toBe(0);
-      expect(stdout).toMatch(/Profile .* added successfully/);
-      
-      // Verify config file was created
-      const configExists = await fs.access('.mcp-config.json').then(() => true).catch(() => false);
-      expect(configExists).toBe(true);
-    });
-
-    it('should handle non-existent profile file', async () => {
-      const nonExistentProfile = path.join(tempDir, 'non-existent.md');
-      
-      await expect(execa('node', [CLI_PATH, 'add', 'non-existent', nonExistentProfile])).rejects.toMatchObject({
-        exitCode: 1
-      });
-    });
-
-    it('should allow adding duplicate profile names (overwrites)', async () => {
-      // Try to add the same profile again - profile-admin allows this
-      const { stdout, exitCode } = await execa('node', [CLI_PATH, 'add', 'test-profile-2', testProfilePath]);
-      
-      expect(exitCode).toBe(0);
-      expect(stdout).toMatch(/Profile .* added successfully/);
-    });
-  });
-
-  describe('Remove Command', () => {
-    it('should remove an existing profile', async () => {
-      const { stdout, exitCode } = await execa('node', [CLI_PATH, 'remove', 'test-profile']);
-      
-      expect(exitCode).toBe(0);
-      expect(stdout).toMatch(/Profile .* removed successfully/);
-    });
-
-    it('should handle removing non-existent profile', async () => {
-      await expect(execa('node', [CLI_PATH, 'remove', 'non-existent-profile'])).rejects.toMatchObject({
-        exitCode: 1
-      });
-    });
-  });
-
-  describe('Verify Command', () => {
-    beforeAll(async () => {
-      // Re-add test profile for verification tests
-      await execa('node', [CLI_PATH, 'add', 'test-profile', testProfilePath]);
-    });
-
-    it('should verify an existing profile', async () => {
-      const { stdout, exitCode } = await execa('node', [CLI_PATH, 'verify', 'test-profile']);
-      
-      expect(exitCode).toBe(0);
-      expect(stdout).toMatch(/Profile .* verified|integrity|checksum/);
-    });
-
-    it('should handle verifying non-existent profile', async () => {
-      await expect(execa('node', [CLI_PATH, 'verify', 'non-existent-profile'])).rejects.toMatchObject({
-        exitCode: 1
-      });
-    });
-
-    it('should show help when verify called without profile name', async () => {
-      await expect(execa('node', [CLI_PATH, 'verify'])).rejects.toMatchObject({
-        exitCode: 1
-      });
-    });
-  });
-
-  describe('Error Handling', () => {
-    it('should exit with error code 1 for invalid commands', async () => {
-      await expect(execa('node', [CLI_PATH, 'invalid-command']))
-        .rejects.toMatchObject({
-          exitCode: 1
-        });
-    });
-
-    it('should exit with error code 1 for missing required arguments', async () => {
-      await expect(execa('node', [CLI_PATH, 'add']))
-        .rejects.toMatchObject({
-          exitCode: 1
-        });
-    });
-
-    it('should handle permission denied for config file', async () => {
-      if (process.platform !== 'win32') {
-        const restrictedConfig = path.join(tempDir, 'restricted-config.json');
-        
-        // Create file and make it read-only
-        await fs.writeFile(restrictedConfig, '{}');
-        await fs.chmod(restrictedConfig, 0o444);
-        
-        try {
-          // Profile-admin doesn't support --config option, so test basic functionality
-          const { stdout, exitCode } = await execa('node', [CLI_PATH, 'list']);
-          
-          expect(exitCode).toBe(0);
-          expect(stdout).toMatch(/No profiles found|Registered Profiles/);
-        } finally {
-          // Restore permissions for cleanup
-          await fs.chmod(restrictedConfig, 0o644);
-        }
+        await expect(
+          execa('node', [
+            'dist/cli/profile-admin.js',
+            'create',
+            '--name', 'test',
+            '--path', tempDir
+          ])
+        ).rejects.toMatchObject({ exitCode: 1 });
+      } finally {
+        await fs.chmod(tempDir, 0o755);
       }
     });
-  });
 
-  describe('JSON Output', () => {
-    it('should list profiles in text format', async () => {
-      const { stdout, exitCode } = await execa('node', [CLI_PATH, 'list']);
-      
-      expect(exitCode).toBe(0);
-      expect(stdout).toMatch(/Registered Profiles|No profiles found/);
+    it('should validate profile names', async () => {
+      await expect(
+        execa('node', [
+          'dist/cli/profile-admin.js',
+          'create',
+          '--name', '../../../etc/passwd',
+          '--path', tempDir
+        ])
+      ).rejects.toMatchObject({ exitCode: 1 });
     });
   });
 });

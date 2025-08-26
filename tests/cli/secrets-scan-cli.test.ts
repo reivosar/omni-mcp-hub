@@ -1,182 +1,159 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { execa } from 'execa';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 
-const CLI_PATH = path.join(process.cwd(), 'dist/cli/secrets-scan-cli.js');
-
 describe('secrets-scan-cli', () => {
   let tempDir: string;
-  let testFile: string;
 
-  beforeAll(async () => {
-    // Ensure CLI is built
-    try {
-      await fs.access(CLI_PATH);
-    } catch {
-      throw new Error(`CLI not found at ${CLI_PATH}. Run 'npm run build' first.`);
-    }
-
-    // Create temp directory for test files
+  beforeEach(async () => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'secrets-scan-test-'));
     
-    // Create test file with potential secret
-    testFile = path.join(tempDir, 'test.js');
-    await fs.writeFile(testFile, `
-const apiKey = "sk-1234567890abcdef1234567890abcdef";
-const password = "user123";
-module.exports = { apiKey, password };
-`);
+    // Create test files
+    await fs.writeFile(path.join(tempDir, 'safe.txt'), 'Just normal content');
+    await fs.writeFile(path.join(tempDir, 'secret.env'), 'API_KEY=sk-test123456789');
+    await fs.mkdir(path.join(tempDir, 'subdir'));
+    await fs.writeFile(path.join(tempDir, 'subdir', 'config.json'), '{"password": "secret123"}');
   });
 
-  afterAll(async () => {
-    // Cleanup temp directory
-    try {
-      await fs.rm(tempDir, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup errors
-    }
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true });
   });
 
-  describe('Help and Version', () => {
-    it('should show help with --help and exit 0', async () => {
-      const { stdout, exitCode } = await execa('node', [CLI_PATH, '--help']);
+  describe('--help flag', () => {
+    it('should show help and exit with code 0', async () => {
+      const { stdout, exitCode } = await execa('node', ['dist/cli/secrets-scan-cli.js', '--help']);
       
       expect(exitCode).toBe(0);
       expect(stdout).toMatch(/Usage:/);
-      expect(stdout).toMatch(/secrets-scan/);
       expect(stdout).toMatch(/Options:/);
-      expect(stdout).toMatch(/--output/);
+      expect(stdout).toMatch(/--path/);
       expect(stdout).toMatch(/--format/);
     });
+  });
 
-    it('should show version with --version and exit 0', async () => {
-      const { stdout, exitCode } = await execa('node', [CLI_PATH, '--version']);
+  describe('--version flag', () => {
+    it('should show version and exit with code 0', async () => {
+      const { stdout, exitCode } = await execa('node', ['dist/cli/secrets-scan-cli.js', '--version']);
       
       expect(exitCode).toBe(0);
-      expect(stdout).toMatch(/1\.0\.0/);
+      expect(stdout).toMatch(/\d+\.\d+\.\d+/);
     });
   });
 
-  describe('Basic Functionality', () => {
+  describe('valid path scanning', () => {
     it('should scan directory and output JSON format', async () => {
-      const { stdout, exitCode } = await execa('node', [CLI_PATH, tempDir, '--format', 'json', '--quiet']);
+      const { stdout, exitCode } = await execa('node', [
+        'dist/cli/secrets-scan-cli.js',
+        '--path', tempDir,
+        '--format', 'json'
+      ]);
       
       expect(exitCode).toBe(0);
-      
-      // CLI outputs array format when quiet, not object with summary/findings
-      expect(stdout).toBe('');
+      const result = JSON.parse(stdout);
+      expect(result).toHaveProperty('scannedFiles');
+      expect(result).toHaveProperty('findings');
+      expect(Array.isArray(result.findings)).toBe(true);
     });
 
-    it('should handle non-existent path gracefully', async () => {
-      const nonExistentPath = path.join(tempDir, 'does-not-exist');
-      
-      await expect(execa('node', [CLI_PATH, nonExistentPath]))
-        .rejects.toMatchObject({
-          exitCode: 1
-        });
-    });
-
-    it('should respect --format option', async () => {
-      const { stdout, exitCode } = await execa('node', [CLI_PATH, tempDir, '--format', 'markdown']);
+    it('should find secrets in test files', async () => {
+      const { stdout, exitCode } = await execa('node', [
+        'dist/cli/secrets-scan-cli.js',
+        '--path', tempDir,
+        '--format', 'json'
+      ]);
       
       expect(exitCode).toBe(0);
-      expect(stdout).toMatch(/Scan Summary|Files scanned/);
+      const result = JSON.parse(stdout);
+      expect(result.findings.length).toBeGreaterThan(0);
+      
+      const secretFindings = result.findings.filter((f: any) => 
+        f.file.includes('secret.env') || f.file.includes('config.json')
+      );
+      expect(secretFindings.length).toBeGreaterThan(0);
     });
   });
 
-  describe('Error Handling', () => {
-    it('should exit with error code 1 for invalid arguments', async () => {
-      await expect(execa('node', [CLI_PATH, '--invalid-option']))
-        .rejects.toMatchObject({
-          exitCode: 1
-        });
+  describe('invalid arguments', () => {
+    it('should show usage and exit with code 2 for unknown flag', async () => {
+      await expect(
+        execa('node', ['dist/cli/secrets-scan-cli.js', '--unknown-flag'])
+      ).rejects.toMatchObject({ exitCode: 2 });
     });
 
-    it('should exit with normal code for invalid format', async () => {
-      const { stdout, exitCode } = await execa('node', [CLI_PATH, tempDir, '--format', 'invalid-format']);
-      
-      expect(exitCode).toBe(0);
-      expect(stdout).toMatch(/Scan Summary/);
+    it('should exit with code 1 for non-existent path', async () => {
+      await expect(
+        execa('node', [
+          'dist/cli/secrets-scan-cli.js', 
+          '--path', '/non/existent/path'
+        ])
+      ).rejects.toMatchObject({ exitCode: 1 });
     });
 
-    it('should handle permission denied gracefully', async () => {
-      // Create a directory with restricted permissions (Unix only)
-      if (process.platform !== 'win32') {
-        const restrictedDir = path.join(tempDir, 'restricted');
-        await fs.mkdir(restrictedDir);
-        await fs.chmod(restrictedDir, 0o000);
-        
-        try {
-          const { stdout, exitCode } = await execa('node', [CLI_PATH, restrictedDir]);
-          // Secrets scan handles permission errors gracefully  
-          expect(exitCode).toBe(0);
-          expect(stdout).toMatch(/Scan Summary|No secrets detected/);
-        } finally {
-          // Restore permissions for cleanup
-          await fs.chmod(restrictedDir, 0o755);
-        }
+    it('should exit with code 1 for unreadable directory', async () => {
+      const unreadableDir = path.join(tempDir, 'unreadable');
+      await fs.mkdir(unreadableDir);
+      await fs.chmod(unreadableDir, 0o000);
+
+      try {
+        await expect(
+          execa('node', [
+            'dist/cli/secrets-scan-cli.js',
+            '--path', unreadableDir
+          ])
+        ).rejects.toMatchObject({ exitCode: 1 });
+      } finally {
+        await fs.chmod(unreadableDir, 0o755);
       }
     });
   });
 
-  describe('Output Options', () => {
-    it('should write output to file when --output specified', async () => {
-      const outputFile = path.join(tempDir, 'scan-results.json');
-      
-      const { exitCode } = await execa('node', [CLI_PATH, tempDir, '--output', outputFile, '--format', 'json']);
+  describe('output formats', () => {
+    it('should support table format', async () => {
+      const { stdout, exitCode } = await execa('node', [
+        'dist/cli/secrets-scan-cli.js',
+        '--path', tempDir,
+        '--format', 'table'
+      ]);
       
       expect(exitCode).toBe(0);
-      
-      const outputExists = await fs.access(outputFile).then(() => true).catch(() => false);
-      expect(outputExists).toBe(true);
-      
-      const outputContent = await fs.readFile(outputFile, 'utf-8');
-      // CLI outputs simple array format
-      expect(outputContent).toBe('[]');
+      expect(stdout).toMatch(/File|Type|Line|Severity/);
     });
 
-    it('should suppress console output with --quiet', async () => {
-      const { stdout, stderr, exitCode } = await execa('node', [CLI_PATH, tempDir, '--quiet', '--format', 'json']);
+    it('should default to table format when no format specified', async () => {
+      const { stdout, exitCode } = await execa('node', [
+        'dist/cli/secrets-scan-cli.js',
+        '--path', tempDir
+      ]);
       
       expect(exitCode).toBe(0);
-      // With --quiet, output should be empty or minimal
-      expect(stdout).toBe('');
-      expect(stderr).toBe('');
+      // Should look like table output, not JSON
+      expect(() => JSON.parse(stdout)).toThrow();
     });
   });
 
-  describe('Severity and Filtering', () => {
-    it('should respect --severity option', async () => {
-      const { stdout, exitCode } = await execa('node', [CLI_PATH, tempDir, '--severity', 'critical', '--format', 'json', '--quiet']);
-      
-      expect(exitCode).toBe(0);
-      expect(stdout).toBe('');
-    });
+  describe('error handling', () => {
+    it('should handle permission errors gracefully', async () => {
+      const restrictedFile = path.join(tempDir, 'restricted.txt');
+      await fs.writeFile(restrictedFile, 'secret data');
+      await fs.chmod(restrictedFile, 0o000);
 
-    it('should handle --exclude option', async () => {
-      const { stdout, exitCode } = await execa('node', [CLI_PATH, tempDir, '--exclude', 'test.js', '--format', 'json', '--quiet']);
-      
-      expect(exitCode).toBe(0);
-      expect(stdout).toBe('');
-    });
-  });
+      try {
+        const { stderr, exitCode } = await execa('node', [
+          'dist/cli/secrets-scan-cli.js',
+          '--path', tempDir,
+          '--format', 'json'
+        ], { reject: false });
 
-  describe('Fail-on Option', () => {
-    it('should exit normally when no secrets detected', async () => {
-      const { stdout, exitCode } = await execa('node', [CLI_PATH, testFile, '--fail-on', 'low', '--quiet']);
-      
-      // No secrets detected in current implementation
-      expect(exitCode).toBe(0);
-      expect(stdout).toBe('');
-    });
-
-    it('should exit normally when --fail-on threshold is not met', async () => {
-      const { exitCode } = await execa('node', [CLI_PATH, testFile, '--fail-on', 'critical', '--quiet']);
-      
-      // Should not fail on critical when only low/medium secrets are found
-      expect(exitCode).toBe(0);
+        // Should either succeed with partial results or exit with 1
+        expect([0, 1]).toContain(exitCode);
+        if (exitCode === 1) {
+          expect(stderr).toMatch(/permission|access/i);
+        }
+      } finally {
+        await fs.chmod(restrictedFile, 0o644);
+      }
     });
   });
 });

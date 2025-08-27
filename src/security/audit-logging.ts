@@ -125,21 +125,17 @@ export class AuditLogger extends EventEmitter {
 
   private async initialize(): Promise<void> {
     try {
-      // Ensure log directory exists
       const logDir = path.dirname(this.config.logFilePath);
       if (!fs.existsSync(logDir)) {
         fs.mkdirSync(logDir, { recursive: true });
       }
 
-      // Initialize encryption key if enabled
       if (this.config.enableEncryption) {
         this.initializeEncryption();
       }
 
-      // Load existing log state
       await this.loadLogState();
 
-      // Start background tasks
       this.startBackgroundTasks();
 
       this.logger.info("Audit logging system initialized");
@@ -150,12 +146,10 @@ export class AuditLogger extends EventEmitter {
   }
 
   private initializeEncryption(): void {
-    // In production, this should come from a secure key management system
     const keyEnv = process.env.AUDIT_ENCRYPTION_KEY;
     if (keyEnv) {
       this.encryptionKey = Buffer.from(keyEnv, "base64");
     } else {
-      // Generate a new key for development (should be persisted securely)
       this.encryptionKey = crypto.randomBytes(32);
       this.logger.warn(
         "Generated new encryption key for audit logs. In production, use AUDIT_ENCRYPTION_KEY environment variable.",
@@ -172,7 +166,6 @@ export class AuditLogger extends EventEmitter {
       const stats = fs.statSync(this.config.logFilePath);
       this.metrics.logFileSize = stats.size;
 
-      // Read last few lines to get sequence number and hash
       const lastEntries = this.readLastEntries(10);
       if (lastEntries.length > 0) {
         const lastEntry = lastEntries[lastEntries.length - 1];
@@ -180,7 +173,6 @@ export class AuditLogger extends EventEmitter {
         this.sequenceNumber = lastEntry.sequenceNumber;
       }
 
-      // Verify integrity of existing log
       await this.verifyLogIntegrity();
     } catch (error) {
       this.logger.error("Failed to load log state:", error);
@@ -244,7 +236,6 @@ export class AuditLogger extends EventEmitter {
       sequenceNumber: ++this.sequenceNumber,
     };
 
-    // Add digital signature if enabled
     if (this.config.enableTamperEvidence && this.encryptionKey) {
       logEntry.signature = this.signEntry(logEntry);
     }
@@ -276,12 +267,10 @@ export class AuditLogger extends EventEmitter {
   private async writeLogEntry(entry: AuditLogEntry): Promise<void> {
     const logLine = JSON.stringify(entry) + "\n";
 
-    // Check if rotation is needed
     if (this.shouldRotateLog()) {
       await this.rotateLog();
     }
 
-    // Encrypt if enabled
     const finalLogLine = this.config.enableEncryption
       ? this.encryptData(logLine) + "\n"
       : logLine;
@@ -343,7 +332,6 @@ export class AuditLogger extends EventEmitter {
   }
 
   private async compressFile(filePath: string): Promise<void> {
-    // Simple compression implementation - in production, use proper compression library
     try {
       const zlib = await import("zlib");
       const content = fs.readFileSync(filePath);
@@ -414,7 +402,6 @@ export class AuditLogger extends EventEmitter {
       throw new Error("Webhook sink URL not configured");
     }
 
-    // Simple webhook delivery - in production, add retry logic and proper error handling
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -451,7 +438,6 @@ export class AuditLogger extends EventEmitter {
       let previousHash = "";
 
       for (const entry of entries) {
-        // Verify hash chain
         if (entry.previousHash !== previousHash) {
           this.metrics.integrityViolations++;
           this.emit("integrity-violation", {
@@ -462,7 +448,6 @@ export class AuditLogger extends EventEmitter {
           return false;
         }
 
-        // Verify entry hash
         const eventData = JSON.stringify(entry.event);
         const expectedHash = this.calculateHash(eventData + entry.previousHash);
         if (entry.hash !== expectedHash) {
@@ -476,7 +461,6 @@ export class AuditLogger extends EventEmitter {
           return false;
         }
 
-        // Verify signature if present
         if (entry.signature && this.config.enableTamperEvidence) {
           const expectedSignature = this.signEntry(entry);
           if (entry.signature !== expectedSignature) {
@@ -526,7 +510,6 @@ export class AuditLogger extends EventEmitter {
   }
 
   private startBackgroundTasks(): void {
-    // Cleanup old logs
     setInterval(
       () => {
         this.cleanupOldLogs();
@@ -534,14 +517,12 @@ export class AuditLogger extends EventEmitter {
       24 * 60 * 60 * 1000,
     ); // Daily
 
-    // Backup logs
     if (this.config.backupEnabled) {
       setInterval(() => {
         this.backupLogs();
       }, this.config.backupInterval);
     }
 
-    // Integrity verification
     setInterval(
       () => {
         this.verifyLogIntegrity();
@@ -738,9 +719,8 @@ export class AuditLogger extends EventEmitter {
   }
 }
 
-// Singleton audit logger for global use
 export class GlobalAuditLogger {
-  private static instance: AuditLogger;
+  private static instance: AuditLogger | undefined;
 
   static getInstance(
     config?: Partial<AuditConfig>,
@@ -756,12 +736,10 @@ export class GlobalAuditLogger {
     if (GlobalAuditLogger.instance) {
       GlobalAuditLogger.instance.cleanup();
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    GlobalAuditLogger.instance = undefined as any;
+    GlobalAuditLogger.instance = undefined;
   }
 }
 
-// Convenience functions for common audit events
 export class AuditEventHelpers {
   static createAuthEvent(
     action: string,

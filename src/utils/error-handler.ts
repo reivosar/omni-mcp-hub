@@ -90,11 +90,9 @@ export class ErrorHandler {
 
   constructor(logger?: ILogger) {
     this.logger = logger;
-    // Initialize fresh arrays for each instance
     this.errorHistory = [];
     this.customErrorHandlers = new Map();
 
-    // Reset static instance when creating a new one for testing
     if (process.env.NODE_ENV === "test") {
       ErrorHandler.instance = this;
     }
@@ -132,7 +130,6 @@ export class ErrorHandler {
 
     let recovered = false;
 
-    // Attempt recovery if context allows and recovery function is set
     if (context?.recoverable && this.recoveryFunction) {
       try {
         recovered = this.recoveryFunction(normalizedError, context);
@@ -151,31 +148,24 @@ export class ErrorHandler {
       recovered,
     };
 
-    // Apply error filter if set - if filter returns false, don't add to history
     if (this.errorFilter && !this.errorFilter(result)) {
-      // Return result but don't add to history or call handlers
       return { ...result, handled: false };
     }
 
-    // Add to error history
     this.errorHistory.push(result);
 
-    // Keep history limited to 1000 entries
     if (this.errorHistory.length > 1000) {
       this.errorHistory = this.errorHistory.slice(-1000);
     }
 
-    // Call custom error handlers
     this.customErrorHandlers.forEach((handler) => {
       try {
         handler(result);
       } catch (handlerError) {
-        // Don't let handler errors break the main error handling
         console.error("Custom error handler failed:", handlerError);
       }
     });
 
-    // Log the error
     if (this.logger) {
       try {
         const logData = {
@@ -190,7 +180,6 @@ export class ErrorHandler {
         };
         this.logger.error("[ERROR-HANDLER]", JSON.stringify(logData, null, 2));
       } catch (_loggerError) {
-        // Don't let logger errors break the main error handling
         console.error("Logger error during error handling:", _loggerError);
       }
     }
@@ -276,13 +265,11 @@ export class ErrorHandler {
     ];
     const retryableStatusCodes = [408, 429, 500, 502, 503, 504];
 
-    // Check error code
     const errorWithCode = error as Error & { code?: string };
     if (errorWithCode.code && retryableCodes.includes(errorWithCode.code)) {
       return true;
     }
 
-    // Check status code
     const errorWithStatus = error as Error & { status?: number };
     if (
       errorWithStatus.status &&
@@ -291,7 +278,6 @@ export class ErrorHandler {
       return true;
     }
 
-    // Check message for known retryable patterns
     const retryableMessages = [
       "ECONNREFUSED",
       "ETIMEDOUT",
@@ -433,7 +419,6 @@ ${Object.entries(stats.errorsBySeverity)
   }
 
   setupGlobalErrorHandling(): void {
-    // Create handlers and store references for cleanup
     this.uncaughtExceptionHandler = (error: Error) => {
       this.handleError(error, {
         operation: "uncaught-exception",
@@ -551,7 +536,6 @@ ${Object.entries(stats.errorsBySeverity)
       console.error("Logger error during MCP error logging:", _loggerError);
     }
 
-    // Log metrics for monitoring
     this.logMetrics(error);
   }
 

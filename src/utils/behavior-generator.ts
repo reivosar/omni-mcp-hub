@@ -14,7 +14,6 @@ export class BehaviorGenerator {
   static generateInstructions(config: ClaudeConfig): string {
     const instructions: string[] = [];
 
-    // MCP PRIORITY OVERRIDE - CRITICAL BEHAVIORAL CONTROL
     instructions.push("# MCP PROFILE PRIORITY OVERRIDE");
     instructions.push("");
     instructions.push("## MANDATORY PRIORITY CONTROL");
@@ -125,7 +124,6 @@ export class BehaviorGenerator {
     config: ClaudeConfig,
     options: MergeOptions = {},
   ): ProfileMergeResult {
-    // Convert ClaudeConfig to ProfileMergeResult
     const newProfile: ProfileMergeResult = {
       instructions: config.instructions,
       customInstructions: config.customInstructions,
@@ -139,14 +137,12 @@ export class BehaviorGenerator {
         [],
     };
 
-    // Copy all other properties from config (including custom fields like stopwords)
     for (const [key, value] of Object.entries(config)) {
       if (!Object.prototype.hasOwnProperty.call(newProfile, key)) {
         (newProfile as Record<string, unknown>)[key] = value;
       }
     }
 
-    // Apply merge rules
     this.currentMergedProfile = ProfileMerger.merge(
       this.currentMergedProfile,
       newProfile,
@@ -162,7 +158,6 @@ export class BehaviorGenerator {
   static generateFromMerged(mergedProfile: ProfileMergeResult): string {
     const instructions: string[] = [];
 
-    // MCP PRIORITY OVERRIDE - CRITICAL BEHAVIORAL CONTROL
     instructions.push("# MCP PROFILE PRIORITY OVERRIDE");
     instructions.push("");
     instructions.push("## MANDATORY PRIORITY CONTROL");
@@ -195,7 +190,6 @@ export class BehaviorGenerator {
     instructions.push("---");
     instructions.push("");
 
-    // Generate sections from merged profile
     if (mergedProfile.instructions && mergedProfile.instructions.length > 0) {
       instructions.push("# System Instructions");
       mergedProfile.instructions.forEach((instruction) => {
@@ -253,7 +247,6 @@ export class BehaviorGenerator {
       instructions.push("");
     }
 
-    // Add merged tools section if present
     if (
       mergedProfile.allowToolsAppend &&
       mergedProfile.allowToolsAppend.length > 0

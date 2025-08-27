@@ -7,7 +7,6 @@ import * as http from "http";
 import { URL } from "url";
 import { MetricsCollector, MonitoringConfig } from "./metrics-collector.js";
 import { ILogger, SilentLogger } from "../utils/logger.js";
-// Stub implementations for audit logging - will be replaced when audit logging is available
 const GlobalAuditLogger = {
   getInstance: () => ({
     logEvent: (_event: unknown) => {}, // Stub implementation
@@ -110,7 +109,6 @@ export class MonitoringServer {
     const clientIp = req.socket.remoteAddress || "unknown";
 
     try {
-      // CORS headers
       if (this.config.enableCors) {
         res.setHeader("Access-Control-Allow-Origin", "*");
         res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -120,14 +118,12 @@ export class MonitoringServer {
         );
       }
 
-      // Handle preflight
       if (req.method === "OPTIONS") {
         res.writeHead(204);
         res.end();
         return;
       }
 
-      // Rate limiting
       if (this.config.rateLimitEnabled && !this.checkRateLimit(clientIp)) {
         this.sendResponse(
           res,
@@ -141,7 +137,6 @@ export class MonitoringServer {
         return;
       }
 
-      // Authentication
       if (this.config.authToken && !this.checkAuth(req)) {
         this.sendResponse(
           res,
@@ -154,7 +149,6 @@ export class MonitoringServer {
         return;
       }
 
-      // Route handling
       const url = new URL(req.url || "/", "http://localhost");
       const path = url.pathname
         .replace(this.config.basePath, "")
@@ -172,7 +166,6 @@ export class MonitoringServer {
         }),
       );
 
-      // Log error to audit system
       this.auditLogger.logEvent(
         AuditEventHelpers.createSecurityEvent("monitoring-server-error", {
           error: error instanceof Error ? error.message : "Unknown error",
@@ -180,7 +173,6 @@ export class MonitoringServer {
         }),
       );
     } finally {
-      // Record request metrics
       const duration = Date.now() - startTime;
       const status = res.statusCode || 500;
       this.metricsCollector.recordHttpRequest(
@@ -197,7 +189,6 @@ export class MonitoringServer {
     const entry = this.rateLimitMap.get(clientIp);
 
     if (!entry || now > entry.resetTime) {
-      // New window
       this.rateLimitMap.set(clientIp, {
         count: 1,
         resetTime: now + this.config.rateLimitWindow,
@@ -233,7 +224,6 @@ export class MonitoringServer {
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): Promise<void> {
-    // Route mapping to reduce cyclomatic complexity
     const routeHandlers: Record<
       string,
       (req: http.IncomingMessage, res: http.ServerResponse) => Promise<void>
@@ -302,7 +292,6 @@ export class MonitoringServer {
 
     this.sendResponse(res, 200, contentType, content);
 
-    // Log metrics access
     this.auditLogger.logEvent({
       eventType: "data_access",
       action: "metrics-export",
@@ -558,7 +547,6 @@ P95 Response Time: ${Math.round(metrics.p95ResponseTime)}ms
   }
 }
 
-// Utility function to create a complete monitoring setup
 export function createMonitoringSetup(
   metricsConfig?: Partial<MonitoringConfig>,
   serverConfig?: Partial<MonitoringServerConfig>,

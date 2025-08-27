@@ -15,7 +15,6 @@ import { EventEmitter } from "events";
 import { ILogger, SilentLogger } from "../utils/logger.js";
 import { MCPProxyClient, ExternalServerConfig } from "./client.js";
 
-// Connection states for lifecycle management
 export enum ConnectionState {
   DISCONNECTED = "disconnected",
   CONNECTING = "connecting",
@@ -26,7 +25,6 @@ export enum ConnectionState {
   DEGRADED = "degraded",
 }
 
-// Health check strategies
 export enum HealthCheckStrategy {
   BASIC_PING = "basic_ping",
   CAPABILITY_CHECK = "capability_check",
@@ -35,22 +33,18 @@ export enum HealthCheckStrategy {
   COMPREHENSIVE = "comprehensive",
 }
 
-// Resilience configuration
 export interface ResilienceConfig {
-  // Retry configuration
   maxRetryAttempts: number;
   baseRetryDelayMs: number;
   maxRetryDelayMs: number;
   retryJitterFactor: number;
 
-  // Circuit breaker configuration
   circuitBreaker: {
     failureThreshold: number;
     recoveryTimeoutMs: number;
     halfOpenMaxAttempts: number;
   };
 
-  // Health check configuration
   healthCheck: {
     intervalMs: number;
     timeoutMs: number;
@@ -59,7 +53,6 @@ export interface ResilienceConfig {
     recoveryCheckIntervalMs: number;
   };
 
-  // Connection management
   connection: {
     connectTimeoutMs: number;
     idleTimeoutMs: number;
@@ -67,7 +60,6 @@ export interface ResilienceConfig {
     gracefulShutdownTimeoutMs: number;
   };
 
-  // Degraded mode configuration
   degradedMode: {
     enabled: boolean;
     cacheResponsesMs: number;
@@ -75,7 +67,6 @@ export interface ResilienceConfig {
   };
 }
 
-// Default resilience configuration
 const DEFAULT_RESILIENCE_CONFIG: ResilienceConfig = {
   maxRetryAttempts: 3,
   baseRetryDelayMs: 1000,
@@ -114,7 +105,6 @@ const DEFAULT_RESILIENCE_CONFIG: ResilienceConfig = {
   },
 };
 
-// Connection statistics for monitoring
 export interface ConnectionStats {
   serverName: string;
   state: ConnectionState;
@@ -135,7 +125,6 @@ export interface ConnectionStats {
   averageOperationTimeMs: number;
 }
 
-// Circuit breaker implementation
 class CircuitBreaker {
   private state: "closed" | "open" | "half_open" = "closed";
   private failureCount = 0;
@@ -157,7 +146,6 @@ class CircuitBreaker {
           `Circuit breaker is OPEN for ${serverName}. Next attempt in ${this.nextAttempt - Date.now()}ms`,
         );
       }
-      // Transition to half-open
       this.state = "half_open";
       this.halfOpenAttempts = 0;
       this.logger.info(
@@ -216,7 +204,6 @@ class CircuitBreaker {
   }
 }
 
-// Enhanced connection wrapper with resilience features
 export class ResilientMCPConnection extends EventEmitter {
   private client: MCPProxyClient;
   private state: ConnectionState = ConnectionState.DISCONNECTED;
@@ -250,7 +237,6 @@ export class ResilientMCPConnection extends EventEmitter {
       this.logger,
     );
 
-    // Initialize stats
     this.stats = {
       serverName: serverConfig.name,
       state: this.state,
@@ -275,7 +261,6 @@ export class ResilientMCPConnection extends EventEmitter {
   }
 
   private setupEventListeners(): void {
-    // Listen to circuit breaker state changes
     this.on("circuitBreakerStateChange", (newState) => {
       this.stats.circuitBreakerState = newState;
       this.updateConnectionState(
@@ -315,7 +300,6 @@ export class ResilientMCPConnection extends EventEmitter {
           ]);
         }, this.stats.serverName);
 
-        // Connection successful
         const duration = Date.now() - startTime;
         this.connectionHistory.push({
           timestamp: new Date(),
@@ -379,7 +363,6 @@ export class ResilientMCPConnection extends EventEmitter {
         `[RESILIENT-MCP] Waiting for ${this.stats.currentOperations} operations to complete before disconnecting ${this.stats.serverName}`,
       );
 
-      // Wait for operations to complete or timeout
       const maxWait = this.config.connection.gracefulShutdownTimeoutMs;
       const startTime = Date.now();
 
@@ -449,7 +432,6 @@ export class ResilientMCPConnection extends EventEmitter {
       );
     }
 
-    // Check cache first if in degraded mode
     if (this.state === ConnectionState.DEGRADED) {
       const cached = this.getCachedResponse<T>(operationId);
       if (cached) {
@@ -467,7 +449,6 @@ export class ResilientMCPConnection extends EventEmitter {
         this.stats.serverName,
       );
 
-      // Cache successful responses
       if (this.config.degradedMode.enabled) {
         this.cacheResponse(operationId, result);
       }
@@ -483,7 +464,6 @@ export class ResilientMCPConnection extends EventEmitter {
         error,
       );
 
-      // Try degraded mode fallbacks
       if (this.config.degradedMode.enabled) {
         return this.handleDegradedMode<T>(operationId);
       }
@@ -572,8 +552,6 @@ export class ResilientMCPConnection extends EventEmitter {
   }
 
   private async performHealthCheck(): Promise<boolean> {
-    // const _startTime = Date.now();
-
     try {
       let isHealthy = false;
 
@@ -608,7 +586,6 @@ export class ResilientMCPConnection extends EventEmitter {
         );
         await this.handleHealthCheckFailure();
       } else if (this.state === ConnectionState.DEGRADED && isHealthy) {
-        // Recover from degraded state
         this.updateConnectionState(ConnectionState.CONNECTED);
         this.logger.info(
           `[RESILIENT-MCP] ${this.stats.serverName} recovered from degraded state`,
@@ -642,7 +619,6 @@ export class ResilientMCPConnection extends EventEmitter {
       const tools = this.client.getTools();
       if (!tools || tools.length === 0) return true; // No tools to check
 
-      // Try to get tool info (non-destructive)
       const firstTool = tools[0];
       return firstTool && typeof firstTool.name === "string";
     } catch {
@@ -707,7 +683,6 @@ export class ResilientMCPConnection extends EventEmitter {
     }
   }
 
-  // Utility methods
   private calculateBackoffDelay(attempt: number): number {
     const exponentialDelay = Math.min(
       this.config.baseRetryDelayMs * Math.pow(2, attempt),
@@ -751,7 +726,6 @@ export class ResilientMCPConnection extends EventEmitter {
       timestamp: Date.now(),
     });
 
-    // Clean up expired cache entries
     const now = Date.now();
     for (const [key, value] of this.responseCache.entries()) {
       if (now - value.timestamp > this.config.degradedMode.cacheResponsesMs) {
@@ -776,7 +750,6 @@ export class ResilientMCPConnection extends EventEmitter {
   }
 
   private getDefaultResponse<T>(operationId: string): T | null {
-    // Implement default responses based on operation type
     if (operationId.startsWith("callTool:")) {
       return {
         content: [],
@@ -805,7 +778,6 @@ export class ResilientMCPConnection extends EventEmitter {
   }
 
   private updateAverageOperationTime(duration: number): void {
-    // Moving average calculation
     const alpha = 0.1; // Smoothing factor
     this.stats.averageOperationTimeMs =
       this.stats.averageOperationTimeMs === 0
@@ -813,7 +785,6 @@ export class ResilientMCPConnection extends EventEmitter {
         : this.stats.averageOperationTimeMs * (1 - alpha) + duration * alpha;
   }
 
-  // Public API
   getState(): ConnectionState {
     return this.state;
   }
@@ -834,12 +805,10 @@ export class ResilientMCPConnection extends EventEmitter {
     return this.client;
   }
 
-  // Force health check
   async forceHealthCheck(): Promise<boolean> {
     return await this.performHealthCheck();
   }
 
-  // Update configuration
   updateConfig(newConfig: Partial<ResilienceConfig>): void {
     this.config = { ...this.config, ...newConfig };
     this.logger.info(

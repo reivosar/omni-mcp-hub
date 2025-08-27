@@ -197,12 +197,10 @@ export class HealthChecker extends EventEmitter {
     this.isRunning = true;
     this.logger.info("Starting health checker...");
 
-    // Start health check endpoints
     if (this.config.port > 0) {
       await this.startHealthEndpoint();
     }
 
-    // Initialize all health checks
     for (const checkDef of this.config.checks) {
       if (checkDef.enabled) {
         this.startHealthCheck(checkDef);
@@ -224,13 +222,11 @@ export class HealthChecker extends EventEmitter {
     this.isRunning = false;
     this.logger.info("Stopping health checker...");
 
-    // Stop all check intervals
     for (const [_name, interval] of this.checkIntervals) {
       clearInterval(interval);
     }
     this.checkIntervals.clear();
 
-    // Stop HTTP server
     if (this.server) {
       await new Promise<void>((resolve) => {
         this.server!.close(() => resolve());
@@ -367,10 +363,8 @@ export class HealthChecker extends EventEmitter {
       }
     };
 
-    // Run initial check
     setImmediate(runCheck);
 
-    // Schedule periodic checks
     const interval = setInterval(runCheck, checkDef.interval);
     this.checkIntervals.set(checkDef.name, interval);
   }
@@ -408,18 +402,15 @@ export class HealthChecker extends EventEmitter {
       };
     }
 
-    // Record result
     this.recordHealthCheckResult(checkDef.component, result);
     this.updateComponentHealth(checkDef);
 
-    // Emit events
     this.emit("check-completed", { check: checkDef.name, result });
 
     if (result.status === HealthStatus.UNHEALTHY && checkDef.critical) {
       this.emit("critical-failure", { check: checkDef.name, result });
     }
 
-    // Record metrics if available
     if (this.metricsCollector) {
       this.metricsCollector.recordHistogram(
         "health_check_duration_ms",
@@ -455,7 +446,6 @@ export class HealthChecker extends EventEmitter {
   private async executeHttpCheck(
     _checkDef: HealthCheckDefinition,
   ): Promise<HealthCheckResult> {
-    // Implementation would depend on actual HTTP checking logic
     throw new Error("HTTP health checks not implemented yet");
   }
 
@@ -465,7 +455,6 @@ export class HealthChecker extends EventEmitter {
   private async executeTcpCheck(
     _checkDef: HealthCheckDefinition,
   ): Promise<HealthCheckResult> {
-    // Implementation would depend on actual TCP checking logic
     throw new Error("TCP health checks not implemented yet");
   }
 
@@ -512,8 +501,6 @@ export class HealthChecker extends EventEmitter {
    * Check disk space
    */
   private async checkDiskSpace(): Promise<HealthCheckResult> {
-    // For now, return a simple healthy status
-    // In production, this would check actual disk usage
     return {
       name: "disk_space",
       status: HealthStatus.HEALTHY,
@@ -563,8 +550,6 @@ export class HealthChecker extends EventEmitter {
    * Check MCP servers health
    */
   private async checkMCPServers(): Promise<HealthCheckResult> {
-    // For now, return a simple healthy status
-    // In production, this would check actual MCP server connections
     return {
       name: "mcp_servers",
       status: HealthStatus.HEALTHY,
@@ -592,7 +577,6 @@ export class HealthChecker extends EventEmitter {
     const results = this.checkResults.get(component)!;
     results.push(result);
 
-    // Keep only last 100 results per component
     if (results.length > 100) {
       results.splice(0, results.length - 100);
     }
@@ -656,7 +640,6 @@ export class HealthChecker extends EventEmitter {
         ? allChecks.reduce((sum, r) => sum + r.duration, 0) / totalChecks
         : 0;
 
-    // Determine overall system status
     const componentStatuses = Array.from(this.componentHealth.values()).map(
       (c) => c.status,
     );

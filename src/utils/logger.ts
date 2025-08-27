@@ -55,7 +55,6 @@ export class Logger implements ILogger {
   }
 
   private initializeWinston(): void {
-    // Ensure log directory exists
     const logDir = path.resolve(this.config.logDir!);
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
@@ -63,7 +62,6 @@ export class Logger implements ILogger {
 
     const transports: winston.transport[] = [];
 
-    // Simple file transport for all logs
     transports.push(
       new winston.transports.File({
         filename: path.join(logDir, "omni-mcp-hub.log"),
@@ -83,7 +81,6 @@ export class Logger implements ILogger {
       }),
     );
 
-    // Separate error log file
     transports.push(
       new winston.transports.File({
         filename: path.join(logDir, "error.log"),
@@ -104,7 +101,6 @@ export class Logger implements ILogger {
       }),
     );
 
-    // Console output (only if enabled)
     if (this.config.consoleOutput) {
       transports.push(
         new winston.transports.Console({
@@ -186,7 +182,6 @@ export class Logger implements ILogger {
       return;
     }
 
-    // Format message with args
     let formattedMessage = message;
     if (args.length > 0) {
       const argsStr = args
@@ -200,19 +195,16 @@ export class Logger implements ILogger {
     this.winstonLogger.log(level, formattedMessage);
   }
 
-  // Method to get winston logger instance for advanced usage
   getWinstonLogger(): winston.Logger {
     return this.winstonLogger;
   }
 
-  // Method to update configuration
   updateConfig(newConfig: Partial<LoggerConfig>): void {
     this.config = { ...this.config, ...newConfig };
     this.initializeWinston();
   }
 }
 
-// Silent logger implementation for testing
 export class SilentLogger implements ILogger {
   debug(): void {}
   info(): void {}
@@ -225,7 +217,6 @@ export class SilentLogger implements ILogger {
   }
 }
 
-// Create file logger configuration
 export const createFileLogger = (config: LoggerConfig = {}): Logger => {
   return new Logger({
     level: "debug",
@@ -239,5 +230,4 @@ export const createFileLogger = (config: LoggerConfig = {}): Logger => {
   });
 };
 
-// Default logger instance (file-based)
 export const logger = createFileLogger();

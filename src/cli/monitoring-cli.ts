@@ -53,10 +53,8 @@ class MonitoringCLI {
     console.log(chalk.blue.bold("Starting Omni MCP Hub Monitoring Service\n"));
 
     try {
-      // Load configuration
       const config = await this.loadConfig(options.config);
 
-      // Override with CLI options
       if (options.port) {
         config.metricsConfig = {
           ...config.metricsConfig,
@@ -76,10 +74,8 @@ class MonitoringCLI {
         };
       }
 
-      // Create and start monitoring service
       this.monitoringService = new MonitoringService(config, this.logger);
 
-      // Setup event listeners for CLI feedback
       this.setupEventListeners();
 
       await this.monitoringService.start();
@@ -113,7 +109,6 @@ class MonitoringCLI {
 
       console.log(chalk.yellow("\nPress Ctrl+C to stop monitoring\n"));
 
-      // Keep process running
       process.on("SIGINT", () => this.gracefulShutdown());
       process.on("SIGTERM", () => this.gracefulShutdown());
     } catch (error) {
@@ -157,7 +152,6 @@ class MonitoringCLI {
     console.log(chalk.blue.bold("REPORT Monitoring Status\n"));
 
     try {
-      // Try to connect to running service or start temporarily
       if (!this.monitoringService) {
         const config = await this.loadConfig(options.config);
         this.monitoringService = new MonitoringService(config, this.logger);
@@ -173,7 +167,6 @@ class MonitoringCLI {
         return;
       }
 
-      // Display status in table format
       if (metrics && health) {
         this.displayStatus(status, metrics, health);
       }
@@ -690,7 +683,6 @@ class MonitoringCLI {
       console.log();
     }
 
-    // Show key metrics
     console.log(chalk.cyan("TREND_UP Key Metrics:"));
     console.log(
       `  Memory Usage: ${Math.round(report.metrics.memoryUsage.heapUsed / 1024 / 1024)}MB`,
@@ -743,7 +735,6 @@ class MonitoringCLI {
   }
 }
 
-// CLI Program Definition
 program
   .name("omni-monitoring")
   .description("Omni MCP Hub Monitoring CLI")
@@ -839,12 +830,10 @@ program
   });
 
 export async function run(args: string[]): Promise<void> {
-  // Parse arguments without exiting process
   program.exitOverride();
   await program.parseAsync(args, { from: "user" });
 }
 
-// Error handling when run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   process.on("unhandledRejection", (error) => {
     console.error(chalk.red("CRITICAL Unhandled error:"), error);

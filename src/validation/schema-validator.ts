@@ -63,10 +63,8 @@ export class SchemaValidator {
       messages: false, // Use custom error messages
     });
 
-    // Add custom formats
     this.ajv.addFormat("profile-name", /^[a-zA-Z0-9-_]+$/);
 
-    // Add error message localization
     this.setupErrorMessages();
   }
 
@@ -74,7 +72,6 @@ export class SchemaValidator {
    * Setup Japanese error messages for better UX
    */
   private setupErrorMessages(): void {
-    // Custom error message keywords for better Japanese support
     this.ajv.addKeyword({
       keyword: "errorMessage",
       schemaType: ["object", "string"],
@@ -87,7 +84,6 @@ export class SchemaValidator {
    */
   async initialize(): Promise<void> {
     try {
-      // Try multiple possible schema locations
       const possiblePaths = [
         path.resolve("./schemas/omni-config.schema.json"),
         path.resolve(process.cwd(), "schemas/omni-config.schema.json"),
@@ -103,7 +99,7 @@ export class SchemaValidator {
           schemaPath = tryPath;
           break;
         } catch {
-          // Try next path
+          // Schema file not found at this path
         }
       }
 
@@ -151,7 +147,6 @@ export class SchemaValidator {
         }
       }
 
-      // Add semantic warnings
       const semanticWarnings = await this.performSemanticValidation(
         config,
         configPath,
@@ -213,13 +208,10 @@ export class SchemaValidator {
     };
 
     if (currentConfig) {
-      // Compare profiles
       this.compareProfiles(currentConfig, newConfig, changes, impact);
 
-      // Compare external servers
       this.compareExternalServers(currentConfig, newConfig, changes, impact);
 
-      // Compare other settings
       this.compareSettings(currentConfig, newConfig, changes, impact);
     }
 
@@ -245,7 +237,6 @@ export class SchemaValidator {
     const params = error.params as Record<string, unknown>;
     const data = error.data;
 
-    // Provide Japanese error messages and suggestions
     switch (error.keyword) {
       case "required":
         message = `必須項目が不足しています: ${params.missingProperty}`;
@@ -273,7 +264,6 @@ export class SchemaValidator {
         suggestedFix = "このプロパティを削除するか、スペルを確認してください";
         break;
       case "not":
-        // Handle mode restrictions
         if (
           (field && field.includes("mode")) ||
           (typeof error.schemaPath === "string" &&
@@ -305,7 +295,6 @@ export class SchemaValidator {
         suggestedFix = "設定値を確認し、修正してください";
     }
 
-    // Try to find line number in YAML content
     const { line, column } = this.findLineNumber(configContent, field, data);
 
     return {
@@ -346,7 +335,6 @@ export class SchemaValidator {
     const warnings: ValidationError[] = [];
     const basePath = path.dirname(configPath);
 
-    // Check if profile paths exist
     if (config.autoLoad?.profiles) {
       for (const profile of config.autoLoad.profiles) {
         try {
@@ -362,7 +350,6 @@ export class SchemaValidator {
       }
     }
 
-    // Check for duplicate profile names
     if (config.autoLoad?.profiles) {
       const names = config.autoLoad.profiles.map((p) => p.name);
       const duplicates = names.filter(
@@ -377,7 +364,6 @@ export class SchemaValidator {
       }
     }
 
-    // Check for duplicate external server names
     if (config.externalServers?.servers) {
       const names = config.externalServers.servers.map((s) => s.name);
       const duplicates = names.filter(
@@ -392,7 +378,6 @@ export class SchemaValidator {
       }
     }
 
-    // Warn if external servers are enabled but no servers defined
     if (
       config.externalServers?.enabled &&
       (!config.externalServers.servers ||
@@ -421,7 +406,6 @@ export class SchemaValidator {
 
     if (fieldParts.length === 0) return {};
 
-    // Simple heuristic to find the line
     const searchKey = fieldParts[fieldParts.length - 1];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -451,7 +435,6 @@ export class SchemaValidator {
     const currentNames = new Set(currentProfiles.map((p) => p.name));
     const newNames = new Set(newProfiles.map((p) => p.name));
 
-    // Find new profiles
     for (const profile of newProfiles) {
       if (!currentNames.has(profile.name)) {
         impact.newProfiles.push(profile.name);
@@ -465,7 +448,6 @@ export class SchemaValidator {
       }
     }
 
-    // Find removed profiles
     for (const profile of currentProfiles) {
       if (!newNames.has(profile.name)) {
         impact.removedProfiles.push(profile.name);
@@ -479,7 +461,6 @@ export class SchemaValidator {
       }
     }
 
-    // Find modified profiles
     for (const newProfile of newProfiles) {
       const currentProfile = currentProfiles.find(
         (p) => p.name === newProfile.name,
@@ -515,7 +496,6 @@ export class SchemaValidator {
     const currentNames = new Set(currentServers.map((s) => s.name));
     const newNames = new Set(newServers.map((s) => s.name));
 
-    // Find changes
     for (const server of newServers) {
       if (!currentNames.has(server.name)) {
         impact.externalServerChanges.push({
@@ -546,7 +526,6 @@ export class SchemaValidator {
     changes: ConfigChange[],
     impact: DryRunResult["impact"],
   ): void {
-    // Compare logging settings
     if (JSON.stringify(current.logging) !== JSON.stringify(newConfig.logging)) {
       changes.push({
         type: "modified",
@@ -558,7 +537,6 @@ export class SchemaValidator {
       });
     }
 
-    // Compare file settings
     if (
       JSON.stringify(current.fileSettings) !==
       JSON.stringify(newConfig.fileSettings)
@@ -587,7 +565,6 @@ export class SchemaValidator {
       output += "Configuration validation failed\n\n";
     }
 
-    // Show errors
     if (result.errors.length > 0) {
       output += "Errors:\n";
       for (const error of result.errors) {
@@ -602,7 +579,6 @@ export class SchemaValidator {
       }
     }
 
-    // Show warnings
     if (result.warnings.length > 0) {
       output += "Warnings:\n";
       for (const warning of result.warnings) {
@@ -613,7 +589,6 @@ export class SchemaValidator {
       }
     }
 
-    // Show dry-run results
     if ("changes" in result && result.changes.length > 0) {
       output += "\nConfiguration Changes:\n";
       for (const change of result.changes) {

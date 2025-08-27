@@ -171,18 +171,15 @@ export class MonitoringDashboard extends EventEmitter {
    * Setup event listeners for real-time data collection
    */
   private setupEventListeners(): void {
-    // Listen for metrics updates
     this.metricsCollector.on("metrics-collected", () => {
       this.updateHistoricalData();
       this.broadcastUpdate();
     });
 
-    // Listen for health check updates
     this.healthChecker.on("check-completed", () => {
       this.broadcastUpdate();
     });
 
-    // Listen for alerts
     this.healthChecker.on("critical-failure", (data) => {
       this.broadcastAlert(data);
     });
@@ -205,13 +202,10 @@ export class MonitoringDashboard extends EventEmitter {
     this.isRunning = true;
     this.logger.info("Starting monitoring dashboard...");
 
-    // Start HTTP server
     await this.startHttpServer();
 
-    // Start WebSocket server
     await this.startWebSocketServer();
 
-    // Start refresh timer
     this.startRefreshTimer();
 
     this.emit("started");
@@ -231,17 +225,14 @@ export class MonitoringDashboard extends EventEmitter {
     this.isRunning = false;
     this.logger.info("Stopping dashboard...");
 
-    // Stop refresh timer
     if (this.refreshTimer) {
       clearInterval(this.refreshTimer);
       this.refreshTimer = undefined;
     }
 
-    // Close WebSocket connections
     this.connectedClients.forEach((ws) => ws.close());
     this.connectedClients.clear();
 
-    // Stop servers
     if (this.wsServer) {
       this.wsServer.close();
     }
@@ -433,7 +424,6 @@ export class MonitoringDashboard extends EventEmitter {
     this.connectedClients.add(ws);
     this.logger.debug("New WebSocket connection established");
 
-    // Send initial data
     this.sendInitialData(ws);
 
     ws.on("close", () => {
@@ -487,10 +477,8 @@ export class MonitoringDashboard extends EventEmitter {
   ): void {
     switch (message.type) {
       case "subscribe":
-        // Handle subscription to specific metrics
         break;
       case "unsubscribe":
-        // Handle unsubscription
         break;
       case "get-history":
         if (message.metric && message.timeRange) {
@@ -592,7 +580,6 @@ export class MonitoringDashboard extends EventEmitter {
     const timestamp = Date.now();
     const metrics = this.metricsCollector.getCurrentMetrics();
 
-    // Add data points for tracked metrics
     this.addHistoricalPoint(
       "memory_usage",
       timestamp,
@@ -627,7 +614,6 @@ export class MonitoringDashboard extends EventEmitter {
     const data = this.historicalData.get(metric) || [];
     data.push({ timestamp, value });
 
-    // Keep only recent points
     if (data.length > this.config.maxHistoryPoints) {
       data.splice(0, data.length - this.config.maxHistoryPoints);
     }
@@ -639,8 +625,6 @@ export class MonitoringDashboard extends EventEmitter {
    * Get alert summary
    */
   private getAlertSummary(): AlertSummary {
-    // For now, return empty summary
-    // In production, this would aggregate actual alerts
     return {
       total: 0,
       critical: 0,
@@ -776,26 +760,20 @@ export class MonitoringDashboard extends EventEmitter {
             document.getElementById('error').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
             
-            // Update system status
             const statusElement = document.getElementById('system-status');
             statusElement.textContent = data.systemHealth.status.toUpperCase();
             statusElement.className = 'status ' + data.systemHealth.status;
             
-            // Update timestamp
             document.getElementById('last-update').textContent = new Date(data.timestamp).toLocaleTimeString();
             
-            // Update health content
             updateHealthContent(data.systemHealth);
             
-            // Update metrics content
             updateMetricsContent(data.metrics);
             
-            // Update system content
             if (data.systemInfo) {
                 updateSystemContent(data.systemInfo);
             }
             
-            // Update alerts content
             updateAlertsContent(data.alerts);
         }
         
@@ -882,7 +860,6 @@ export class MonitoringDashboard extends EventEmitter {
         }
         
         function handleAlert(alertData) {
-            // Handle real-time alerts
             console.log('Alert received:', alertData);
         }
         
@@ -894,7 +871,6 @@ export class MonitoringDashboard extends EventEmitter {
             errorElement.style.display = 'block';
         }
         
-        // Initialize dashboard
         async function loadInitialData() {
             try {
                 const response = await fetch('/api/dashboard');
@@ -904,7 +880,6 @@ export class MonitoringDashboard extends EventEmitter {
                 const data = await response.json();
                 updateDashboard(data);
                 
-                // Connect WebSocket for live updates
                 connectWebSocket();
             } catch (error) {
                 console.error('Error loading dashboard:', error);
@@ -912,10 +887,8 @@ export class MonitoringDashboard extends EventEmitter {
             }
         }
         
-        // Start dashboard
         loadInitialData();
         
-        // Fallback polling if WebSocket fails
         setInterval(async () => {
             if (!ws || ws.readyState !== WebSocket.OPEN) {
                 try {

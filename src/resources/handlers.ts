@@ -32,7 +32,6 @@ export class ResourceHandlers {
     this.proxyManager = proxyManager;
     this.logger = logger || new SilentLogger();
     this.errorHandler = ErrorHandler.getInstance(this.logger);
-    // Use PathResolver for consistent config path resolution
     const pathResolver = PathResolver.getInstance();
     const yamlConfigPath = pathResolver.getYamlConfigPath();
     this.fileScanner = new FileScanner(
@@ -40,7 +39,6 @@ export class ResourceHandlers {
       this.logger,
     );
 
-    // Initialize GitHub resource manager
     this.githubResourceManager = new GitHubResourceManager(this.logger);
   }
 
@@ -73,7 +71,6 @@ export class ResourceHandlers {
         },
       ];
 
-      // Check for auto-apply profiles
       const autoApplyProfiles = Array.from(
         this.activeProfiles.entries(),
       ).filter(
@@ -90,7 +87,6 @@ export class ResourceHandlers {
         });
       }
 
-      // Add engineering guide resources
       baseResources.push({
         uri: "engineering-guide://files",
         name: "📚 Engineering Guide - All Files",
@@ -105,7 +101,6 @@ export class ResourceHandlers {
         mimeType: "text/markdown",
       });
 
-      // Try to add individual engineering guide file resources
       try {
         const engineeringFiles =
           await this.githubResourceManager.getEngineeringGuide();
@@ -123,7 +118,6 @@ export class ResourceHandlers {
         );
       }
 
-      // Add dynamic resources for each loaded profile (active/assigned profiles)
       const profileResources = Array.from(this.activeProfiles.keys()).map(
         (profileName) => ({
           uri: `config://profile/active/${profileName}`,
@@ -133,11 +127,9 @@ export class ResourceHandlers {
         }),
       );
 
-      // Add proxied resources from external MCP servers
       let aggregatedResources = [...baseResources, ...profileResources];
       if (this.proxyManager) {
         const externalResources = this.proxyManager.getAggregatedResources();
-        // Convert external resources to match our expected format
         const formattedExternalResources = externalResources.map(
           (resource) => ({
             uri: resource.uri,
@@ -231,7 +223,6 @@ export class ResourceHandlers {
               };
             }
 
-            // Combine all auto-apply profiles into instructions
             let combinedInstructions = "# AUTO-APPLIED CONFIGURATION\n\n";
             combinedInstructions +=
               "The following behavior profiles have been automatically loaded:\n\n";
@@ -362,7 +353,6 @@ export class ResourceHandlers {
             }
 
           default:
-            // Handle config://profile/active/{name} resources
             const profileMatch = uri.match(
               /^config:\/\/profile\/active\/(.+)$/,
             );
@@ -383,7 +373,6 @@ export class ResourceHandlers {
               }
             }
 
-            // Handle individual engineering guide files
             const fileMatch = uri.match(/^engineering-guide:\/\/file\/(.+)$/);
             if (fileMatch) {
               try {
@@ -416,7 +405,6 @@ export class ResourceHandlers {
               }
             }
 
-            // Check if it's a proxied resource from external MCP server
             if (this.proxyManager) {
               try {
                 const result = await this.proxyManager.readResource(uri);
@@ -426,7 +414,6 @@ export class ResourceHandlers {
                   `Error reading proxied resource ${uri}:`,
                   error,
                 );
-                // Fall through to throw error
               }
             }
 

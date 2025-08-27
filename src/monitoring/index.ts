@@ -4,7 +4,6 @@
  * Central exports for the comprehensive monitoring system
  */
 
-// Core monitoring service
 export { MonitoringService } from "./monitoring-service.js";
 export type {
   MonitoringServiceConfig,
@@ -15,7 +14,6 @@ export type {
   PerformanceInsight,
 } from "./monitoring-service.js";
 
-// Metrics collection
 export { MetricsCollector } from "./metrics-collector.js";
 export type {
   MetricDefinition,
@@ -24,7 +22,6 @@ export type {
   MonitoringConfig,
 } from "./metrics-collector.js";
 
-// Health checking
 export { HealthChecker } from "./health-checker.js";
 export type {
   HealthCheckResult,
@@ -35,7 +32,6 @@ export type {
   HealthCheckDefinition,
 } from "./health-checker.js";
 
-// Dashboard
 export { MonitoringDashboard } from "./dashboard.js";
 export type {
   DashboardConfig,
@@ -46,7 +42,6 @@ export type {
   ChartData,
 } from "./dashboard.js";
 
-// Utility function to create a complete monitoring setup
 import type { MonitoringServiceConfig as MSConfig } from "./monitoring-service.js";
 import { MonitoringService } from "./monitoring-service.js";
 

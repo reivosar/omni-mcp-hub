@@ -215,30 +215,24 @@ export class MonitoringService extends EventEmitter {
     this.logger.info("Starting monitoring service...");
 
     try {
-      // Start metrics collector
       if (this.config.metricsConfig?.enabled) {
         await this.startMetricsCollector();
       }
 
-      // Start health checker
       if (this.config.healthConfig?.enabled) {
         await this.startHealthChecker();
       }
 
-      // Start dashboard
       if (this.config.dashboardConfig?.enabled) {
         await this.startDashboard();
       }
 
-      // Setup alerting
       if (this.config.alerting?.enabled) {
         this.setupAlerting();
       }
 
-      // Setup event listeners
       this.setupEventListeners();
 
-      // Start periodic reporting
       this.startPeriodicReporting();
 
       this.emit("started");
@@ -262,19 +256,16 @@ export class MonitoringService extends EventEmitter {
     this.logger.info("Stopping monitoring service...");
 
     try {
-      // Stop dashboard
       if (this.dashboard) {
         await this.dashboard.stop();
         this.updateComponentStatus("dashboard", "stopped");
       }
 
-      // Stop health checker
       if (this.healthChecker) {
         await this.healthChecker.stop();
         this.updateComponentStatus("health", "stopped");
       }
 
-      // Stop metrics collector
       if (this.metricsCollector) {
         this.metricsCollector.stop();
         this.updateComponentStatus("metrics", "stopped");
@@ -368,7 +359,6 @@ export class MonitoringService extends EventEmitter {
    * Setup event listeners for component integration
    */
   private setupEventListeners(): void {
-    // Listen to metrics events
     if (this.metricsCollector) {
       this.metricsCollector.on("alert", (alert) => {
         this.handleAlert(alert);
@@ -381,7 +371,6 @@ export class MonitoringService extends EventEmitter {
       });
     }
 
-    // Listen to health check events
     if (this.healthChecker) {
       this.healthChecker.on("critical-failure", (data) => {
         this.handleCriticalAlert(data);
@@ -394,7 +383,6 @@ export class MonitoringService extends EventEmitter {
       });
     }
 
-    // Listen to dashboard events
     if (this.dashboard) {
       this.dashboard.on("started", () => {
         this.logger.info("Dashboard is ready for connections");
@@ -447,7 +435,6 @@ export class MonitoringService extends EventEmitter {
 
     this.alertHistory.push(notification);
 
-    // Keep only last 1000 alerts
     if (this.alertHistory.length > 1000) {
       this.alertHistory.splice(0, this.alertHistory.length - 1000);
     }
@@ -455,7 +442,6 @@ export class MonitoringService extends EventEmitter {
     this.emit("alert", notification);
     this.logger.warn("Alert triggered:", notification.message);
 
-    // Send notifications if configured
     this.sendAlertNotification(notification);
   }
 
@@ -485,7 +471,6 @@ export class MonitoringService extends EventEmitter {
     this.emit("critical-alert", notification);
     this.logger.error("Critical alert:", notification.message);
 
-    // Send immediate notifications
     this.sendAlertNotification(notification);
   }
 
@@ -494,17 +479,14 @@ export class MonitoringService extends EventEmitter {
    */
   private async sendAlertNotification(alert: AlertNotification): Promise<void> {
     try {
-      // Webhook notification
       if (this.config.alerting?.webhookUrl) {
         await this.sendWebhookNotification(alert);
       }
 
-      // Slack notification
       if (this.config.alerting?.slackToken) {
         await this.sendSlackNotification(alert);
       }
 
-      // Email notification
       if (this.config.alerting?.emailConfig) {
         await this.sendEmailNotification(alert);
       }
@@ -519,7 +501,6 @@ export class MonitoringService extends EventEmitter {
   private async sendWebhookNotification(
     alert: AlertNotification,
   ): Promise<void> {
-    // Implementation would send HTTP POST to webhook URL
     this.logger.debug(
       "Webhook notification would be sent for alert:",
       alert.id,
@@ -530,7 +511,6 @@ export class MonitoringService extends EventEmitter {
    * Send Slack notification
    */
   private async sendSlackNotification(alert: AlertNotification): Promise<void> {
-    // Implementation would send to Slack API
     this.logger.debug("Slack notification would be sent for alert:", alert.id);
   }
 
@@ -538,7 +518,6 @@ export class MonitoringService extends EventEmitter {
    * Send email notification
    */
   private async sendEmailNotification(alert: AlertNotification): Promise<void> {
-    // Implementation would send email via SMTP
     this.logger.debug("Email notification would be sent for alert:", alert.id);
   }
 
@@ -569,7 +548,6 @@ export class MonitoringService extends EventEmitter {
 
     this.performanceHistory.push(report);
 
-    // Keep only last 288 reports (24 hours at 5-minute intervals)
     if (this.performanceHistory.length > 288) {
       this.performanceHistory.splice(0, this.performanceHistory.length - 288);
     }
@@ -587,7 +565,6 @@ export class MonitoringService extends EventEmitter {
   ): PerformanceInsight[] {
     const insights: PerformanceInsight[] = [];
 
-    // Memory usage analysis
     const memoryPercent =
       (metrics.memoryUsage.heapUsed / metrics.memoryUsage.heapTotal) * 100;
     if (memoryPercent > 85) {
@@ -610,7 +587,6 @@ export class MonitoringService extends EventEmitter {
       });
     }
 
-    // Response time analysis
     if (metrics.averageResponseTime > 1000) {
       insights.push({
         category: "application",
@@ -622,7 +598,6 @@ export class MonitoringService extends EventEmitter {
       });
     }
 
-    // Error rate analysis
     if (metrics.errorRate > 0.1) {
       insights.push({
         category: "application",

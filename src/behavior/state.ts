@@ -109,5 +109,4 @@ class BehaviorStateManager {
   }
 }
 
-// Global singleton instance
 export const behaviorState = new BehaviorStateManager();

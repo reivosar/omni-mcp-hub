@@ -23,7 +23,6 @@ export interface MetricSample {
 }
 
 export interface PerformanceMetrics {
-  // Request/Response metrics
   totalRequests: number;
   successfulRequests: number;
   failedRequests: number;
@@ -32,29 +31,24 @@ export interface PerformanceMetrics {
   p99ResponseTime: number;
   requestsPerSecond: number;
 
-  // Tool execution metrics
   toolExecutions: number;
   averageToolExecutionTime: number;
   toolSuccessRate: number;
   topTools: Array<{ name: string; count: number; avgTime: number }>;
 
-  // Resource metrics
   resourceAccesses: number;
   averageResourceAccessTime: number;
   resourceHitRate: number;
 
-  // System metrics
   memoryUsage: NodeJS.MemoryUsage;
   cpuUsage: NodeJS.CpuUsage;
   uptime: number;
   activeConnections: number;
 
-  // Profile metrics
   activeProfiles: number;
   profileSwitches: number;
   configReloads: number;
 
-  // Error metrics
   errorRate: number;
   errorsByType: Record<string, number>;
   lastErrors: Array<{ timestamp: Date; error: string; type: string }>;
@@ -123,9 +117,7 @@ export class MetricsCollector extends EventEmitter {
   }
 
   private initializeMetrics(): void {
-    // Define all metrics
     const metricDefs: MetricDefinition[] = [
-      // Request metrics
       {
         name: "http_requests_total",
         type: "counter",
@@ -144,7 +136,6 @@ export class MetricsCollector extends EventEmitter {
         description: "Current requests per second",
       },
 
-      // Tool metrics
       {
         name: "mcp_tool_executions_total",
         type: "counter",
@@ -164,7 +155,6 @@ export class MetricsCollector extends EventEmitter {
         description: "Number of currently active tools",
       },
 
-      // Resource metrics
       {
         name: "mcp_resource_accesses_total",
         type: "counter",
@@ -178,7 +168,6 @@ export class MetricsCollector extends EventEmitter {
         labels: ["resource"],
       },
 
-      // System metrics
       {
         name: "system_memory_bytes",
         type: "gauge",
@@ -204,7 +193,6 @@ export class MetricsCollector extends EventEmitter {
         description: "Active connections count",
       },
 
-      // Profile metrics
       {
         name: "mcp_active_profiles",
         type: "gauge",
@@ -221,7 +209,6 @@ export class MetricsCollector extends EventEmitter {
         description: "Total configuration reloads",
       },
 
-      // Error metrics
       {
         name: "error_rate",
         type: "gauge",
@@ -235,7 +222,6 @@ export class MetricsCollector extends EventEmitter {
         labels: ["type", "severity"],
       },
 
-      // Test metrics (for testing purposes)
       {
         name: "test_requests_total",
         type: "counter",
@@ -275,7 +261,6 @@ export class MetricsCollector extends EventEmitter {
     try {
       const now = new Date();
 
-      // System memory metrics
       const memUsage = process.memoryUsage();
       this.recordGauge(
         "system_memory_bytes",
@@ -302,7 +287,6 @@ export class MetricsCollector extends EventEmitter {
         now,
       );
 
-      // CPU usage metrics
       const cpuUsage = process.cpuUsage(this.lastCpuUsage);
       const cpuPercent =
         ((cpuUsage.user + cpuUsage.system) /
@@ -311,11 +295,9 @@ export class MetricsCollector extends EventEmitter {
       this.recordGauge("system_cpu_usage_percent", cpuPercent, undefined, now);
       this.lastCpuUsage = process.cpuUsage();
 
-      // Uptime
       const uptime = (now.getTime() - this.startTime.getTime()) / 1000;
       this.recordGauge("system_uptime_seconds", uptime, undefined, now);
 
-      // Clean up old metrics
       this.cleanupOldMetrics();
 
       this.emit("metrics-collected", { timestamp: now });
@@ -361,10 +343,8 @@ export class MetricsCollector extends EventEmitter {
   ): void {
     this.recordMetric("histogram", name, value, labels, timestamp);
 
-    // Store raw values for histogram calculations
     if (name.includes("duration") || name.includes("time")) {
       this.responseTimes.push(value);
-      // Keep only last 1000 samples for percentile calculations
       if (this.responseTimes.length > 1000) {
         this.responseTimes = this.responseTimes.slice(-1000);
       }
@@ -380,7 +360,6 @@ export class MetricsCollector extends EventEmitter {
   ): void {
     if (!this.config.enabled) return;
 
-    // Auto-create metric definition if it doesn't exist
     if (!this.metricDefinitions.has(name)) {
       this.metricDefinitions.set(name, {
         name,
@@ -407,7 +386,6 @@ export class MetricsCollector extends EventEmitter {
     this.emit("metric-recorded", { type, metric });
   }
 
-  // Specific metric recording methods for MCP operations
   recordToolExecution(
     toolName: string,
     duration: number,
@@ -456,9 +434,7 @@ export class MetricsCollector extends EventEmitter {
     });
     this.recordHistogram("http_request_duration_seconds", duration / 1000);
 
-    // Track request counts for RPS calculation
     this.requestCounts.push({ timestamp: new Date(), count: 1 });
-    // Keep only last hour of data
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     this.requestCounts = this.requestCounts.filter(
       (r) => r.timestamp > oneHourAgo,
@@ -492,29 +468,24 @@ export class MetricsCollector extends EventEmitter {
     const now = new Date();
     const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
 
-    // Calculate RPS from recent requests
     const recentRequests = this.requestCounts.filter(
       (r) => r.timestamp > oneMinuteAgo,
     );
     const requestsPerSecond = recentRequests.length / 60;
 
-    // Calculate percentiles
     const sortedResponseTimes = [...this.responseTimes].sort((a, b) => a - b);
     const p95Index = Math.floor(sortedResponseTimes.length * 0.95);
     const p99Index = Math.floor(sortedResponseTimes.length * 0.99);
 
-    // Get latest system metrics
     const memUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
 
-    // Calculate request metrics from HTTP samples
     const httpSamples = this.metrics.get("http_requests_total") || [];
     const totalRequests = httpSamples.reduce(
       (sum, sample) => sum + sample.value,
       0,
     );
 
-    // Count failed requests (4xx, 5xx status codes)
     const failedRequests = httpSamples
       .filter(
         (sample) =>
@@ -612,7 +583,6 @@ export class MetricsCollector extends EventEmitter {
     const execSamples = this.metrics.get("mcp_tool_executions_total") || [];
     const timeSamples = this.metrics.get("mcp_tool_duration_seconds") || [];
 
-    // Count executions
     execSamples.forEach((sample) => {
       const tool = sample.labels?.tool || "unknown";
       if (!toolCounts[tool]) {
@@ -621,7 +591,6 @@ export class MetricsCollector extends EventEmitter {
       toolCounts[tool].count += sample.value;
     });
 
-    // Sum execution times
     timeSamples.forEach((sample) => {
       const tool = sample.labels?.tool || "unknown";
       if (toolCounts[tool]) {
@@ -676,11 +645,9 @@ export class MetricsCollector extends EventEmitter {
       const samples = this.metrics.get(name) || [];
       if (samples.length === 0) continue;
 
-      // Write metric header
       output += `# HELP ${name} ${definition.description}\n`;
       output += `# TYPE ${name} ${definition.type}\n`;
 
-      // Group samples by labels for counters and gauges
       if (definition.type === "counter" || definition.type === "gauge") {
         const latestSamples = this.getLatestSamplesByLabels(samples);
 

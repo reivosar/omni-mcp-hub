@@ -98,7 +98,6 @@ export class SchemaVersionManager {
    * Check if version A is compatible with version B
    */
   static isCompatible(a: SchemaVersion, b: SchemaVersion): boolean {
-    // Major version must match, minor/patch differences are acceptable
     return a.major === b.major && a.minor >= b.minor;
   }
 
@@ -136,7 +135,6 @@ export class SchemaVersionManager {
    * Extract version from config
    */
   extractVersion(config: VersionedConfig): SchemaVersion {
-    // Try to get version from $version field
     if (config.$version) {
       try {
         return SchemaVersionManager.parseVersion(config.$version);
@@ -145,12 +143,10 @@ export class SchemaVersionManager {
       }
     }
 
-    // Try to get version from metadata
     if (config._metadata?.version) {
       return config._metadata.version;
     }
 
-    // Default to v1.0.0 for legacy configs
     this.logger.warn("No version information found, assuming v1.0.0");
     return { major: 1, minor: 0, patch: 0 };
   }
@@ -212,7 +208,6 @@ export class SchemaVersionManager {
     let migratedConfig = { ...config };
     const originalVersion = compatInfo.version;
 
-    // Apply each migration step
     for (const targetVersion of compatInfo.migrationPath) {
       const rule = this.findMigrationRule(
         this.extractVersion(migratedConfig),
@@ -227,13 +222,11 @@ export class SchemaVersionManager {
       this.logger.debug(`Applying migration: ${rule.description}`);
       migratedConfig = rule.migrate(migratedConfig);
 
-      // Validate if validation function exists
       if (rule.validate && !rule.validate(migratedConfig)) {
         throw new Error(`Migration validation failed: ${rule.description}`);
       }
     }
 
-    // Update metadata
     migratedConfig._metadata = {
       ...migratedConfig._metadata,
       version: SchemaVersionManager.getCurrentVersion(),
@@ -271,7 +264,6 @@ export class SchemaVersionManager {
       `${path.basename(originalPath, ".md")}-v${version}-${timestamp}.md`,
     );
 
-    // Convert config back to CLAUDE.md format for backup
     const claudeContent = this.configToClaudeFormat(config);
     await fs.promises.writeFile(backupPath, claudeContent, "utf-8");
 
@@ -314,13 +306,11 @@ export class SchemaVersionManager {
    * Initialize built-in migration rules
    */
   private initializeMigrationRules(): void {
-    // Example migration from v1.0.0 to v1.1.0
     this.registerMigrationRule({
       fromVersion: { major: 1, minor: 0, patch: 0 },
       toVersion: { major: 1, minor: 1, patch: 0 },
       description: "Add support for profile inheritance",
       migrate: (config: VersionedConfig) => {
-        // Add new inheritance field if it doesn't exist
         if (!config.inheritance) {
           config.inheritance = {
             enabled: false,
@@ -333,8 +323,6 @@ export class SchemaVersionManager {
         return config.inheritance !== undefined;
       },
     });
-
-    // Add more migration rules as needed...
   }
 
   /**
@@ -391,7 +379,6 @@ export class SchemaVersionManager {
   private getDeprecationWarnings(version: SchemaVersion): string[] {
     const warnings: string[] = [];
 
-    // Add version-specific warnings
     if (version.major === 1 && version.minor === 0) {
       warnings.push(
         'The "rules" section is deprecated, use "guidelines" instead',
@@ -426,12 +413,10 @@ export class SchemaVersionManager {
   private configToClaudeFormat(config: VersionedConfig): string {
     const sections: string[] = [];
 
-    // Add version header
     if (config.$version) {
       sections.push(`# Schema Version: ${config.$version}\n`);
     }
 
-    // Add standard sections
     if (config.title) {
       sections.push(`# ${config.title}\n`);
     }

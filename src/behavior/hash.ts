@@ -16,12 +16,10 @@ export async function computeProfileHash(
   const hasher = crypto.createHash("sha256");
 
   try {
-    // Hash main source file
     const sourceContent = await fs.readFile(target.source, "utf-8");
     hasher.update(`source:${target.source}`);
     hasher.update(sourceContent);
 
-    // Hash included files if any
     if (target.includes && target.includes.length > 0) {
       const sortedIncludes = [...target.includes].sort(); // Deterministic order
 
@@ -35,13 +33,11 @@ export async function computeProfileHash(
           hasher.update(`include:${includePath}`);
           hasher.update(includeContent);
         } catch (_error) {
-          // Include file not found - include path in hash but not content
           hasher.update(`include:${includePath}:missing`);
         }
       }
     }
 
-    // Hash options if any
     if (target.options) {
       const optionsStr = JSON.stringify(
         target.options,
@@ -76,7 +72,6 @@ export async function computeFilesHash(filePaths: string[]): Promise<string> {
       hasher.update(`file:${filePath}`);
       hasher.update(content);
     } catch (_error) {
-      // File not found - include path in hash
       hasher.update(`file:${filePath}:missing`);
     }
   }

@@ -56,17 +56,14 @@ export class AdminUI {
 
   private loadProfiles(): void {
     try {
-      // Load from .mcp-config.json
       if (fs.existsSync(this.configPath)) {
         const config = JSON.parse(fs.readFileSync(this.configPath, "utf-8"));
-        // Handle both formats for backward compatibility
         if (config.initialProfiles) {
           config.initialProfiles.forEach((profile: ProfileData) => {
             this.profiles.set(profile.name, profile);
           });
         }
 
-        // Handle profiles object format (used by tests)
         if (config.profiles && typeof config.profiles === "object") {
           Object.values(config.profiles).forEach((profile: unknown) => {
             const profileData = profile as ProfileData;
@@ -75,7 +72,6 @@ export class AdminUI {
         }
       }
 
-      // Load from YAML config
       try {
         const yamlConfig = this.yamlConfigManager.getConfig();
         if (yamlConfig.autoLoad?.profiles) {
@@ -105,15 +101,12 @@ export class AdminUI {
       );
 
       const config = {
-        // Save as profiles object for test compatibility
         profiles: Object.fromEntries(profilesArray.map((p) => [p.name, p])),
-        // Also keep initialProfiles for backward compatibility
         initialProfiles: profilesArray,
       };
       fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2));
     } catch (error) {
       console.error("Failed to save profiles:", error);
-      // Don't throw, just log the error for graceful handling
     }
   }
 
@@ -122,7 +115,6 @@ export class AdminUI {
       const content = fs.readFileSync(filePath, "utf-8");
       return crypto.createHash("sha256").update(content).digest("hex");
     } catch (_error) {
-      // Return empty string for non-existent files as expected by tests
       return "";
     }
   }
@@ -159,7 +151,6 @@ export class AdminUI {
       },
     ]);
 
-    // Command pattern to reduce cyclomatic complexity
     const menuHandlers: Record<string, () => Promise<void | string>> = {
       list: () => this.listProfiles(),
       add: () => this.addProfile(),
@@ -175,7 +166,6 @@ export class AdminUI {
       status: () => this.showSystemStatus(),
       exit: async () => {
         console.log(chalk.green("Thank you for using Omni MCP Hub Admin UI!"));
-        // For testing, don't call process.exit - just return
         if (process.env.NODE_ENV !== "test") {
           process.exit(0);
         }
@@ -434,14 +424,12 @@ export class AdminUI {
     console.log(chalk.blue("Validating profile..."));
 
     try {
-      // Check if file exists
       if (!fs.existsSync(profile.path)) {
         console.log(chalk.red("File not found"));
         return;
       }
       console.log(chalk.green("File exists"));
 
-      // Check checksum
       const currentChecksum = this.calculateChecksum(profile.path);
       if (profile.checksum && profile.checksum !== currentChecksum) {
         console.log(chalk.yellow("File has been modified"));
@@ -452,7 +440,6 @@ export class AdminUI {
         console.log(chalk.green("File integrity verified"));
       }
 
-      // Validate CLAUDE.md format
       try {
         const config = await this.claudeConfigManager.loadClaudeConfig(
           profile.path,
@@ -825,7 +812,6 @@ export class AdminUI {
   }
 }
 
-// CLI setup
 const program = new Command();
 
 program
@@ -853,12 +839,10 @@ program
   });
 
 export async function run(args: string[]): Promise<void> {
-  // Parse arguments without exiting process
   program.exitOverride();
   await program.parseAsync(args, { from: "user" });
 }
 
-// Default to interactive mode when run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   if (process.argv.length === 2) {
     process.argv.push("interactive");

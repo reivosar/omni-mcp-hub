@@ -17,7 +17,6 @@ interface VaultModule {
   (options: VaultConfig): VaultClient;
 }
 
-// Use a function that can be mocked by tests
 function loadVault(): VaultModule | null {
   try {
     return require("node-vault") as VaultModule;

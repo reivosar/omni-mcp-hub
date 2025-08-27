@@ -40,7 +40,6 @@ export class MCPProxyClient {
         capabilities: {},
       },
     );
-    // Filter out undefined values from environment
     const cleanEnv: Record<string, string> = {};
     for (const [key, value] of Object.entries({
       ...process.env,
@@ -51,7 +50,6 @@ export class MCPProxyClient {
       }
     }
 
-    // Convert relative paths in args to absolute paths
     const resolvedArgs = (config.args || []).map((arg) => {
       if (arg.endsWith(".js") && !arg.startsWith("/")) {
         const resolved = path.resolve(process.cwd(), arg);
@@ -82,7 +80,6 @@ export class MCPProxyClient {
         `Connected to external MCP server: ${this.config.name}`,
       );
 
-      // Fetch available tools and resources
       await this.fetchCapabilities();
     } catch (error) {
       this.logger.debug(`Failed to connect to ${this.config.name}:`, error);
@@ -109,14 +106,12 @@ export class MCPProxyClient {
 
   private async fetchCapabilities(): Promise<void> {
     try {
-      // Fetch tools
       const toolsResponse = await this.client.listTools();
       this.tools = toolsResponse.tools.map((tool) => ({
         ...tool,
         name: `${this.config.name}__${tool.name}`, // Prefix with server name to avoid conflicts
       }));
 
-      // Fetch resources
       const resourcesResponse = await this.client.listResources();
       this.resources = resourcesResponse.resources.map((resource) => ({
         ...resource,
@@ -147,7 +142,6 @@ export class MCPProxyClient {
       throw new Error(`Not connected to ${this.config.name}`);
     }
 
-    // Remove server prefix from tool name
     const originalName = name.replace(`${this.config.name}__`, "");
 
     try {
@@ -170,7 +164,6 @@ export class MCPProxyClient {
       throw new Error(`Not connected to ${this.config.name}`);
     }
 
-    // Remove server prefix from URI
     const originalUri = uri.replace(`${this.config.name}://`, "");
 
     try {

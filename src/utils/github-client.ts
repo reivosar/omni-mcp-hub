@@ -97,7 +97,6 @@ export class GitHubClient {
         throw new Error(`Path ${filePath} is not a file`);
       }
 
-      // Decode base64 content
       const content = Buffer.from(data.content, "base64").toString("utf8");
 
       return {
@@ -160,7 +159,6 @@ export class GitHubClient {
             download_url: item.download_url,
           });
         } else if (item.type === "dir") {
-          // For directories, we'll just create a basic entry without recursing
           directories.push({
             name: item.name,
             path: item.path,
@@ -193,14 +191,12 @@ export class GitHubClient {
       const directory = await this.fetchDirectory(config, dirPath);
       const markdownFiles: GitHubFile[] = [];
 
-      // Get markdown files from current directory
       const mdFiles = directory.files.filter(
         (file) =>
           file.name.toLowerCase().endsWith(".md") ||
           file.name.toLowerCase().endsWith(".markdown"),
       );
 
-      // Fetch content for each markdown file
       for (const mdFile of mdFiles) {
         try {
           const fileWithContent = await this.fetchFile(config, mdFile.path);
@@ -215,7 +211,6 @@ export class GitHubClient {
         }
       }
 
-      // Recursively process subdirectories
       for (const subdir of directory.directories) {
         try {
           const subdirMarkdownFiles = await this.fetchMarkdownFiles(
@@ -324,15 +319,12 @@ export class GitHubClient {
       let branch = "main";
       let path = "";
 
-      // Handle URLs like: https://github.com/owner/repo/tree/branch/path
       if (pathParts.length >= 4 && pathParts[2] === "tree") {
         branch = pathParts[3];
         if (pathParts.length > 4) {
           path = pathParts.slice(4).join("/");
         }
-      }
-      // Handle URLs like: https://github.com/owner/repo/blob/branch/path
-      else if (pathParts.length >= 4 && pathParts[2] === "blob") {
+      } else if (pathParts.length >= 4 && pathParts[2] === "blob") {
         branch = pathParts[3];
         if (pathParts.length > 4) {
           path = pathParts.slice(4).join("/");

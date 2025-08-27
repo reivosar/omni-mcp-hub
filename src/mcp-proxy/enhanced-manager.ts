@@ -27,16 +27,12 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 
 export interface EnhancedManagerConfig {
-  // Legacy compatibility
   enableLegacyMode: boolean;
 
-  // Resilience features
   resilience: Partial<SystemResilienceConfig>;
 
-  // Server-specific resilience config
   serverDefaults: Partial<ResilienceConfig>;
 
-  // Feature toggles
   features: {
     loadBalancing: boolean;
     circuitBreaker: boolean;
@@ -46,7 +42,6 @@ export interface EnhancedManagerConfig {
     detailedMetrics: boolean;
   };
 
-  // Migration settings
   migration: {
     enableGradualRollout: boolean;
     rolloutPercentage: number; // 0-100
@@ -120,7 +115,6 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
   private config: EnhancedManagerConfig;
   private enhancedLogger: ILogger;
 
-  // Legacy compatibility tracking
   private legacyServers = new Set<string>();
   private enhancedServers = new Set<string>();
   private migrationDecision = new Map<string, boolean>(); // true = enhanced, false = legacy
@@ -134,7 +128,6 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
     this.enhancedLogger = logger || new SilentLogger();
     this.config = { ...DEFAULT_ENHANCED_CONFIG, ...config };
 
-    // Initialize resilience manager
     this.resilienceManager = new ResilienceManager(
       this.config.resilience,
       this.enhancedLogger,
@@ -147,7 +140,6 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
   }
 
   private setupEventListeners(): void {
-    // Forward resilience events
     this.resilienceManager.on("alert", (alert) => {
       this.emit("alert", alert);
       this.enhancedLogger.warn(`[ENHANCED-MGR] Alert: ${alert.message}`, alert);
@@ -196,7 +188,6 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
         `[ENHANCED-MGR] Enhanced server added successfully: ${config.name}`,
       );
 
-      // Update aggregated capabilities
       this.emit("capabilitiesUpdated");
     } catch (error) {
       this.enhancedLogger.error(
@@ -204,7 +195,6 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
         error,
       );
 
-      // Fallback to legacy if configured
       if (this.config.migration.fallbackToLegacy) {
         this.enhancedLogger.warn(
           `[ENHANCED-MGR] Falling back to legacy mode for ${config.name}`,
@@ -265,7 +255,6 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
    * Enhanced tool calling with resilience
    */
   async callTool(toolName: string, args: unknown): Promise<CallToolResult> {
-    // Determine which server should handle this tool
     const serverName = this.findToolServer(toolName);
 
     if (!serverName) {
@@ -295,7 +284,6 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
    * Enhanced resource reading with resilience
    */
   async readResource(uri: string): Promise<ReadResourceResult> {
-    // Determine which server should handle this resource
     const serverName = this.findResourceServer(uri);
 
     if (!serverName) {
@@ -327,7 +315,6 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
     const legacyHealth = await super.performHealthCheck();
     const enhancedHealth = new Map<string, boolean>();
 
-    // Get enhanced server health from resilience manager
     if (this.config.features.healthChecking) {
       const serverStats = this.resilienceManager.getServerStats();
       for (const stats of serverStats) {
@@ -338,7 +325,6 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
       }
     }
 
-    // Combine results
     const combinedHealth = new Map<string, boolean>();
     for (const [name, healthy] of legacyHealth) {
       combinedHealth.set(name, healthy);
@@ -417,18 +403,15 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
       `[ENHANCED-MGR] Migrating server ${serverName} to enhanced mode`,
     );
 
-    // Get server configuration
     const serverInfo = this.getServerInfo(serverName);
     if (!serverInfo) {
       throw new Error(`Server ${serverName} configuration not found`);
     }
 
     try {
-      // Remove from legacy
       await super.removeServer(serverName);
       this.legacyServers.delete(serverName);
 
-      // Add as enhanced
       await this.addEnhancedServer(serverInfo);
 
       this.enhancedLogger.info(
@@ -440,7 +423,6 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
         error,
       );
 
-      // Try to restore legacy mode
       try {
         await this.addLegacyServer(serverInfo);
       } catch (restoreError) {
@@ -466,18 +448,15 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
       `[ENHANCED-MGR] Migrating server ${serverName} to legacy mode`,
     );
 
-    // Get server configuration
     const serverInfo = this.getServerInfo(serverName);
     if (!serverInfo) {
       throw new Error(`Server ${serverName} configuration not found`);
     }
 
     try {
-      // Remove from enhanced
       await this.resilienceManager.removeServer(serverName);
       this.enhancedServers.delete(serverName);
 
-      // Add as legacy
       await this.addLegacyServer(serverInfo);
 
       this.enhancedLogger.info(
@@ -501,7 +480,6 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
     if (isEnhanced) {
       await this.resilienceManager.forceRecovery(serverName);
     } else {
-      // Legacy recovery - disconnect and reconnect
       await super.removeServer(serverName);
       const serverInfo = this.getServerInfo(serverName);
       if (serverInfo) {
@@ -523,14 +501,12 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
     this.enhancedLogger.info("[ENHANCED-MGR] Configuration updated");
   }
 
-  // Helper methods
   private shouldUseEnhancedMode(serverName: string): boolean {
     if (this.config.enableLegacyMode) {
       return false;
     }
 
     if (this.config.migration.enableGradualRollout) {
-      // Use deterministic hash for consistent rollout
       const hash = this.hashString(serverName);
       const percentage = (hash % 100) + 1;
       return percentage <= this.config.migration.rolloutPercentage;
@@ -550,7 +526,6 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
   }
 
   private findToolServer(toolName: string): string | null {
-    // Find which server provides this tool
     const aggregatedTools = this.getAggregatedTools();
     const tool = aggregatedTools.find((t) => t.name === toolName);
 
@@ -562,7 +537,6 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
   }
 
   private findResourceServer(uri: string): string | null {
-    // Find which server provides this resource
     const aggregatedResources = this.getAggregatedResources();
     const resource = aggregatedResources.find((r) => r.uri === uri);
 
@@ -574,8 +548,6 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
   }
 
   private getServerInfo(_serverName: string): ExternalServerConfig | null {
-    // This would need to be implemented based on how server configs are stored
-    // For now, return null as placeholder
     return null;
   }
 
@@ -585,10 +557,8 @@ export class EnhancedMCPProxyManager extends MCPProxyManager {
   async cleanup(): Promise<void> {
     this.enhancedLogger.info("[ENHANCED-MGR] Starting enhanced cleanup...");
 
-    // Shutdown resilience manager
     await this.resilienceManager.shutdown();
 
-    // Cleanup legacy connections (if cleanup method exists)
     try {
       const baseManager = this as MCPProxyManager & { cleanup?: () => void };
       if (typeof baseManager.cleanup === "function") {

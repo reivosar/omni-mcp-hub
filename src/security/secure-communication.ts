@@ -126,8 +126,6 @@ export class CertificateManager extends EventEmitter {
     }
 
     try {
-      // Note: In a real implementation, you'd use fs.watchFile or chokidar
-      // For now, just track that we're watching the file
       this.logger.info(`Watching certificate file: ${certPath}`);
       this.watchedFiles.add(certPath);
       this.emit("certificate-watch-started", { name, path: certPath });
@@ -205,13 +203,11 @@ export class CertificateManager extends EventEmitter {
         const caContent = await fs.readFile(caPath, "utf8");
         const caCert = new crypto.X509Certificate(caContent);
 
-        // Verify certificate against CA
         const isValid = cert.verify(caCert.publicKey);
         this.logger.debug(`Certificate chain validation result: ${isValid}`);
         return isValid;
       }
 
-      // Basic validation without CA
       const now = new Date();
       return now >= new Date(cert.validFrom) && now <= new Date(cert.validTo);
     } catch (error) {
@@ -371,7 +367,6 @@ export class TLSServer extends EventEmitter {
       return false;
     }
 
-    // Check allowed subjects
     if (this.config.allowedSubjects && this.config.allowedSubjects.length > 0) {
       if (!this.config.allowedSubjects.includes(cert.subject.CN || "")) {
         this.logger.warn(
@@ -381,7 +376,6 @@ export class TLSServer extends EventEmitter {
       }
     }
 
-    // Check allowed fingerprints
     if (
       this.config.allowedFingerprints &&
       this.config.allowedFingerprints.length > 0
@@ -396,7 +390,6 @@ export class TLSServer extends EventEmitter {
       }
     }
 
-    // Custom verification function
     if (this.config.verifyClient) {
       return this.config.verifyClient(cert);
     }
@@ -425,7 +418,6 @@ export class TLSServer extends EventEmitter {
     }
 
     return new Promise((resolve) => {
-      // Close all active sessions
       this.activeSessions.forEach((socket) => {
         socket.destroy();
       });
@@ -630,14 +622,12 @@ export class TLSClient extends EventEmitter {
     cert: tls.PeerCertificate,
   ): Error | undefined {
     try {
-      // Perform additional server certificate validation
       const now = new Date();
       if (now < new Date(cert.valid_from) || now > new Date(cert.valid_to)) {
         this.metrics.certificateValidationFailures++;
         return new Error(`Server certificate is not valid for current time`);
       }
 
-      // Check hostname matching
       if (
         cert.subject.CN !== hostname &&
         !cert.subjectaltname?.includes(`DNS:${hostname}`)
@@ -723,7 +713,6 @@ export class TLSClient extends EventEmitter {
   }
 }
 
-// Combined secure communication manager
 export class SecureCommunicationManager extends EventEmitter {
   private certificateManager: CertificateManager;
   private tlsServer?: TLSServer;
@@ -735,7 +724,6 @@ export class SecureCommunicationManager extends EventEmitter {
     this.logger = logger || new SilentLogger();
     this.certificateManager = new CertificateManager(logger);
 
-    // Forward certificate manager events
     this.certificateManager.on("certificate-expired", (data) =>
       this.emit("certificate-expired", data),
     );
@@ -771,7 +759,6 @@ export class SecureCommunicationManager extends EventEmitter {
   ): Promise<void> {
     this.tlsServer = new TLSServer(config, this.logger);
 
-    // Forward server events
     this.tlsServer.on("connection", (socket, clientInfo) =>
       this.emit("server-connection", socket, clientInfo),
     );
@@ -795,7 +782,6 @@ export class SecureCommunicationManager extends EventEmitter {
   ): Promise<TLSClient> {
     const client = new TLSClient(tlsConfig, connectionConfig, this.logger);
 
-    // Forward client events
     client.on("connected", () => this.emit("client-connected", name));
     client.on("disconnected", () => this.emit("client-disconnected", name));
     client.on("data", (data) => this.emit("client-data", name, data));
@@ -869,12 +855,10 @@ export class SecureCommunicationManager extends EventEmitter {
   async destroy(): Promise<void> {
     this.logger.info("Shutting down secure communication manager...");
 
-    // Stop TLS server
     if (this.tlsServer) {
       await this.tlsServer.stop();
     }
 
-    // Disconnect all clients
     for (const [name, client] of this.tlsClients.entries()) {
       try {
         await client.disconnect();

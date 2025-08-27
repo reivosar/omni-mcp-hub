@@ -42,9 +42,7 @@ export interface ScanOptions {
   enableContextAnalysis?: boolean;
 }
 
-// Comprehensive secret patterns database
 const DEFAULT_SECRET_PATTERNS: SecretPattern[] = [
-  // API Keys
   {
     name: "AWS Access Key ID",
     pattern: /\b(AKIA[0-9A-Z]{16})\b/gi,
@@ -57,7 +55,6 @@ const DEFAULT_SECRET_PATTERNS: SecretPattern[] = [
     severity: "critical",
     description: "Potential AWS Secret Access Key",
     falsePositiveCheck: (_match, _context) => {
-      // Check if it's in a known AWS context
       return (
         !_context.toLowerCase().includes("aws") && !_context.includes("secret")
       );
@@ -171,7 +168,6 @@ const DEFAULT_SECRET_PATTERNS: SecretPattern[] = [
     },
   },
 
-  // Private Keys & Certificates
   {
     name: "RSA Private Key",
     pattern: /-----BEGIN RSA PRIVATE KEY-----/gi,
@@ -209,7 +205,6 @@ const DEFAULT_SECRET_PATTERNS: SecretPattern[] = [
     description: "SSH Private Key detected",
   },
 
-  // Database Connection Strings
   {
     name: "PostgreSQL Connection String",
     pattern: /postgres:\/\/[^:]+:[^@]+@[^/]+\/\w+/gi,
@@ -235,7 +230,6 @@ const DEFAULT_SECRET_PATTERNS: SecretPattern[] = [
     description: "Redis connection string with password",
   },
 
-  // Cloud Provider Secrets
   {
     name: "Azure Storage Account Key",
     pattern: /\b([a-zA-Z0-9+/]{86}==)\b/g,
@@ -261,14 +255,12 @@ const DEFAULT_SECRET_PATTERNS: SecretPattern[] = [
     description: "GCP Service Account JSON detected",
   },
 
-  // Authentication Tokens
   {
     name: "JWT Token",
     pattern: /\beyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+/g,
     severity: "medium",
     description: "JWT Token detected",
     falsePositiveCheck: (_match, _context) => {
-      // Check if it's an example or documentation
       return _context.includes("example") || _context.includes("test");
     },
   },
@@ -285,7 +277,6 @@ const DEFAULT_SECRET_PATTERNS: SecretPattern[] = [
     description: "Bearer Token detected",
   },
 
-  // Environment Variables & Config
   {
     name: "Generic API Key",
     pattern:
@@ -300,7 +291,6 @@ const DEFAULT_SECRET_PATTERNS: SecretPattern[] = [
     severity: "high",
     description: "Generic secret/password pattern detected",
     falsePositiveCheck: (_match, _context) => {
-      // Exclude common false positives
       const lowerMatch = _match.toLowerCase();
       return (
         lowerMatch.includes("placeholder") ||
@@ -323,7 +313,6 @@ const DEFAULT_SECRET_PATTERNS: SecretPattern[] = [
     description: "Environment variable containing potential secret",
   },
 
-  // Cryptocurrency
   {
     name: "Bitcoin Private Key",
     pattern: /\b[5KL][1-9A-HJ-NP-Za-km-z]{50,51}\b/g,
@@ -381,7 +370,6 @@ export class SecretsScanner {
     const findings: SecretFinding[] = [];
 
     try {
-      // Check file size
       const stats = await fs.stat(filePath);
       if (stats.size > this.options.maxFileSizeBytes) {
         this.logger.debug(
@@ -390,12 +378,10 @@ export class SecretsScanner {
         return findings;
       }
 
-      // Skip excluded paths
       if (this.shouldExcludePath(filePath)) {
         return findings;
       }
 
-      // Skip test files if not included
       if (!this.options.includeTests && this.isTestFile(filePath)) {
         return findings;
       }
@@ -407,11 +393,9 @@ export class SecretsScanner {
         const matches = this.findMatches(content, pattern);
 
         for (const match of matches) {
-          // Get line and column information
           const position = this.getPosition(content, match.index);
           const context = this.getContext(lines, position.line);
 
-          // Check for false positives
           if (
             pattern.falsePositiveCheck &&
             pattern.falsePositiveCheck(match.value, context)
@@ -464,7 +448,6 @@ export class SecretsScanner {
             findings.push(...fileFindings);
             filesScanned++;
 
-            // Block immediately on critical findings if configured
             if (
               this.options.blockOnDetection &&
               fileFindings.some((f) => f.severity === "critical")
@@ -683,7 +666,6 @@ export class SecretsScanner {
     const matches: Array<{ value: string; index: number }> = [];
     let match;
 
-    // Reset regex lastIndex
     pattern.pattern.lastIndex = 0;
 
     while ((match = pattern.pattern.exec(content)) !== null) {
@@ -795,5 +777,4 @@ export class SecretsScanner {
   }
 }
 
-// Export singleton instance for global use
 export const defaultSecretsScanner = new SecretsScanner();

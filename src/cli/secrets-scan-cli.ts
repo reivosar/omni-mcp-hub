@@ -64,7 +64,6 @@ async function main() {
   const options: CLIOptions = program.opts();
 
   try {
-    // Create scanner instance
     const scanner = new SecretsScanner({
       includeTests: options.includeTests,
       excludePaths: options.exclude || [],
@@ -75,7 +74,6 @@ async function main() {
     let result;
 
     if (options.preCommit) {
-      // Pre-commit mode: scan staged files
       const stagedFiles = await getStagedFiles();
       if (stagedFiles.length === 0) {
         if (!options.quiet) {
@@ -90,7 +88,6 @@ async function main() {
 
       result = await scanner.preCommitScan(stagedFiles);
     } else {
-      // Normal mode: scan specified path
       const stats = await fs.stat(scanPath);
 
       if (stats.isFile()) {
@@ -112,7 +109,6 @@ async function main() {
       }
     }
 
-    // Filter by severity if specified
     if (options.severity && options.severity !== "low") {
       const severityLevels = ["low", "medium", "high", "critical"];
       const minLevel = severityLevels.indexOf(options.severity);
@@ -123,10 +119,8 @@ async function main() {
       });
     }
 
-    // Generate report
     const report = scanner.generateReport(result.findings, options.format);
 
-    // Output report
     if (options.output) {
       await fs.writeFile(options.output, report, "utf-8");
       if (!options.quiet) {
@@ -140,12 +134,10 @@ async function main() {
       }
     }
 
-    // Display summary
     if (!options.quiet && !options.output) {
       displayConsoleSummary(result);
     }
 
-    // Check fail conditions
     if (options.failOn && result.findings.length > 0) {
       const severityLevels = ["low", "medium", "high", "critical"];
       const failLevel = severityLevels.indexOf(options.failOn);
@@ -163,7 +155,6 @@ async function main() {
       }
     }
 
-    // Exit with error if blocked
     if (result.blocked) {
       console.error("\nCritical secrets detected - operation blocked");
       process.exit(1);
@@ -263,12 +254,10 @@ async function getStagedFiles(): Promise<string[]> {
 }
 
 export async function run(args: string[]): Promise<void> {
-  // Override process.argv for testing
   const originalArgv = process.argv;
   const originalExit = process.exit;
 
   try {
-    // Mock process.exit to prevent actual exit during tests
     process.exit = ((code?: number) => {
       throw new Error(`process.exit called with code ${code}`);
     }) as typeof process.exit;
@@ -276,7 +265,6 @@ export async function run(args: string[]): Promise<void> {
     process.argv = ["node", "secrets-scan-cli", ...args];
     await main();
   } catch (error) {
-    // Handle expected exit calls gracefully - all exit codes are OK for testing
     if (
       error instanceof Error &&
       error.message.includes("process.exit called with code")
@@ -290,7 +278,6 @@ export async function run(args: string[]): Promise<void> {
   }
 }
 
-// Run CLI when executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((error) => {
     console.error("Fatal error:", error);

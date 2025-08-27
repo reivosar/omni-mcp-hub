@@ -204,16 +204,13 @@ export class ProcessErrorHandler {
     try {
       this.logger.info("[CLEANUP] Starting server cleanup...");
 
-      // Stop metrics collection
       if (this.metricsInterval) {
         this.timerAdapter.clearInterval(this.metricsInterval);
         this.metricsInterval = undefined;
       }
 
-      // Emit cleanup events
       this.processAdapter.emit("beforeExit", 0);
 
-      // Give time for cleanup
       await new Promise((resolve) =>
         this.timerAdapter.setTimeout(() => resolve(undefined), 100),
       );
@@ -270,7 +267,6 @@ export class ProcessErrorHandler {
     }
   }
 
-  // For testing: reset internal state
   reset(): void {
     this.isShuttingDown = false;
     if (this.metricsInterval) {
@@ -279,7 +275,6 @@ export class ProcessErrorHandler {
     }
   }
 
-  // Getters for testing
   get shuttingDown(): boolean {
     return this.isShuttingDown;
   }

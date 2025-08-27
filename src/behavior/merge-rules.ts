@@ -66,35 +66,29 @@ export class ProfileMerger {
     newProfile: ProfileMergeResult,
     options: MergeOptions = {},
   ): ProfileMergeResult {
-    // Default: complete replacement of previous profile
     if (!previousProfile) {
       return { ...newProfile };
     }
 
     const result: ProfileMergeResult = {};
 
-    // Process each section in the new profile
     for (const [key, value] of Object.entries(newProfile)) {
       const strategy = this.determineStrategy(key, options);
 
       switch (strategy) {
         case MergeStrategy.REPLACE:
-          // Complete replacement (default behavior)
           result[key] = value;
           break;
 
         case MergeStrategy.APPEND:
-          // Append to existing (only for whitelisted sections)
           if (Array.isArray(value) && Array.isArray(previousProfile[key])) {
             result[key] = [...(previousProfile[key] as unknown[]), ...value];
           } else {
-            // Fallback to replacement for non-arrays
             result[key] = value;
           }
           break;
 
         case MergeStrategy.UNION:
-          // Union for allowToolsAppend
           if (
             key === "allowToolsAppend" &&
             Array.isArray(value) &&
@@ -123,17 +117,14 @@ export class ProfileMerger {
     sectionName: string,
     options: MergeOptions,
   ): MergeStrategy {
-    // Force replacement for prohibited sections
     if (REPLACE_ONLY_SECTIONS.has(sectionName)) {
       return MergeStrategy.REPLACE;
     }
 
-    // Union strategy for allowToolsAppend
     if (sectionName === "allowToolsAppend" && options.preserveToolsAppend) {
       return MergeStrategy.UNION;
     }
 
-    // Append strategy for explicitly requested sections
     if (
       options.appendSections?.includes(sectionName) &&
       APPEND_ALLOWED_SECTIONS.has(sectionName)
@@ -141,7 +132,6 @@ export class ProfileMerger {
       return MergeStrategy.APPEND;
     }
 
-    // Default: complete replacement
     return MergeStrategy.REPLACE;
   }
 

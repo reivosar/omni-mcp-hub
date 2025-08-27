@@ -149,7 +149,6 @@ export class RBACManager extends EventEmitter {
       userRole.expiresAt = expiresAt;
     }
 
-    // Only recompute permissions if the role is not already expired
     if (!expiresAt || new Date() <= expiresAt) {
       this.recomputeUserPermissions(userId);
     }

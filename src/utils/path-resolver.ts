@@ -47,7 +47,6 @@ export class PathResolver {
    * Generate possible paths for a profile name with secure path joining
    */
   generateProfilePaths(profileName: string): string[] {
-    // Validate profile name for dangerous patterns (but allow simple names)
     if (containsDangerousPatterns(profileName)) {
       throw new Error(
         `Invalid profile name contains dangerous patterns: ${profileName}`,
@@ -79,7 +78,6 @@ export class PathResolver {
    * Generate possible paths for a file path with secure path joining
    */
   generateFilePaths(filePath: string): string[] {
-    // Validate file path for dangerous patterns (but allow simple paths)
     if (containsDangerousPatterns(filePath)) {
       throw new Error(
         `Invalid file path contains dangerous patterns: ${filePath}`,
@@ -119,10 +117,8 @@ export class PathResolver {
     }
 
     try {
-      // For absolute paths (including Windows paths like C:\), validate and return
       const isWindowsAbsolute = /^[a-zA-Z]:[\\/]/.test(relativePath);
       if (path.isAbsolute(relativePath) || isWindowsAbsolute) {
-        // Use safeResolve directly with allowAbsolutePaths=true for absolute paths
         try {
           return safeResolve(relativePath, {
             allowAbsolutePaths: true,
@@ -142,7 +138,6 @@ export class PathResolver {
         }
       }
 
-      // For relative paths, use safe resolution with flexible roots
       return safeResolve(relativePath, {
         allowAbsolutePaths: false,
         allowedRoots: [
@@ -155,10 +150,7 @@ export class PathResolver {
         followSymlinks: false,
       });
     } catch (_error) {
-      // Fallback to standard resolution with pattern validation
-      // Skip dangerous pattern check in test environment to allow test data
       if (process.env.NODE_ENV !== "test" && process.env.VITEST !== "true") {
-        // Use safeResolve with appropriate options for fallback validation
         try {
           return safeResolve(relativePath, {
             allowAbsolutePaths: true, // Allow absolute paths in fallback
@@ -172,17 +164,15 @@ export class PathResolver {
             followSymlinks: false,
           });
         } catch (_fallbackError) {
-          // Continue to simple resolution
+          // Fallback path resolution failed
         }
       }
 
-      // Handle Windows absolute paths
       const isWindowsAbsolute = /^[a-zA-Z]:[\\/]/.test(relativePath);
       if (path.isAbsolute(relativePath) || isWindowsAbsolute) {
         return path.resolve(relativePath);
       }
 
-      // Always resolve relative paths from current working directory
       return path.resolve(process.cwd(), relativePath);
     }
   }
@@ -193,7 +183,6 @@ export class PathResolver {
    */
   resolveProfilePath(profilePath: string): string {
     try {
-      // Use secure path resolution with validation
       return this.resolveAbsolutePath(profilePath);
     } catch (error) {
       throw new Error(

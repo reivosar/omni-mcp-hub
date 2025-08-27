@@ -40,12 +40,10 @@ export class ProfileInheritanceManager {
   async resolveProfile(profilePath: string): Promise<ProfileResolutionResult> {
     const normalizedPath = path.resolve(profilePath);
 
-    // Check cache first
     if (this.resolutionCache.has(normalizedPath)) {
       return this.resolutionCache.get(normalizedPath)!;
     }
 
-    // Check for circular dependencies
     if (this.activeResolutions.has(normalizedPath)) {
       return {
         config: {} as InheritableConfig,
@@ -80,12 +78,10 @@ export class ProfileInheritanceManager {
     };
 
     try {
-      // Load the main profile
       const mainConfig = (await this.configManager.loadClaudeConfig(
         profilePath,
       )) as InheritableConfig;
 
-      // If no inheritance is configured, return as-is
       if (
         !mainConfig.inheritance ||
         !mainConfig.inheritance.enabled ||
@@ -97,7 +93,6 @@ export class ProfileInheritanceManager {
 
       this.logger.debug(`Resolving inheritance for ${profilePath}`);
 
-      // Resolve base profiles
       const resolvedBases: InheritableConfig[] = [];
 
       for (const baseProfile of mainConfig.inheritance.baseProfiles) {
@@ -138,16 +133,13 @@ export class ProfileInheritanceManager {
         }
       }
 
-      // If there were errors resolving bases, return partial result
       if (result.errors.length > 0) {
         result.config = mainConfig;
         return result;
       }
 
-      // Merge configurations
       result.config = this.mergeConfigs(resolvedBases, mainConfig);
 
-      // Add inheritance metadata
       result.config._inheritanceChain = [...result.chain];
       result.config._resolvedFrom = [...mainConfig.inheritance.baseProfiles];
       result.config.inheritance = mainConfig.inheritance;
@@ -175,7 +167,6 @@ export class ProfileInheritanceManager {
 
     let result: InheritableConfig = {};
 
-    // Start with base configurations (in order)
     for (const baseConfig of baseConfigs) {
       result = this.mergeSingleConfig(
         result,
@@ -185,7 +176,6 @@ export class ProfileInheritanceManager {
       );
     }
 
-    // Finally merge the main config
     result = this.mergeSingleConfig(result, mainConfig, strategy, mergeArrays);
 
     return result;
@@ -203,22 +193,17 @@ export class ProfileInheritanceManager {
     const result = { ...target };
 
     for (const [key, value] of Object.entries(source)) {
-      // Skip internal metadata fields from inheritance, except when merging the main config
       if (key.startsWith("_") || key === "inheritance") {
         continue;
       }
 
       if (strategy === "replace" && target[key]) {
-        // Replace strategy: overwrite existing values
         result[key] = value;
       } else {
-        // merge strategy or no existing value
         if (!result[key]) {
-          // No existing value, just use the new value
           result[key] = value;
         } else if (Array.isArray(value) && Array.isArray(result[key])) {
           if (mergeArrays) {
-            // Merge arrays: combine and deduplicate
             const combined = [...(result[key] as unknown[]), ...value];
             result[key] = combined.filter(
               (item, index, arr) =>
@@ -227,7 +212,6 @@ export class ProfileInheritanceManager {
                 ) === index,
             );
           } else {
-            // Don't merge arrays, just replace
             result[key] = value;
           }
         } else if (
@@ -236,13 +220,11 @@ export class ProfileInheritanceManager {
           typeof result[key] === "object" &&
           result[key] !== null
         ) {
-          // Merge objects recursively
           result[key] = this.mergeObjects(
             result[key] as Record<string, unknown>,
             value as Record<string, unknown>,
           );
         } else {
-          // For primitives in merge strategy, the source overwrites
           result[key] = value;
         }
       }
@@ -294,11 +276,9 @@ export class ProfileInheritanceManager {
       return profilePath;
     }
 
-    // Resolve relative to current profile directory
     const currentDir = path.dirname(currentProfilePath);
     let resolved = path.resolve(currentDir, profilePath);
 
-    // Add .md extension if not present
     if (!resolved.endsWith(".md")) {
       resolved += ".md";
     }
@@ -323,7 +303,6 @@ export class ProfileInheritanceManager {
 
     const inheritance = config.inheritance;
 
-    // Check required fields
     if (typeof inheritance.enabled !== "boolean") {
       errors.push("inheritance.enabled must be a boolean");
     }
@@ -338,7 +317,6 @@ export class ProfileInheritanceManager {
           "inheritance.baseProfiles is empty but inheritance is enabled",
         );
       } else {
-        // Validate base profile paths
         inheritance.baseProfiles.forEach((profile, index) => {
           if (typeof profile !== "string") {
             errors.push(`inheritance.baseProfiles[${index}] must be a string`);
@@ -348,7 +326,6 @@ export class ProfileInheritanceManager {
         });
       }
 
-      // Validate override strategy
       if (
         inheritance.overrideStrategy &&
         !["merge", "replace"].includes(inheritance.overrideStrategy)
@@ -358,7 +335,6 @@ export class ProfileInheritanceManager {
         );
       }
 
-      // Validate optional boolean fields
       if (
         inheritance.mergeArrays !== undefined &&
         typeof inheritance.mergeArrays !== "boolean"
@@ -431,7 +407,6 @@ export class ProfileInheritanceManager {
   ): Promise<ProfileResolutionResult> {
     const normalizedPath = path.resolve(profilePath);
 
-    // Temporarily clear from cache to force fresh resolution
     const cached = this.resolutionCache.get(normalizedPath);
     this.resolutionCache.delete(normalizedPath);
 
@@ -439,7 +414,6 @@ export class ProfileInheritanceManager {
       const result = await this.resolveProfile(normalizedPath);
       return result;
     } finally {
-      // Restore cache if it existed
       if (cached) {
         this.resolutionCache.set(normalizedPath, cached);
       }

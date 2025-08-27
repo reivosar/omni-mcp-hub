@@ -148,7 +148,6 @@ export class ProfileSignatureVerifier {
     try {
       const { content, signature, metadata } = signedProfile;
 
-      // Check if we have the public key
       let publicKey: string;
       if (metadata.keyId) {
         const key = this.publicKeys.get(metadata.keyId);
@@ -166,7 +165,6 @@ export class ProfileSignatureVerifier {
         };
       }
 
-      // Check algorithm support
       if (!this.algorithms.includes(metadata.algorithm)) {
         return {
           isValid: false,
@@ -174,7 +172,6 @@ export class ProfileSignatureVerifier {
         };
       }
 
-      // Check timestamp (prevent replay attacks with old signatures)
       const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
       if (Date.now() - metadata.timestamp > maxAge) {
         return {
@@ -183,7 +180,6 @@ export class ProfileSignatureVerifier {
         };
       }
 
-      // Verify signature
       const dataToVerify = this.createSignaturePayload(content, metadata);
       const isValid = this.verifySignature(
         dataToVerify,
@@ -221,12 +217,10 @@ export class ProfileSignatureVerifier {
   ): boolean {
     const actualChecksum = this.createChecksum(profileContent);
 
-    // Check if lengths are equal first to avoid timingSafeEqual error
     if (actualChecksum.length !== expectedChecksum.length) {
       return false;
     }
 
-    // Validate that both are valid hex strings
     const hexPattern = /^[0-9a-fA-F]+$/;
     if (
       !hexPattern.test(actualChecksum) ||
@@ -241,7 +235,6 @@ export class ProfileSignatureVerifier {
         Buffer.from(expectedChecksum, "hex"),
       );
     } catch (_error) {
-      // In case of any buffer creation error, return false
       return false;
     }
   }
@@ -321,7 +314,7 @@ export class ProfileSignatureVerifier {
         this.publicKeys.set(keyId, publicKey);
       }
     } catch (_error) {
-      // Ignore errors during key loading - keys can be added manually
+      // Key directory not found or unreadable, continue without loading keys
     }
   }
 
@@ -351,7 +344,6 @@ export class ProfileSignatureVerifier {
     privateKeyPem: string,
     algorithm: string,
   ): string {
-    // Ed25519 requires special handling
     if (algorithm === "Ed25519") {
       const keyObject = crypto.createPrivateKey(privateKeyPem);
       const signature = crypto.sign(null, Buffer.from(data), keyObject);
@@ -387,7 +379,6 @@ export class ProfileSignatureVerifier {
     publicKeyPem: string,
     algorithm: string,
   ): boolean {
-    // Ed25519 requires special handling
     if (algorithm === "Ed25519") {
       const keyObject = crypto.createPublicKey(publicKeyPem);
       return crypto.verify(
@@ -472,12 +463,10 @@ export class ProfileSignatureVerifier {
       },
     };
 
-    // Sign each profile
     for (const [name, content] of Object.entries(profiles)) {
       bundle.profiles[name] = this.signProfile(content, privateKeyPem, keyId);
     }
 
-    // Sign the entire bundle
     const bundleContent = JSON.stringify(
       bundle.profiles,
       Object.keys(bundle.profiles).sort(),
@@ -507,7 +496,6 @@ export class ProfileSignatureVerifier {
     let bundleValid = true;
     let bundleSignatureValid: boolean | undefined;
 
-    // Verify each profile in the bundle
     for (const [name, signedProfile] of Object.entries(bundle.profiles) as [
       string,
       SignedProfile,
@@ -518,16 +506,13 @@ export class ProfileSignatureVerifier {
       }
     }
 
-    // Verify bundle signature if present
     if (bundle.bundleSignature) {
       try {
-        // Reconstruct the bundle content that was signed
         const bundleContent = JSON.stringify(
           bundle.profiles,
           Object.keys(bundle.profiles).sort(),
         );
 
-        // Verify that the bundleSignature content matches the reconstructed content
         if (bundle.bundleSignature.content === bundleContent) {
           const bundleVerificationResult = this.verifyProfile(
             bundle.bundleSignature,

@@ -38,13 +38,10 @@ export class FailFastValidator {
     } = options;
 
     try {
-      // Initialize validator
       await this.validator.initialize();
 
-      // Perform validation
       const result = await this.validator.validateConfig(configPath);
 
-      // Handle validation results
       if (!result.valid) {
         this.displayErrors(result, detailedOutput);
 
@@ -60,12 +57,10 @@ export class FailFastValidator {
         return result;
       }
 
-      // Show warnings if requested
       if (showWarnings && result.warnings.length > 0) {
         this.displayWarnings(result, detailedOutput);
       }
 
-      // Show success message
       if (detailedOutput) {
         this.logger.info(
           chalk.green("SUCCESS Configuration validation passed"),
@@ -165,7 +160,6 @@ export class FailFastValidator {
     const config = result.config;
     this.logger.info(chalk.blue("\nLIST Configuration Summary:"));
 
-    // Show mode and preset
     if (config.mode) {
       this.logger.info(chalk.blue(`   Mode: ${config.mode}`));
     }
@@ -173,13 +167,11 @@ export class FailFastValidator {
       this.logger.info(chalk.blue(`   Preset: ${config.preset}`));
     }
 
-    // Show profiles count
     const profilesCount = config.autoLoad?.profiles?.length || 0;
     if (profilesCount > 0) {
       this.logger.info(chalk.blue(`   Profiles: ${profilesCount} configured`));
     }
 
-    // Show external servers count
     const serversCount = config.externalServers?.servers?.length || 0;
     if (config.externalServers?.enabled && serversCount > 0) {
       this.logger.info(
@@ -187,7 +179,6 @@ export class FailFastValidator {
       );
     }
 
-    // Show logging level
     if (config.logging?.level) {
       this.logger.info(chalk.blue(`   Log Level: ${config.logging.level}`));
     }
@@ -214,11 +205,9 @@ export class FailFastValidator {
 
       let report = "";
 
-      // Header
       report += chalk.blue.bold("INSIGHTS Omni MCP Hub Configuration Doctor\n");
       report += "=".repeat(40) + "\n\n";
 
-      // Overall status
       if (result.valid) {
         report += chalk.green("SUCCESS Status: HEALTHY\n");
       } else {
@@ -227,7 +216,6 @@ export class FailFastValidator {
 
       report += "\n";
 
-      // Errors section
       if (result.errors.length > 0) {
         report += chalk.red.bold("ALERT Critical Issues:\n");
         result.errors.forEach((error, index) => {
@@ -239,7 +227,6 @@ export class FailFastValidator {
         });
       }
 
-      // Warnings section
       if (result.warnings.length > 0) {
         report += chalk.yellow.bold("WARNING  Recommendations:\n");
         result.warnings.forEach((warning, index) => {
@@ -251,7 +238,6 @@ export class FailFastValidator {
         });
       }
 
-      // Health summary
       if (result.valid && result.warnings.length === 0) {
         report += chalk.green(" Your configuration is in perfect health!\n");
       } else if (result.valid) {

@@ -61,12 +61,10 @@ export class ProfileManager {
     };
 
     try {
-      // Load the base configuration
       const config = (await this.configManager.loadClaudeConfig(
         profilePath,
       )) as InheritableConfig;
 
-      // Validate inheritance config if present
       if (this.options.validateOnLoad && config.inheritance) {
         const validation =
           this.inheritanceManager.validateInheritanceConfig(config);
@@ -79,7 +77,6 @@ export class ProfileManager {
         }
       }
 
-      // Resolve inheritance if requested and enabled
       if (resolveInheritance && config.inheritance?.enabled) {
         const resolution =
           await this.inheritanceManager.resolveProfile(profilePath);
@@ -110,7 +107,6 @@ export class ProfileManager {
   ): Promise<Map<string, ProfileLoadResult>> {
     const results = new Map<string, ProfileLoadResult>();
 
-    // Load all profiles in parallel
     const promises = profilePaths.map(async (profilePath) => {
       const result = await this.loadProfile(profilePath, resolveInheritance);
       results.set(path.resolve(profilePath), result);
@@ -158,7 +154,6 @@ export class ProfileManager {
     )) as InheritableConfig;
     config.inheritance = inheritanceConfig;
 
-    // Validate the new configuration
     const validation =
       this.inheritanceManager.validateInheritanceConfig(config);
     if (!validation.valid) {
@@ -169,7 +164,6 @@ export class ProfileManager {
 
     await this.configManager.saveClaude(profilePath, config);
 
-    // Clear cache to force re-resolution
     this.inheritanceManager.clearCache();
 
     this.logger.info(`Updated inheritance for profile: ${profilePath}`);
@@ -201,12 +195,10 @@ export class ProfileManager {
     const warnings: string[] = [];
 
     try {
-      // Load and validate basic configuration
       const config = (await this.configManager.loadClaudeConfig(
         profilePath,
       )) as InheritableConfig;
 
-      // Validate inheritance configuration
       if (config.inheritance) {
         const validation =
           this.inheritanceManager.validateInheritanceConfig(config);
@@ -214,7 +206,6 @@ export class ProfileManager {
         warnings.push(...validation.warnings);
       }
 
-      // Check for circular dependencies
       const circularCheck = await this.checkCircularDependencies(profilePath);
       if (circularCheck.hasCircular) {
         errors.push(
@@ -222,7 +213,6 @@ export class ProfileManager {
         );
       }
 
-      // Attempt full resolution
       if (config.inheritance?.enabled) {
         const resolution =
           await this.inheritanceManager.resolveProfile(profilePath);
@@ -309,7 +299,6 @@ export class ProfileManager {
       );
     }
 
-    // Remove inheritance metadata from exported config
     const exportConfig = { ...resolution.config, _exported: true };
     delete exportConfig.inheritance;
     delete exportConfig._inheritanceChain;

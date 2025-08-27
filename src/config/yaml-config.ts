@@ -17,7 +17,6 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// External server configuration interface
 export interface ExternalServerConfig {
   name: string;
   command: string;
@@ -26,7 +25,6 @@ export interface ExternalServerConfig {
   description?: string;
 }
 
-// YAML configuration file type definitions
 export interface YamlConfig {
   mode?: "minimal" | "standard" | "advanced";
   preset?: "claude-basic" | "claude-enterprise" | "custom";
@@ -74,7 +72,6 @@ export interface YamlConfig {
   };
 }
 
-// Default configuration
 const DEFAULT_CONFIG: YamlConfig = {
   mode: "minimal",
   preset: "claude-basic",
@@ -173,7 +170,6 @@ export class YamlConfigManager {
       const content = await fs.readFile(yamlPath, "utf-8");
       const yamlData = yaml.load(content) as YamlConfig;
 
-      // Perform validation if requested
       if (options?.validate) {
         try {
           if (!this.validator) {
@@ -202,7 +198,6 @@ export class YamlConfigManager {
         }
       }
 
-      // Merge with default configuration
       this.config = this.mergeConfig(DEFAULT_CONFIG, yamlData);
       this.configPath = yamlPath;
 
@@ -225,14 +220,12 @@ export class YamlConfigManager {
   private findYamlConfigFile(): string {
     let configPath: string;
 
-    // Check for environment variable first
     if (process.env.OMNI_CONFIG_PATH) {
       configPath = process.env.OMNI_CONFIG_PATH;
       console.log(
         `[YAML-CONFIG] Using config from OMNI_CONFIG_PATH: ${configPath}`,
       );
 
-      // Validate environment-provided path
       if (!defaultPathValidator.isPathSafe(configPath)) {
         throw new Error(
           `OMNI_CONFIG_PATH contains dangerous patterns: ${configPath}`,
@@ -373,10 +366,8 @@ export class YamlConfigManager {
     const excludePatterns = this.config.fileSettings?.excludePatterns || [];
     return excludePatterns.some((pattern) => {
       try {
-        // Check filename match
         if (this.matchesPattern(filePath, pattern)) return true;
 
-        // Check full path match (for directory patterns)
         let regexPattern = pattern
           .replace(/\*/g, "__ASTERISK__")
           .replace(/\?/g, "__QUESTION__")
@@ -387,7 +378,6 @@ export class YamlConfigManager {
         const regex = new RegExp(regexPattern, "i");
         return regex.test(filePath);
       } catch (_error) {
-        // Fallback to simple string comparison on regex error
         return filePath.toLowerCase().includes(pattern.toLowerCase());
       }
     });
@@ -406,7 +396,6 @@ export class YamlConfigManager {
    * Check if directory should be included with security validation
    */
   shouldIncludeDirectory(dirPath: string): boolean {
-    // Validate directory path security (but allow simple paths)
     if (containsDangerousPatterns(dirPath)) {
       if (this.config.logging?.verboseFileLoading) {
         this.logger.debug(
@@ -463,7 +452,6 @@ export class YamlConfigManager {
       this.configPath ||
       pathResolver.resolveAbsolutePath("omni-config.yaml");
 
-    // Validate save path security (but allow simple paths)
     if (containsDangerousPatterns(savePath)) {
       throw new Error(
         `Configuration save path contains dangerous patterns: ${savePath}`,
@@ -471,7 +459,6 @@ export class YamlConfigManager {
     }
 
     try {
-      // Ensure path is within allowed roots with flexible validation
       safeResolve(savePath, {
         allowAbsolutePaths: true,
         allowedRoots: [

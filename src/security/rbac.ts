@@ -48,7 +48,6 @@ export class RBACManager extends EventEmitter {
   private users: Map<string, User> = new Map();
   private usageStats: Map<string, UsageStats> = new Map();
 
-  // Default roles
   private defaultRoles: Role[] = [
     {
       name: "read-only",
@@ -97,7 +96,6 @@ export class RBACManager extends EventEmitter {
     super();
     this.initializeDefaultRoles();
 
-    // Cleanup expired usage stats every minute
     setInterval(() => this.cleanupExpiredStats(), 60 * 1000);
   }
 
@@ -107,7 +105,6 @@ export class RBACManager extends EventEmitter {
     });
   }
 
-  // Role Management
   public addRole(role: Role): void {
     this.roles.set(role.name, role);
     this.emit("roleAdded", role);
@@ -129,7 +126,6 @@ export class RBACManager extends EventEmitter {
     return Array.from(this.roles.values());
   }
 
-  // User Management
   public addUser(user: User): void {
     this.users.set(user.id, user);
     this.initializeUserStats(user.id);
@@ -158,7 +154,6 @@ export class RBACManager extends EventEmitter {
     return true;
   }
 
-  // Permission Checking
   public hasPermission(
     userId: string,
     resource: string,
@@ -172,7 +167,6 @@ export class RBACManager extends EventEmitter {
       if (!role) return false;
 
       return role.permissions.some((permission) => {
-        // Check wildcard permissions
         if (permission.resource === "*" && permission.action === "*") {
           return true;
         }
@@ -183,13 +177,11 @@ export class RBACManager extends EventEmitter {
           return true;
         }
 
-        // Check exact match
         return permission.resource === resource && permission.action === action;
       });
     });
   }
 
-  // Quota Management
   public checkQuota(userId: string, operation: string): boolean {
     const user = this.users.get(userId);
     if (!user) return false;
@@ -202,7 +194,6 @@ export class RBACManager extends EventEmitter {
     const currentHour = Math.floor(now / 3600000);
     const currentDay = Math.floor(now / 86400000);
 
-    // Reset counters if time windows have changed
     if (stats.windowStart.minute !== currentMinute) {
       stats.requestsThisMinute = 0;
       stats.windowStart.minute = currentMinute;
@@ -216,7 +207,6 @@ export class RBACManager extends EventEmitter {
       stats.windowStart.day = currentDay;
     }
 
-    // Check quotas
     if (operation === "request") {
       if (
         quotas.maxRequestsPerMinute &&
@@ -296,7 +286,6 @@ export class RBACManager extends EventEmitter {
     const user = this.users.get(userId);
     if (!user) return {};
 
-    // User-specific quotas override role quotas
     if (user.quotas) {
       return { ...this.getRoleQuotas(user.roles), ...user.quotas };
     }
@@ -310,7 +299,6 @@ export class RBACManager extends EventEmitter {
     roleNames.forEach((roleName) => {
       const role = this.roles.get(roleName);
       if (role?.quotas) {
-        // Take the maximum quota from all roles
         Object.entries(role.quotas).forEach(([key, value]) => {
           if (value !== undefined) {
             const quotaKey = key as keyof ResourceQuotas;
@@ -359,7 +347,6 @@ export class RBACManager extends EventEmitter {
     const oneHour = 60 * 60 * 1000;
 
     for (const [userId, stats] of this.usageStats.entries()) {
-      // Remove stats for inactive users (no requests in last hour)
       if (now - stats.lastRequestTime > oneHour) {
         this.usageStats.delete(userId);
         this.emit("statsExpired", userId);
@@ -367,7 +354,6 @@ export class RBACManager extends EventEmitter {
     }
   }
 
-  // Reporting and Analytics
   public getUserUsageStats(userId: string): UsageStats | undefined {
     return this.usageStats.get(userId);
   }
@@ -412,7 +398,6 @@ export class RBACManager extends EventEmitter {
     return utilization;
   }
 
-  // Export/Import for persistence
   public exportConfiguration(): {
     roles: [string, Role][];
     users: [string, User][];
@@ -435,7 +420,6 @@ export class RBACManager extends EventEmitter {
     }
     if (config.users) {
       this.users = new Map(config.users);
-      // Reinitialize stats for all users
       this.users.forEach((_, userId) => {
         this.initializeUserStats(userId);
       });

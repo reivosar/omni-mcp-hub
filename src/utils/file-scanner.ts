@@ -37,13 +37,10 @@ export class FileScanner {
     yamlConfigOrLogger?: YamlConfigManager | ILogger,
     logger?: ILogger,
   ) {
-    // Handle different constructor signatures for backward compatibility
     if (yamlConfigOrLogger && "getConfig" in yamlConfigOrLogger) {
-      // First argument is YamlConfigManager
       this.yamlConfig = yamlConfigOrLogger as YamlConfigManager;
       this.logger = logger || new SilentLogger();
     } else {
-      // First argument is ILogger or undefined
       this.yamlConfig = new YamlConfigManager(); // Create default
       this.logger = (yamlConfigOrLogger as ILogger) || new SilentLogger();
     }
@@ -61,7 +58,6 @@ export class FileScanner {
 
     const files: FileInfo[] = [];
 
-    // If includePaths are configured, scan those directories
     const includePaths = config.fileSettings?.includePaths || [];
     if (includePaths.length > 0) {
       for (const includePath of includePaths) {
@@ -79,14 +75,12 @@ export class FileScanner {
             );
           }
         } catch (_error) {
-          // Directory doesn't exist, skip it
           if (config.logging?.verboseFileLoading) {
             this.logger.debug(`Directory not found: ${absolutePath}`);
           }
         }
       }
     } else {
-      // No includePaths configured, scan targetPath
       try {
         await this.scanDirectoryRecursively(targetPath, files, scanOptions, 0);
       } catch (error) {
@@ -108,12 +102,10 @@ export class FileScanner {
     options: Required<ScanOptions>,
     currentDepth: number,
   ): Promise<void> {
-    // Check maximum depth
     if (options.maxDepth > 0 && currentDepth >= options.maxDepth) {
       return;
     }
 
-    // Check if directory should be included
     if (!this.yamlConfig.shouldIncludeDirectory(dirPath)) {
       return;
     }
@@ -125,14 +117,11 @@ export class FileScanner {
         let fullPath: string;
 
         try {
-          // Use secure path joining to prevent path traversal
           fullPath = safeJoin(dirPath, entry.name);
 
-          // Additional validation with PathResolver
           const pathResolver = PathResolver.getInstance();
           fullPath = pathResolver.resolveAbsolutePath(fullPath);
         } catch (error) {
-          // Skip entries that fail security validation
           if (this.yamlConfig.getConfig().logging?.verboseFileLoading) {
             this.logger.debug(
               `Skipping entry due to security validation: ${entry.name}`,
@@ -142,18 +131,15 @@ export class FileScanner {
           continue;
         }
 
-        // Skip hidden files/directories
         if (!options.includeHidden && entry.name.startsWith(".")) {
           continue;
         }
 
-        // Check exclusion patterns
         if (this.yamlConfig.isExcluded(fullPath)) {
           continue;
         }
 
         if (entry.isDirectory()) {
-          // Recursively scan directory
           if (options.recursive) {
             await this.scanDirectoryRecursively(
               fullPath,
@@ -166,7 +152,6 @@ export class FileScanner {
           entry.isFile() ||
           (entry.isSymbolicLink() && options.followSymlinks)
         ) {
-          // Check file extension
           if (!this.yamlConfig.isAllowedExtension(fullPath)) {
             continue;
           }
@@ -193,7 +178,6 @@ export class FileScanner {
     options: Required<ScanOptions>,
   ): Promise<FileInfo | null> {
     try {
-      // Validate path security first using safeResolve directly with appropriate options
       try {
         safeResolve(filePath, {
           allowAbsolutePaths: true, // Files will be absolute paths
@@ -216,7 +200,6 @@ export class FileScanner {
         return null;
       }
 
-      // Use secure path existence validation with flexible roots
       const pathExists = await validatePathExists(filePath, {
         allowAbsolutePaths: true,
         allowedRoots: [
@@ -240,7 +223,6 @@ export class FileScanner {
       const extension = path.extname(filePath);
       const directory = path.dirname(filePath);
 
-      // Check if this is a CLAUDE.md file
       const isClaudeConfig = this.isClaudeConfigFile(filePath, options);
       let matchedPattern: string | undefined;
 
@@ -272,14 +254,12 @@ export class FileScanner {
     const configFiles = config.fileSettings?.configFiles;
     const fileName = path.basename(filePath);
 
-    // If specific patterns are provided, use only those
     if (options.patterns && options.patterns.length > 0) {
       return options.patterns.some((pattern) =>
         this.yamlConfig.matchesPattern(fileName, pattern),
       );
     }
 
-    // Check configured patterns if available
     if (configFiles) {
       const patterns = [
         configFiles.claude,
@@ -295,21 +275,16 @@ export class FileScanner {
       }
     }
 
-    // Check custom patterns even without main config
     if (options.customPatterns && options.customPatterns.length > 0) {
       return options.customPatterns.some((pattern) => {
-        // Handle glob patterns like *.test
         if (pattern.includes("*")) {
           const regex = new RegExp("^" + pattern.replace(/\*/g, ".*") + "$");
           return regex.test(fileName);
         }
-        // Handle regular string matching
         return fileName.includes(pattern);
       });
     }
 
-    // If no configFiles and no custom patterns, return false
-    // This handles the specific test case where both are empty
     return false;
   }
 
@@ -410,7 +385,6 @@ export class FileScanner {
    */
   static async fileExists(filePath: string): Promise<boolean> {
     try {
-      // Use secure path validation with flexible roots
       return await validatePathExists(filePath, {
         allowAbsolutePaths: true,
         allowedRoots: [
@@ -432,7 +406,6 @@ export class FileScanner {
    */
   static async directoryExists(dirPath: string): Promise<boolean> {
     try {
-      // Validate path security first
       if (!defaultPathValidator.isPathSafe(dirPath)) {
         return false;
       }
@@ -448,7 +421,6 @@ export class FileScanner {
    * Find Claude configuration files
    */
   findClaudeConfigFiles(directory: string, options?: ScanOptions): string[] {
-    // Synchronous version for compatibility with tests
     const results: string[] = [];
     const scanOptions = this.mergeScanOptions(
       this.yamlConfig.getConfig(),
@@ -458,7 +430,7 @@ export class FileScanner {
     try {
       this.scanDirectorySyncRecursive(directory, results, scanOptions, 0);
     } catch (_error) {
-      // Return empty array on error
+      // Directory scan failed, return empty results
     }
 
     return results.sort();
@@ -473,12 +445,10 @@ export class FileScanner {
     options: Required<ScanOptions>,
     currentDepth: number,
   ): void {
-    // Check maximum depth
     if (options.maxDepth > 0 && currentDepth >= options.maxDepth) {
       return;
     }
 
-    // Check if directory should be included
     if (!this.yamlConfig.shouldIncludeDirectory(dirPath)) {
       return;
     }
@@ -490,29 +460,23 @@ export class FileScanner {
         let fullPath: string;
 
         try {
-          // Use secure path joining to prevent path traversal
           fullPath = path.join(dirPath, entry.name);
 
-          // Additional validation with PathResolver
           const pathResolver = PathResolver.getInstance();
           fullPath = pathResolver.resolveAbsolutePath(fullPath);
         } catch (_error) {
-          // Skip entries that fail security validation
           continue;
         }
 
-        // Skip hidden files/directories unless allowed
         if (!options.includeHidden && entry.name.startsWith(".")) {
           continue;
         }
 
-        // Check exclusion patterns
         if (this.yamlConfig.isExcluded(fullPath)) {
           continue;
         }
 
         if (entry.isDirectory()) {
-          // Recursively scan directory
           if (options.recursive) {
             this.scanDirectorySyncRecursive(
               fullPath,
@@ -525,7 +489,6 @@ export class FileScanner {
           entry.isFile() ||
           (entry.isSymbolicLink() && options.followSymlinks)
         ) {
-          // Check file extension
           if (!this.yamlConfig.isAllowedExtension(fullPath)) {
             continue;
           }
@@ -537,7 +500,7 @@ export class FileScanner {
         }
       }
     } catch (_error) {
-      // Skip directories that can't be accessed
+      // Failed to process directory entry
     }
   }
 
@@ -549,7 +512,6 @@ export class FileScanner {
     options: Required<ScanOptions>,
   ): FileInfo | null {
     try {
-      // Validate path security first using safeResolve directly with appropriate options
       try {
         safeResolve(filePath, {
           allowAbsolutePaths: true, // Files will be absolute paths
@@ -573,7 +535,6 @@ export class FileScanner {
       const extension = path.extname(filePath);
       const directory = path.dirname(filePath);
 
-      // Check if this is a CLAUDE.md file
       const isClaudeConfig = this.isClaudeConfigFile(filePath, options);
       let matchedPattern: string | undefined;
 
@@ -619,7 +580,6 @@ export class FileScanner {
           const subResults = this.scanDirectory(fullPath, options);
           results.push(...subResults);
         } else if (entry.isFile()) {
-          // Apply filters
           if (options?.extensions) {
             const ext = path.extname(entry.name);
             if (!options.extensions.includes(ext)) {
@@ -662,7 +622,7 @@ export class FileScanner {
         }
       }
     } catch {
-      // Return empty array on error
+      // Failed to scan directory
     }
 
     return results;
@@ -704,7 +664,6 @@ export class FileScanner {
       const content = fsSync.readFileSync(filePath, "utf-8");
       if (content.length === 0) return false;
 
-      // Check for basic markdown structure
       return /^#+\s+.+$/m.test(content);
     } catch {
       return false;
@@ -817,7 +776,7 @@ export class FileScanner {
           results.push({ file, matches });
         }
       } catch {
-        // Skip files that can't be read (like binary files)
+        // Failed to process file for search
       }
     }
 

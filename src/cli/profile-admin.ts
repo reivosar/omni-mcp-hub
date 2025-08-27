@@ -4,7 +4,6 @@ import { Command } from "commander";
 import * as fs from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
-// import { ClaudeConfigManager } from '../utils/claude-config.js';
 
 const program = new Command();
 
@@ -208,7 +207,6 @@ class ProfileAdminCLI {
   }
 }
 
-// CLI Commands
 program
   .name("profile-admin")
   .description("CLI to manage Omni MCP Hub profiles")
@@ -277,12 +275,10 @@ program
   });
 
 export async function run(args: string[]): Promise<void> {
-  // Override process.argv for testing
   const originalArgv = process.argv;
   const originalExit = process.exit;
 
   try {
-    // Mock process.exit to prevent actual exit during tests
     process.exit = ((code?: number) => {
       throw new Error(`process.exit called with code ${code}`);
     }) as typeof process.exit;
@@ -290,7 +286,6 @@ export async function run(args: string[]): Promise<void> {
     process.argv = ["node", "profile-admin", ...args];
     program.parse(process.argv);
   } catch (error) {
-    // Handle expected exit calls gracefully
     if (
       error instanceof Error &&
       error.message.includes("process.exit called with code")
@@ -304,7 +299,6 @@ export async function run(args: string[]): Promise<void> {
   }
 }
 
-// Run CLI when executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   program.parse(process.argv);
 }

@@ -16,7 +16,6 @@ import {
   createStandardErrorResponse,
 } from "../utils/error-handler.js";
 
-// Interface for OmniMCPServer to replace 'any' type
 interface IOmniMCPServer {
   setAppliedBehaviorInstructions(instructions: string): void;
 }
@@ -62,12 +61,10 @@ export class ToolHandlers {
     const yamlConfigPath = pathResolver.getYamlConfigPath();
     this.logger.debug("[TOOL-HANDLERS] YAML config path:", yamlConfigPath);
 
-    // Handle both old and new constructor signatures
     if (proxyManagerOrFileScanner && "addServer" in proxyManagerOrFileScanner) {
       this.logger.debug(
         "[TOOL-HANDLERS] Using new signature with MCPProxyManager",
       );
-      // New signature with MCPProxyManager
       this.proxyManager = proxyManagerOrFileScanner;
       this.fileScanner = new FileScanner(
         YamlConfigManager.createWithPath(yamlConfigPath, this.logger),
@@ -75,7 +72,6 @@ export class ToolHandlers {
       );
     } else {
       this.logger.debug("[TOOL-HANDLERS] Using old signature with FileScanner");
-      // Old signature with FileScanner
       this.fileScanner =
         proxyManagerOrFileScanner ||
         new FileScanner(
@@ -102,11 +98,8 @@ export class ToolHandlers {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       this.logger.debug("[TOOL-HANDLER] Processing tools/list request");
 
-      // Check if local resources are configured by checking external servers and fileSettings
-      // If external servers are disabled OR fileSettings are configured, include CLAUDE.md tools
       let hasLocalResources = true;
 
-      // Check if fileSettings are configured in YAML config
       const pathResolver = PathResolver.getInstance();
       const yamlConfigPath = pathResolver.getYamlConfigPath();
       const yamlConfigManager = YamlConfigManager.createWithPath(
@@ -120,7 +113,6 @@ export class ToolHandlers {
 
       if (this.proxyManager) {
         const connectedServers = this.proxyManager.getConnectedServers();
-        // Include CLAUDE.md tools if no external servers OR if fileSettings are configured
         hasLocalResources = connectedServers.length === 0 || hasFileSettings;
         this.logger.info(
           `[TOOL-HANDLER] Connected servers count: ${connectedServers.length}`,
@@ -142,10 +134,8 @@ export class ToolHandlers {
         `[TOOL-HANDLER] Local resources configured: ${hasLocalResources}`,
       );
 
-      // Only include CLAUDE.md management tools if local resources are configured
       const baseTools = hasLocalResources
         ? [
-            // CLAUDE.md management tools
             {
               name: "apply_claude_config",
               description: "Load and activate a CLAUDE.md configuration file",
@@ -197,7 +187,6 @@ export class ToolHandlers {
         this.logger.info(`[TOOL-HANDLER] Base tool ${i + 1}: ${tool.name}`);
       });
 
-      // Add proxied tools from external MCP servers
       let aggregatedTools: unknown[] = [...baseTools];
       this.logger.debug(
         `[TOOL-HANDLER] Checking proxy manager: ${this.proxyManager ? "exists" : "null"}`,
@@ -275,7 +264,6 @@ export class ToolHandlers {
           return this.handleGetAppliedConfig(args);
 
         default:
-          // Check if it's a proxied tool from external MCP server
           if (this.proxyManager) {
             this.logger.debug(
               `[TOOL-HANDLER] Attempting proxy tool call: ${name}`,
@@ -318,7 +306,6 @@ export class ToolHandlers {
       JSON.stringify(args),
     );
 
-    // Support single string argument or normal object argument
     let filePath: string = "";
     let profileName: string | undefined;
     let autoApply: boolean = true; // Auto-apply by default
@@ -327,7 +314,6 @@ export class ToolHandlers {
       this.logger.debug(
         "[APPLY-CLAUDE-CONFIG] Arguments type: string, treating as profileName",
       );
-      // Treat as profileName if string (common usage pattern)
       profileName = args;
     } else if (args && typeof args === "object") {
       this.logger.debug(
@@ -350,7 +336,6 @@ export class ToolHandlers {
         autoApply,
       );
 
-      // If filePath is empty, look for first argument value (could be profileName)
       if (!filePath && !profileName) {
         const keys = Object.keys(args);
         if (keys.length > 0) {
@@ -359,7 +344,6 @@ export class ToolHandlers {
           if (keys[0] === "filePath") {
             filePath = firstValue;
           } else {
-            // Treat first argument as profileName
             profileName = firstValue;
           }
         }
@@ -373,13 +357,11 @@ export class ToolHandlers {
       profileName,
     );
 
-    // Handle profileName-only case (resolve path from YAML config)
     if (!filePath && profileName) {
       this.logger.debug(
         "[APPLY-CLAUDE-CONFIG] Handling profileName-only case:",
         profileName,
       );
-      // First check if profile is already loaded
       if (this.activeProfiles.has(profileName)) {
         this.logger.debug(
           "[APPLY-CLAUDE-CONFIG] Profile already loaded:",
@@ -387,7 +369,6 @@ export class ToolHandlers {
         );
         const config = this.activeProfiles.get(profileName);
 
-        // If profile is already loaded, apply it directly
         this.lastAppliedProfile = profileName;
         this.lastAppliedTime = new Date().toISOString();
 
@@ -398,13 +379,11 @@ export class ToolHandlers {
           },
         ];
 
-        // If auto-apply is enabled
         if (autoApply) {
           const behaviorInstructions = BehaviorGenerator.generateInstructions(
             config!,
           );
 
-          // Actually apply the behavior instructions to the system
           if (
             this.omniMCPServer &&
             typeof this.omniMCPServer.setAppliedBehaviorInstructions ===
@@ -445,7 +424,6 @@ export class ToolHandlers {
         };
       }
 
-      // If not loaded, try to find the file path
       this.logger.debug(
         "[APPLY-CLAUDE-CONFIG] Profile not loaded, searching for file path",
       );
@@ -460,7 +438,6 @@ export class ToolHandlers {
         filePath = existingPath;
       }
 
-      // If still no filePath, try YAML config autoLoad profiles first
       if (!filePath) {
         this.logger.debug(
           "[APPLY-CLAUDE-CONFIG] No existing path found, checking YAML config autoLoad profiles",
@@ -483,7 +460,6 @@ export class ToolHandlers {
           );
           const autoLoadProfiles = yamlConfig.autoLoad?.profiles || [];
 
-          // Look for matching profile in autoLoad
           const matchingProfile = autoLoadProfiles.find(
             (p) => p.name === profileName,
           );
@@ -496,7 +472,6 @@ export class ToolHandlers {
               "[APPLY-CLAUDE-CONFIG] Found matching profile in autoLoad:",
               matchingProfile.path,
             );
-            // Use PathResolver to handle all path resolution
             const pathResolver = PathResolver.getInstance();
             let resolvedPath = pathResolver.resolveProfilePath(
               matchingProfile.path,
@@ -520,7 +495,6 @@ export class ToolHandlers {
                 "Error:",
                 error,
               );
-              // Path from YAML config doesn't work, continue to fallback
             }
           }
         } catch (error) {
@@ -528,11 +502,9 @@ export class ToolHandlers {
             "[APPLY-CLAUDE-CONFIG] Failed to load YAML config:",
             error,
           );
-          // YAML config loading failed, continue to fallback
         }
       }
 
-      // If still no filePath, try common paths as fallback
       if (!filePath) {
         this.logger.debug(
           "[APPLY-CLAUDE-CONFIG] Still no filePath, trying common paths fallback",
@@ -564,19 +536,16 @@ export class ToolHandlers {
               "Error:",
               error,
             );
-            // Continue to next path
           }
         }
       }
     }
 
-    // If we have a filePath (either provided or resolved), resolve path format
     if (filePath) {
       this.logger.debug(
         "[APPLY-CLAUDE-CONFIG] Resolving filePath format:",
         filePath,
       );
-      // Use PathResolver to handle all path resolution consistently
       const pathResolver = PathResolver.getInstance();
       const originalPath = filePath;
       filePath = pathResolver.resolveProfilePath(filePath);
@@ -600,7 +569,6 @@ export class ToolHandlers {
       filePath,
     );
 
-    // If it's just a name without extension, try common patterns
     if (!path.extname(filePath) && !filePath.includes("/")) {
       this.logger.debug(
         "[APPLY-CLAUDE-CONFIG] FilePath has no extension, trying common patterns",
@@ -632,7 +600,6 @@ export class ToolHandlers {
             "Error:",
             error,
           );
-          // Continue to next path
         }
       }
     }
@@ -652,7 +619,6 @@ export class ToolHandlers {
       Object.keys(config),
     );
 
-    // Auto-generate profile name from filename (without extension) or use default
     const yamlConfigManager = new YamlConfigManager();
     const autoProfileName =
       profileName ||
@@ -668,7 +634,6 @@ export class ToolHandlers {
       this.activeProfiles.size,
     );
 
-    // Track the last applied profile
     this.lastAppliedProfile = autoProfileName;
     this.lastAppliedTime = new Date().toISOString();
     this.logger.debug(
@@ -685,7 +650,6 @@ export class ToolHandlers {
       },
     ];
 
-    // If auto-apply is enabled
     if (autoApply) {
       this.logger.debug(
         "[APPLY-CLAUDE-CONFIG] Auto-apply enabled, generating behavior instructions",
@@ -697,7 +661,6 @@ export class ToolHandlers {
         behaviorInstructions.length,
       );
 
-      // Actually apply the behavior instructions to the system
       if (
         this.omniMCPServer &&
         typeof this.omniMCPServer.setAppliedBehaviorInstructions === "function"
@@ -747,14 +710,11 @@ export class ToolHandlers {
 
   private async doHandleListClaudeConfigs(_args: unknown) {
     this.logger.info("[LIST-CLAUDE-CONFIGS] Starting list operation");
-    // Get loaded configs
     const loadedConfigNames = Array.from(this.activeProfiles.keys());
     this.logger.info(
       "[LIST-CLAUDE-CONFIGS] Loaded config names:",
       loadedConfigNames,
     );
-
-    // Only show loaded configs, no file scanning
 
     const result = {
       loaded: loadedConfigNames.map((name) => {
@@ -799,7 +759,6 @@ export class ToolHandlers {
     this.logger.debug(
       "[GET-APPLIED-CONFIG] Starting get applied config operation",
     );
-    // Track the last applied profile (we'll need to store this when apply_claude_config is called)
     const lastAppliedProfile = this.lastAppliedProfile;
     this.logger.debug(
       "[GET-APPLIED-CONFIG] Last applied profile:",

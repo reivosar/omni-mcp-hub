@@ -74,7 +74,6 @@ export class InputSanitizer extends EventEmitter {
   private logger: ILogger;
   private metrics: SecurityMetrics;
 
-  // Common injection patterns
   private readonly SQL_INJECTION_PATTERNS = [
     /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT)\b)|('|(\\|;|--|\/\*|\*\/))/gi,
     /((%27)|('))(.*)((%27)|('))/gi,
@@ -149,10 +148,8 @@ export class InputSanitizer extends EventEmitter {
     let sanitized = input;
 
     try {
-      // Trim whitespace
       sanitized = sanitized.trim();
 
-      // Length check
       if (sanitized.length > this.config.maxStringLength) {
         sanitized = sanitized.substring(0, this.config.maxStringLength);
         this.logger.warn(
@@ -160,37 +157,30 @@ export class InputSanitizer extends EventEmitter {
         );
       }
 
-      // SQL injection prevention (before HTML escaping to catch raw patterns)
       if (this.config.enableSqlInjectionPrevention) {
         sanitized = this.preventSqlInjection(sanitized);
       }
 
-      // XSS protection (before HTML escaping to catch raw patterns)
       if (this.config.enableXssProtection) {
         sanitized = this.preventXss(sanitized);
       }
 
-      // Command injection prevention (before HTML escaping)
       if (this.config.enableCommandInjectionPrevention) {
         sanitized = this.preventCommandInjection(sanitized);
       }
 
-      // Path traversal prevention (before HTML escaping)
       if (this.config.enablePathTraversalPrevention) {
         sanitized = this.preventPathTraversal(sanitized);
       }
 
-      // HTML escape (after security checks to avoid interfering with pattern matching)
       if (this.config.enableHtmlEscape) {
         sanitized = this.escapeHtml(sanitized);
       }
 
-      // Custom sanitizers
       for (const customSanitizer of this.config.customSanitizers) {
         sanitized = customSanitizer(sanitized);
       }
 
-      // Check for blocked patterns
       for (const pattern of this.config.blockedPatterns) {
         if (pattern.test(sanitized)) {
           this.recordSuspiciousPattern(pattern.toString());
@@ -321,13 +311,10 @@ export class InputSanitizer extends EventEmitter {
 
     let sanitized = filePath.trim();
 
-    // Normalize path
     sanitized = path.normalize(sanitized);
 
-    // Remove path traversal attempts
     sanitized = this.preventPathTraversal(sanitized);
 
-    // Check file extension
     const ext = path.extname(sanitized).toLowerCase();
     if (
       this.config.allowedFileExtensions.length > 0 &&
@@ -424,25 +411,21 @@ export class InputValidator extends EventEmitter {
     };
 
     try {
-      // Check if required
       if (rule.required && (value === null || value === undefined)) {
         result.errors.push("Value is required");
         result.isValid = false;
         return result;
       }
 
-      // Skip validation for null/undefined if not required
       if (value === null || value === undefined) {
         return result;
       }
 
-      // Sanitize if requested
       if (rule.sanitize) {
         result.value = this.sanitizer.sanitizeObject(value);
         value = result.value;
       }
 
-      // Type-specific validation
       switch (rule.type) {
         case "string":
           return this.validateString(value, rule, result);
@@ -494,13 +477,11 @@ export class InputValidator extends EventEmitter {
 
     const str = value as string;
 
-    // Empty string check
     if (!rule.allowEmpty && str.length === 0) {
       result.errors.push("String cannot be empty");
       result.isValid = false;
     }
 
-    // Length checks
     if (rule.minLength !== undefined && str.length < rule.minLength) {
       result.errors.push(
         `String must be at least ${rule.minLength} characters long`,
@@ -513,7 +494,6 @@ export class InputValidator extends EventEmitter {
       result.isValid = false;
     }
 
-    // Pattern check
     if (rule.pattern && !rule.pattern.test(str)) {
       result.errors.push("String does not match required pattern");
       result.isValid = false;
@@ -588,7 +568,6 @@ export class InputValidator extends EventEmitter {
 
     const arr = value as unknown[];
 
-    // Length checks
     if (rule.minLength !== undefined && arr.length < rule.minLength) {
       result.errors.push(`Array must contain at least ${rule.minLength} items`);
       result.isValid = false;
@@ -601,7 +580,6 @@ export class InputValidator extends EventEmitter {
       result.isValid = false;
     }
 
-    // Validate items if rule specified
     if (rule.items) {
       const validatedItems = [];
       let hasErrors = false;
@@ -641,7 +619,6 @@ export class InputValidator extends EventEmitter {
     const validatedObj: Record<string, unknown> = {};
 
     if (rule.properties) {
-      // Validate defined properties
       for (const [propName, propRule] of Object.entries(rule.properties)) {
         const propResult = this.validate(obj[propName], propRule);
         validatedObj[propName] = propResult.value;
@@ -654,7 +631,6 @@ export class InputValidator extends EventEmitter {
         }
       }
 
-      // Check for additional properties
       if (!rule.allowAdditionalProperties) {
         for (const key of Object.keys(obj)) {
           if (!(key in rule.properties)) {
@@ -664,7 +640,6 @@ export class InputValidator extends EventEmitter {
           }
         }
       } else {
-        // Copy additional properties
         for (const [key, val] of Object.entries(obj)) {
           if (!(key in rule.properties)) {
             validatedObj[key] = val;
@@ -832,7 +807,6 @@ export class InputValidator extends EventEmitter {
   }
 }
 
-// Combined input security manager
 export class InputSecurityManager extends EventEmitter {
   private sanitizer: InputSanitizer;
   private validator: InputValidator;
@@ -844,7 +818,6 @@ export class InputSecurityManager extends EventEmitter {
     this.sanitizer = new InputSanitizer(config, logger);
     this.validator = new InputValidator(this.sanitizer, logger);
 
-    // Forward events
     this.sanitizer.on("injection-attempt", (data) =>
       this.emit("security-violation", { type: "injection", ...data }),
     );

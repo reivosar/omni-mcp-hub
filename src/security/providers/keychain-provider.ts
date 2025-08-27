@@ -13,7 +13,6 @@ interface KeytarModule {
   ): Promise<Array<{ account: string; password: string }>>;
 }
 
-// Use a function that can be mocked by tests
 function loadKeytar(): KeytarModule | null {
   try {
     return require("keytar") as KeytarModule;
@@ -57,7 +56,6 @@ export class KeychainSecretProvider extends BaseSecretProvider {
         }
         throw new Error(`Field ${field} not found in secret`);
       } catch (error) {
-        // Only catch JSON parsing errors, not our intentional field-not-found errors
         if (
           error instanceof Error &&
           error.message.includes("Field") &&

@@ -20,7 +20,6 @@ import {
   ResilienceConfig,
 } from "./resilience.js";
 
-// Load balancing strategies
 export enum LoadBalancingStrategy {
   ROUND_ROBIN = "round_robin",
   LEAST_CONNECTIONS = "least_connections",
@@ -29,7 +28,6 @@ export enum LoadBalancingStrategy {
   RANDOM = "random",
 }
 
-// Failover strategies
 export enum FailoverStrategy {
   IMMEDIATE = "immediate",
   CIRCUIT_BREAKER = "circuit_breaker",
@@ -37,7 +35,6 @@ export enum FailoverStrategy {
   MANUAL_ONLY = "manual_only",
 }
 
-// System-level resilience configuration
 export interface SystemResilienceConfig {
   loadBalancing: {
     strategy: LoadBalancingStrategy;
@@ -120,7 +117,6 @@ const DEFAULT_SYSTEM_CONFIG: SystemResilienceConfig = {
   },
 };
 
-// System-wide metrics and health information
 export interface SystemMetrics {
   timestamp: Date;
   totalServers: number;
@@ -148,7 +144,6 @@ export interface SystemAlert {
   details?: Record<string, unknown>;
 }
 
-// Request queue item for load balancing
 interface QueuedRequest {
   id: string;
   serverName?: string; // Preferred server
@@ -231,7 +226,6 @@ export class ResilienceManager extends EventEmitter {
       this.logger,
     );
 
-    // Set up event listeners
     connection.on(
       "stateChange",
       (newState: ConnectionState, oldState: ConnectionState) => {
@@ -258,7 +252,6 @@ export class ResilienceManager extends EventEmitter {
         serverConfig.name,
         { error: (error as Error).message },
       );
-      // Don't remove the connection - let the resilience system handle recovery
     }
   }
 
@@ -363,7 +356,6 @@ export class ResilienceManager extends EventEmitter {
   private async processRequestQueue(): Promise<void> {
     if (this.requestQueue.length === 0) return;
 
-    // Count active requests across all connections
     let activeRequests = 0;
     for (const connection of this.connections.values()) {
       activeRequests += connection.getStats().currentOperations;
@@ -376,7 +368,6 @@ export class ResilienceManager extends EventEmitter {
     const request = this.requestQueue.shift();
     if (!request) return;
 
-    // Check timeout
     const requestAge = Date.now() - request.timestamp.getTime();
     if (requestAge > request.timeoutMs) {
       request.reject(new Error(`Request ${request.id} timed out in queue`));
@@ -397,7 +388,6 @@ export class ResilienceManager extends EventEmitter {
       request.reject(error as Error);
     }
 
-    // Process next request
     setImmediate(() => this.processRequestQueue());
   }
 
@@ -423,7 +413,6 @@ export class ResilienceManager extends EventEmitter {
       return null;
     }
 
-    // Preferred server selection
     if (preferredServer) {
       const preferredConnection = availableConnections.find(
         ([name]) => name === preferredServer,
@@ -433,7 +422,6 @@ export class ResilienceManager extends EventEmitter {
       }
     }
 
-    // Load balancing strategy
     switch (this.config.loadBalancing.strategy) {
       case LoadBalancingStrategy.ROUND_ROBIN:
         return this.selectRoundRobin(availableConnections);
@@ -455,7 +443,6 @@ export class ResilienceManager extends EventEmitter {
     }
   }
 
-  // Load balancing implementations
   private selectRoundRobin(
     connections: [string, ResilientMCPConnection][],
   ): ResilientMCPConnection {
@@ -492,7 +479,6 @@ export class ResilienceManager extends EventEmitter {
   private selectHealthWeighted(
     connections: [string, ResilientMCPConnection][],
   ): ResilientMCPConnection {
-    // Calculate health scores and select based on weighted probability
     const healthScores = connections.map(([name, connection]) => {
       const stats = connection.getStats();
       const errorRate =
@@ -582,7 +568,6 @@ export class ResilienceManager extends EventEmitter {
 
     switch (this.config.failover.strategy) {
       case FailoverStrategy.IMMEDIATE:
-        // Immediate failover - requests will automatically go to healthy servers
         this.createAlert(
           "warning",
           `Immediate failover triggered for ${failedServerName}`,
@@ -591,7 +576,6 @@ export class ResilienceManager extends EventEmitter {
         break;
 
       case FailoverStrategy.CIRCUIT_BREAKER:
-        // Circuit breaker will handle the isolation
         this.scheduleRecovery(
           failedServerName,
           this.config.failover.failbackDelayMs,
@@ -599,12 +583,10 @@ export class ResilienceManager extends EventEmitter {
         break;
 
       case FailoverStrategy.GRADUAL_RECOVERY:
-        // Gradually bring back the server
         this.scheduleGradualRecovery(failedServerName);
         break;
 
       case FailoverStrategy.MANUAL_ONLY:
-        // No automatic recovery
         this.createAlert(
           "error",
           `Manual intervention required for ${failedServerName}`,
@@ -651,7 +633,6 @@ export class ResilienceManager extends EventEmitter {
         return;
       }
 
-      // Health check before recovery if enabled
       if (this.config.failover.healthCheckBeforeFailback) {
         const isHealthy = await connection.forceHealthCheck();
         if (!isHealthy) {
@@ -687,7 +668,6 @@ export class ResilienceManager extends EventEmitter {
    * Schedule gradual recovery with increasing traffic
    */
   private scheduleGradualRecovery(serverName: string): void {
-    // Implement gradual recovery logic
     this.logger.info(
       `[RESILIENCE-MGR] Starting gradual recovery for ${serverName}`,
     );
@@ -786,7 +766,6 @@ export class ResilienceManager extends EventEmitter {
   private checkAlertConditions(): void {
     const thresholds = this.config.monitoring.alertThresholds;
 
-    // Error rate alert
     if (this.systemMetrics.errorRatePercent > thresholds.errorRatePercent) {
       this.createAlert(
         "warning",
@@ -799,7 +778,6 @@ export class ResilienceManager extends EventEmitter {
       );
     }
 
-    // Response time alert
     if (this.systemMetrics.averageResponseTimeMs > thresholds.responseTimeMs) {
       this.createAlert(
         "warning",
@@ -812,7 +790,6 @@ export class ResilienceManager extends EventEmitter {
       );
     }
 
-    // Unhealthy servers alert
     const unhealthyPercent =
       this.systemMetrics.totalServers > 0
         ? (this.systemMetrics.unhealthyServers /
@@ -850,7 +827,6 @@ export class ResilienceManager extends EventEmitter {
         );
       })
       .sort(([, a], [, b]) => {
-        // Prioritize servers with fewer consecutive failures
         return (
           a.getStats().consecutiveFailures - b.getStats().consecutiveFailures
         );
@@ -860,7 +836,6 @@ export class ResilienceManager extends EventEmitter {
       0,
       this.config.recovery.maxParallelRecoveries - this.activeRecoveries.size,
     )) {
-      // Stagger recovery attempts
       setTimeout(
         () => this.attemptRecovery(serverName),
         Math.random() * this.config.recovery.staggeredRecoveryDelayMs,
@@ -878,7 +853,6 @@ export class ResilienceManager extends EventEmitter {
       this.systemMetrics.failedRequests++;
     }
 
-    // Update average response time using exponential moving average
     const alpha = 0.1;
     this.systemMetrics.averageResponseTimeMs =
       this.systemMetrics.averageResponseTimeMs === 0
@@ -930,7 +904,6 @@ export class ResilienceManager extends EventEmitter {
    * Public API methods
    */
 
-  // Get system status
   getSystemStatus(): {
     healthy: boolean;
     totalServers: number;
@@ -951,12 +924,10 @@ export class ResilienceManager extends EventEmitter {
     };
   }
 
-  // Get detailed metrics
   getMetrics(): SystemMetrics {
     return { ...this.systemMetrics };
   }
 
-  // Get server-specific stats
   getServerStats(serverName?: string): ConnectionStats[] {
     if (serverName) {
       const connection = this.connections.get(serverName);
@@ -966,18 +937,15 @@ export class ResilienceManager extends EventEmitter {
     return Array.from(this.connections.values()).map((conn) => conn.getStats());
   }
 
-  // Force recovery
   async forceRecovery(serverName: string): Promise<void> {
     await this.attemptRecovery(serverName);
   }
 
-  // Update configuration
   updateConfig(newConfig: Partial<SystemResilienceConfig>): void {
     this.config = { ...this.config, ...newConfig };
     this.logger.info("[RESILIENCE-MGR] System configuration updated");
   }
 
-  // Acknowledge alert
   acknowledgeAlert(alertId: string): boolean {
     const alert = this.alerts.get(alertId);
     if (alert) {
@@ -988,11 +956,9 @@ export class ResilienceManager extends EventEmitter {
     return false;
   }
 
-  // Cleanup
   async shutdown(): Promise<void> {
     this.logger.info("[RESILIENCE-MGR] Starting graceful shutdown...");
 
-    // Stop monitoring
     if (this.metricsInterval) {
       clearInterval(this.metricsInterval);
     }
@@ -1000,7 +966,6 @@ export class ResilienceManager extends EventEmitter {
       clearInterval(this.recoveryInterval);
     }
 
-    // Disconnect all servers
     const disconnectPromises = Array.from(this.connections.values()).map(
       (connection) =>
         connection

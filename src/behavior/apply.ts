@@ -46,13 +46,10 @@ class ProfileApplicator {
       const start = Date.now();
 
       try {
-        // Resolve profile target
         const target = await this.resolveProfile(profile);
 
-        // Compute current hash
         const hash = await computeProfileHash(target);
 
-        // Check for idempotency (unless forced)
         if (!options.force && hash === behaviorState.getCurrentHash()) {
           const result: ApplyResult = {
             status: "noop",
@@ -72,22 +69,17 @@ class ProfileApplicator {
           return result;
         }
 
-        // Handle concurrent apply check
         if (behaviorState.isCurrentlyApplying()) {
           throw new Error("Profile application already in progress");
         }
 
-        // Create snapshot for rollback
         const snapshot = behaviorState.createSnapshot();
 
         try {
-          // Set applying state
           behaviorState.setApplying(true);
 
-          // Generate behavior (heavy I/O operation)
           const behavior = await this.generateBehavior(target, options);
 
-          // Dry run mode - don't actually apply
           if (options.dryRun) {
             behaviorState.setApplying(false);
             return {
@@ -98,7 +90,6 @@ class ProfileApplicator {
             };
           }
 
-          // Atomic swap of behavior
           behaviorState.atomicSwapBehavior(behavior, { profile, hash });
 
           const result: ApplyResult = {
@@ -122,7 +113,6 @@ class ProfileApplicator {
 
           return result;
         } catch (error) {
-          // Rollback on failure
           behaviorState.restoreSnapshot(snapshot);
 
           const errorMessage = `Failed to generate behavior: ${error}`;
@@ -204,8 +194,6 @@ class ProfileApplicator {
    * Resolve profile name to target configuration
    */
   private async resolveProfile(profile: string): Promise<ProfileTarget> {
-    // For now, assume profile is a file path
-    // TODO: Integrate with profile manager for named profiles
     return {
       source: profile,
       includes: [],
@@ -220,7 +208,6 @@ class ProfileApplicator {
     target: ProfileTarget,
     options: ApplyOptions,
   ): Promise<string> {
-    // Load Claude configuration
     const config = await this.configManager.loadClaudeConfig(target.source);
 
     if (!config) {
@@ -229,7 +216,6 @@ class ProfileApplicator {
       );
     }
 
-    // Generate behavior instructions
     const behavior = BehaviorGenerator.generateInstructions(config);
 
     if (options.logger) {
@@ -240,7 +226,6 @@ class ProfileApplicator {
   }
 }
 
-// Global applicator instance
 const applicator = new ProfileApplicator();
 
 /**

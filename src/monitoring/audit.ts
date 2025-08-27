@@ -73,7 +73,6 @@ export class AuditLogger {
    * Write structured log entry
    */
   private log(event: AuditEvent): void {
-    // Structured JSON logging
     const logEntry = {
       level:
         event.result === "error" || event.result === "rolled_back"
@@ -110,7 +109,6 @@ export class AuditLogger {
   }
 }
 
-// Global audit logger instance
 export const audit = new AuditLogger();
 
 /**

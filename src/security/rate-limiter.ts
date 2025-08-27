@@ -69,10 +69,8 @@ export class RateLimiter extends EventEmitter {
     super();
     this.logger = logger || new SilentLogger();
 
-    // Extract config initialization to reduce complexity
     this.config = this.initializeConfig(config);
 
-    // Cleanup old records every minute
     this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
   }
 
@@ -123,7 +121,6 @@ export class RateLimiter extends EventEmitter {
       this.clients.set(key, client);
     }
 
-    // Check if client is blocked
     if (client.blocked && now < client.blockedUntil) {
       this.emit("blocked", {
         key,
@@ -137,7 +134,6 @@ export class RateLimiter extends EventEmitter {
       this.emit("unblocked", { key });
     }
 
-    // Skip counting if configured
     if (
       (success && this.config.skipSuccessfulRequests) ||
       (!success && this.config.skipFailedRequests)
@@ -145,13 +141,11 @@ export class RateLimiter extends EventEmitter {
       return RateLimitResult.ALLOWED;
     }
 
-    // Clean old requests outside window
     const windowStart = now - this.config.windowMs;
     client.requests = client.requests.filter(
       (req) => req.timestamp > windowStart,
     );
 
-    // Add current request
     const requestRecord: RequestRecord = {
       timestamp: now,
       success,
@@ -160,7 +154,6 @@ export class RateLimiter extends EventEmitter {
     };
     client.requests.push(requestRecord);
 
-    // Check rate limit
     const requestCount = client.requests.length;
 
     if (requestCount > this.config.maxRequests) {
@@ -181,7 +174,6 @@ export class RateLimiter extends EventEmitter {
       return RateLimitResult.BLOCKED;
     }
 
-    // Update failure tracking
     if (!success) {
       client.consecutiveFailures++;
       client.suspicionLevel += 2;
@@ -190,7 +182,6 @@ export class RateLimiter extends EventEmitter {
       client.suspicionLevel = Math.max(0, client.suspicionLevel - 1);
     }
 
-    // Check for suspicious activity
     if (this.isSuspicious(client)) {
       this.emit("suspicious", { key, client: client });
       return RateLimitResult.SUSPICIOUS;
@@ -276,28 +267,23 @@ export class RateLimiter extends EventEmitter {
       (req) => req.timestamp > now - 10000,
     ); // Last 10 seconds
 
-    // High frequency in short time (more aggressive threshold)
     if (recentRequests.length > this.config.maxRequests * 2) {
       return true;
     }
 
-    // Many consecutive failures
     if (client.consecutiveFailures >= 15) {
       return true;
     }
 
-    // High suspicion level
     if (client.suspicionLevel >= 30) {
       return true;
     }
 
-    // Unusual patterns (only if we have response times)
     if (recentRequests.length > 0) {
       const avgResponseTime =
         recentRequests.reduce((sum, req) => sum + req.responseTime, 0) /
         recentRequests.length;
       if (avgResponseTime > 10000) {
-        // Very slow responses might indicate automated scanning
         return true;
       }
     }
@@ -312,7 +298,6 @@ export class RateLimiter extends EventEmitter {
     for (const [key, client] of this.clients.entries()) {
       client.requests = client.requests.filter((req) => req.timestamp > cutoff);
 
-      // Remove inactive clients
       if (
         client.requests.length === 0 &&
         !client.blocked &&
@@ -346,12 +331,10 @@ export class DoSProtection extends EventEmitter {
     this.config = config;
     this.logger = logger || new SilentLogger();
 
-    // Initialize blacklisted IPs
     if (config.blacklistedIPs) {
       config.blacklistedIPs.forEach((ip) => this.blockedIPs.add(ip));
     }
 
-    // Cleanup blocked IPs periodically
     this.cleanupInterval = setInterval(
       () => this.cleanupBlockedIPs(),
       config.blockDuration,
@@ -366,18 +349,15 @@ export class DoSProtection extends EventEmitter {
       return true;
     }
 
-    // Check whitelist
     if (this.config.whitelistedIPs?.includes(clientIP)) {
       return true;
     }
 
-    // Check blacklist
     if (this.blockedIPs.has(clientIP)) {
       this.emit("blocked", { ip: clientIP, reason: "blacklisted" });
       return false;
     }
 
-    // Check concurrent connections
     const connections = this.activeConnections.get(clientIP) || 0;
     if (connections >= this.config.maxConcurrentRequests) {
       this.emit("blocked", {
@@ -400,7 +380,6 @@ export class DoSProtection extends EventEmitter {
     const current = this.activeConnections.get(clientIP) || 0;
     this.activeConnections.set(clientIP, current + 1);
 
-    // Check for suspicious activity
     if (current + 1 >= this.config.suspiciousThreshold) {
       this.emit("suspicious", {
         ip: clientIP,
@@ -459,8 +438,6 @@ export class DoSProtection extends EventEmitter {
   }
 
   private cleanupBlockedIPs(): void {
-    // This is a simplified cleanup - in production, you'd want to track block times
-    // and automatically unblock after the block duration
     this.emit("cleanup", { blockedCount: this.blockedIPs.size });
   }
 
@@ -591,13 +568,11 @@ export class RequestThrottler extends EventEmitter {
     handler: (req: unknown) => Promise<T>,
   ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
-      // Check queue size
       if (this.queue.length >= this.maxQueueSize) {
         reject(new Error("Request queue full"));
         return;
       }
 
-      // Add to queue
       this.queue.push({
         request,
         handler: handler as (req: unknown) => Promise<unknown>,
@@ -636,7 +611,6 @@ export class RequestThrottler extends EventEmitter {
         processing: this.processing,
       });
 
-      // Process next item
       setImmediate(() => this.processNext());
     }
   }
@@ -671,7 +645,6 @@ export class RequestThrottler extends EventEmitter {
   }
 }
 
-// Combined protection system
 export class SecurityMiddleware extends EventEmitter {
   private rateLimiter: RateLimiter;
   private dosProtection: DoSProtection;
@@ -698,7 +671,6 @@ export class SecurityMiddleware extends EventEmitter {
       logger,
     );
 
-    // Forward events
     this.rateLimiter.on("limit-exceeded", (data) =>
       this.emit("rate-limit-exceeded", data),
     );
@@ -723,22 +695,18 @@ export class SecurityMiddleware extends EventEmitter {
       ((request as Record<string, unknown>)?.remoteAddress as string) ||
       "unknown";
 
-    // DoS protection check
     if (!this.dosProtection.checkRequest(clientIP)) {
       throw new Error("Request blocked by DoS protection");
     }
 
-    // Track connection
     this.dosProtection.trackConnection(clientIP);
 
     try {
-      // Rate limiting check
       const rateLimitResult = this.rateLimiter.checkLimit(request, true, 0);
       if (rateLimitResult === RateLimitResult.BLOCKED) {
         throw new Error("Rate limit exceeded");
       }
 
-      // Process through circuit breaker and throttler
       return await this.circuitBreaker.execute(async () => {
         return await this.throttler.process(request, handler);
       });

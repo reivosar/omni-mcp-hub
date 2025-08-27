@@ -25,7 +25,6 @@ program
     try {
       const logger = Logger.getInstance();
 
-      // Determine config path
       let configPath = options.config;
       if (!configPath) {
         const pathResolver = PathResolver.getInstance();
@@ -37,7 +36,6 @@ program
       const validator = new FailFastValidator(logger);
 
       if (options.json) {
-        // JSON output mode
         const result = await validator.validateOnly(configPath);
         console.log(
           JSON.stringify(
@@ -53,7 +51,6 @@ program
           ),
         );
       } else {
-        // Human-readable report
         await runConfigDoctor(configPath, logger);
       }
 
@@ -75,7 +72,6 @@ program
     try {
       const logger = Logger.getInstance();
 
-      // Determine config path
       let configPath = options.config;
       if (!configPath) {
         const pathResolver = PathResolver.getInstance();
@@ -124,7 +120,6 @@ program
       const validator = new FailFastValidator(logger);
       const result = await validator.validateOnly(configPath);
 
-      // Display results interactively
       if (result.valid) {
         console.log(chalk.green.bold(" DIAGNOSIS: HEALTHY"));
         console.log(chalk.green("Your configuration is working perfectly!\n"));
@@ -165,7 +160,6 @@ program
         });
       }
 
-      // Show configuration summary
       if (result.config) {
         console.log(chalk.blue.bold("LIST CONFIGURATION SUMMARY:"));
         console.log(chalk.blue(`   Mode: ${result.config.mode || "not set"}`));
@@ -204,22 +198,18 @@ program
   });
 
 export async function run(args: string[]): Promise<void> {
-  // Override process.argv and process.exit for testing
   const originalArgv = process.argv;
   const originalExit = process.exit;
 
   try {
-    // Mock process.exit to prevent actual exit during tests
     process.exit = ((code?: number) => {
       throw new Error(`process.exit called with code ${code}`);
     }) as typeof process.exit;
 
-    // Parse arguments without exiting process
     program.exitOverride();
     process.argv = ["node", "config-doctor", ...args];
     await program.parseAsync(process.argv, { from: "node" });
   } catch (error) {
-    // Handle expected exit calls gracefully
     if (
       error instanceof Error &&
       error.message.includes("process.exit called with code")
@@ -233,7 +223,6 @@ export async function run(args: string[]): Promise<void> {
   }
 }
 
-// Handle errors gracefully when run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   process.on("unhandledRejection", (error) => {
     console.error(chalk.red(`CRITICAL Unhandled error: ${error}`));

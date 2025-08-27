@@ -89,7 +89,7 @@ export class ConfigLoader {
         await this.loadProfiles(config.initialProfiles, activeProfiles);
       }
     } catch (_error) {
-      // If .mcp-config.json doesn't exist, do nothing (normal operation)
+      // Ignore scanning errors
     }
   }
 
@@ -115,7 +115,6 @@ export class ConfigLoader {
           fileInfo.path,
         );
 
-        // Skip already loaded profiles (check both name and file path)
         const isAlreadyLoaded =
           activeProfiles.has(profileName) ||
           Array.from(activeProfiles.values()).some(
@@ -143,7 +142,6 @@ export class ConfigLoader {
             continue;
           }
 
-          // Mark as auto-scanned (not explicitly auto-apply)
           (
             loadedConfig as { _autoScanned?: boolean; _filePath?: string }
           )._autoScanned = true;
@@ -195,7 +193,6 @@ export class ConfigLoader {
         `[CONFIG-LOADER] Loading profile '${profile.name}' from ${profile.url || profile.path}, autoApply: ${profile.autoApply}`,
       );
       if ((profile.path || profile.url) && profile.name) {
-        // Skip if autoApply is explicitly set to false
         if (profile.autoApply === false) {
           if (this.yamlConfigManager.isVerboseProfileSwitching()) {
             this.yamlConfigManager.log(
@@ -210,7 +207,6 @@ export class ConfigLoader {
           let fullPath: string;
           let downloadedFiles: Map<string, string> = new Map();
 
-          // Check if URL is provided - use recursive download
           if (profile.url) {
             this.logger.info(
               `[CONFIG-LOADER] Downloading recursively from URL: ${profile.url}`,
@@ -225,7 +221,6 @@ export class ConfigLoader {
               `[CONFIG-LOADER] Downloaded ${downloadedFiles.size} files total`,
             );
           } else if (profile.path) {
-            // Use local path
             const pathResolver = PathResolver.getInstance();
             fullPath = pathResolver.resolveProfilePath(profile.path);
             downloadedFiles.set(profile.url || profile.path || "", fullPath);
@@ -233,7 +228,6 @@ export class ConfigLoader {
             throw new Error("Neither url nor path specified");
           }
 
-          // Load only the main profile file (specified in config)
           const loadedConfig =
             await this.claudeConfigManager.loadClaudeConfig(fullPath);
 
@@ -244,7 +238,6 @@ export class ConfigLoader {
             continue;
           }
 
-          // Mark config with metadata and downloaded files info
           (
             loadedConfig as {
               _autoApply?: boolean;
@@ -286,7 +279,6 @@ export class ConfigLoader {
             `[CONFIG-LOADER] Downloaded ${downloadedFiles.size} supporting files`,
           );
 
-          // If autoApply is true, apply the behavior immediately
           if (profile.autoApply === true) {
             const { BehaviorGenerator } = await import(
               "../utils/behavior-generator.js"
@@ -332,7 +324,6 @@ export class ConfigLoader {
     for (const profile of profiles) {
       if (profile.path && profile.name) {
         try {
-          // Use PathResolver for consistent path handling
           const pathResolver = PathResolver.getInstance();
           const fullPath = pathResolver.resolveProfilePath(profile.path);
 
@@ -379,7 +370,6 @@ export class ConfigLoader {
   private async downloadAndCacheRecursively(
     url: string,
   ): Promise<{ mainFile: string; allFiles: Map<string, string> }> {
-    // Convert GitHub page URL to raw URL if needed
     url = this.convertToRawUrl(url);
     const visitedUrls = new Set<string>();
     const downloadedFiles = new Map<string, string>();
@@ -429,7 +419,6 @@ export class ConfigLoader {
 
     await processFile(url);
 
-    // Return both the main file path and all downloaded files
     const mainFile = downloadedFiles.get(url) || this.urlToLocalPath(url);
     return { mainFile, allFiles: downloadedFiles };
   }
@@ -440,26 +429,22 @@ export class ConfigLoader {
   private extractMarkdownLinks(content: string): string[] {
     const links: string[] = [];
 
-    // Pattern 1: [text](file.md)
     const markdownLinkRegex = /\[([^\]]*)\]\(([^)]+\.md)\)/g;
     let match;
     while ((match = markdownLinkRegex.exec(content)) !== null) {
       links.push(match[2]);
     }
 
-    // Pattern 2: `FILE.md` (backtick references) - includes docs/ prefix
     const backtickLinkRegex = /`((?:docs\/)?[A-Z_]+\.md)`/g;
     while ((match = backtickLinkRegex.exec(content)) !== null) {
       links.push(match[1]);
     }
 
-    // Pattern 3: docs/FILE.md (direct references)
     const directLinkRegex = /(?:^|\s)(docs\/[A-Z_]+\.md)(?:\s|$)/g;
     while ((match = directLinkRegex.exec(content)) !== null) {
       links.push(match[1]);
     }
 
-    // Pattern 4: ](docs/FILE.md) (bracket references)
     const bracketLinkRegex = /\]\((docs\/[A-Z_]+\.md)\)/g;
     while ((match = bracketLinkRegex.exec(content)) !== null) {
       links.push(match[1]);
@@ -475,8 +460,6 @@ export class ConfigLoader {
    * Convert GitHub raw URL to local cache path
    */
   private urlToLocalPath(url: string): string {
-    // https://raw.githubusercontent.com/reivosar/claude-code-engineering-guide/master/markdown/CLAUDE.md
-    // → ./cache/claude-guide/CLAUDE.md
 
     const urlParts = url.split("/");
     const repoIndex = urlParts.findIndex(
@@ -487,7 +470,6 @@ export class ConfigLoader {
       throw new Error(`Invalid GitHub URL format: ${url}`);
     }
 
-    // Extract path after 'markdown/'
     const markdownIndex = urlParts.findIndex((part) => part === "markdown");
     if (markdownIndex === -1) {
       throw new Error(`URL must contain 'markdown' directory: ${url}`);
@@ -503,8 +485,6 @@ export class ConfigLoader {
    * Convert GitHub page URL to raw URL
    */
   private convertToRawUrl(url: string): string {
-    // Convert https://github.com/user/repo/blob/branch/path to
-    // https://raw.githubusercontent.com/user/repo/branch/path
     if (url.includes("github.com") && url.includes("/blob/")) {
       return url
         .replace("github.com", "raw.githubusercontent.com")
@@ -521,24 +501,19 @@ export class ConfigLoader {
     relativePath: string,
   ): string | null {
     try {
-      // If already absolute URL, convert to raw URL if needed
       if (relativePath.startsWith("http")) {
         return this.convertToRawUrl(relativePath);
       }
 
-      // Ensure baseUrl is raw URL
       baseUrl = this.convertToRawUrl(baseUrl);
 
-      // Extract base directory from URL
       const urlParts = baseUrl.split("/");
       const markdownIndex = urlParts.findIndex((part) => part === "markdown");
 
       if (markdownIndex === -1) return null;
 
-      // Build base URL up to markdown directory
       const baseMarkdownUrl = urlParts.slice(0, markdownIndex + 1).join("/");
 
-      // Handle relative paths
       if (relativePath.startsWith("./")) {
         relativePath = relativePath.substring(2);
       }

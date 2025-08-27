@@ -24,7 +24,6 @@ import { FileScanner } from "../utils/file-scanner.js";
 import { YamlConfigManager } from "../config/yaml-config.js";
 import { PathResolver } from "../utils/path-resolver.js";
 
-// Enhanced apply options
 interface ManualApplyOptions {
   interactive: boolean;
   preview: boolean;
@@ -91,7 +90,6 @@ class ManualApplyManager {
     );
 
     try {
-      // Step 1: Scan and discover profiles
       console.log(chalk.yellow("📁 Scanning for available profiles...\n"));
       const profiles = await this.scanAvailableProfiles();
 
@@ -109,27 +107,22 @@ class ManualApplyManager {
         return;
       }
 
-      // Step 2: Display available profiles
       await this.displayProfileSummary(profiles);
 
-      // Step 3: Profile selection
       const selectedProfiles = await this.selectProfiles(profiles);
       if (selectedProfiles.length === 0) {
         console.log(chalk.yellow("🚫 No profiles selected. Exiting.\n"));
         return;
       }
 
-      // Step 4: Preview selected profiles
       const shouldProceed = await this.previewProfiles(selectedProfiles);
       if (!shouldProceed) {
         console.log(chalk.yellow("🚫 Operation cancelled.\n"));
         return;
       }
 
-      // Step 5: Apply profiles
       await this.applyProfilesBatch(selectedProfiles);
 
-      // Step 6: Summary and next steps
       await this.displayApplySummary();
     } catch (error) {
       console.error(chalk.red("CRITICAL Interactive apply failed:"), error);
@@ -150,10 +143,8 @@ class ManualApplyManager {
       let targetProfile: ProfileInfo;
 
       if (profilePath) {
-        // Apply specific profile
         targetProfile = await this.analyzeProfile(profilePath);
       } else {
-        // Auto-detect profile
         const profiles = await this.scanAvailableProfiles();
         const defaultProfile = profiles.find(
           (p) => p.name === "CLAUDE.md" || p.path.endsWith("CLAUDE.md"),
@@ -170,7 +161,6 @@ class ManualApplyManager {
 
       console.log(chalk.blue(` Quick applying profile: ${targetProfile.name}`));
 
-      // Show preview if requested
       if (options.preview) {
         await this.showProfilePreview(targetProfile);
 
@@ -191,14 +181,12 @@ class ManualApplyManager {
         }
       }
 
-      // Apply the profile
       const result = await this.applySingleProfile(targetProfile, {
         backup: options.backup ?? true,
         dryRun: options.dryRun ?? false,
         force: options.force ?? false,
       });
 
-      // Display result
       const duration = Date.now() - startTime;
       if (result.success) {
         console.log(
@@ -239,13 +227,11 @@ class ManualApplyManager {
       if (profile2Path) {
         profile2 = await this.analyzeProfile(profile2Path);
       } else {
-        // Compare with current applied profile
         console.log(
           chalk.yellow(
             "Comparing with currently applied profile configuration...\n",
           ),
         );
-        // This would require reading current applied state
       }
 
       await this.displayProfileComparison(profile1, profile2);
@@ -292,7 +278,6 @@ class ManualApplyManager {
         return;
       }
 
-      // Perform undo operation
       await this.performUndo(lastApply);
       console.log(
         chalk.green("SUCCESS Profile application undone successfully.\n"),
@@ -331,7 +316,6 @@ class ManualApplyManager {
     const stats = await fs.stat(profilePath);
     const content = await fs.readFile(profilePath, "utf-8");
 
-    // Parse CLAUDE.md content
     const config = this.configManager.parseClaude(content);
     const sections = this.extractSections(content);
     const warnings = this.validateProfileContent(config, content);
@@ -366,19 +350,18 @@ class ManualApplyManager {
   /**
    * Generate a human-readable summary of the profile
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private generateProfileSummary(config: any): string {
+  private generateProfileSummary(config: Record<string, unknown>): string {
     const parts: string[] = [];
 
-    if (config.instructions && config.instructions.length > 0) {
+    if (Array.isArray(config.instructions) && config.instructions.length > 0) {
       parts.push(`${config.instructions.length} instruction(s)`);
     }
 
-    if (config.rules && config.rules.length > 0) {
+    if (Array.isArray(config.rules) && config.rules.length > 0) {
       parts.push(`${config.rules.length} rule(s)`);
     }
 
-    if (config.tools && config.tools.length > 0) {
+    if (Array.isArray(config.tools) && config.tools.length > 0) {
       parts.push(`${config.tools.length} tool(s)`);
     }
 
@@ -392,11 +375,10 @@ class ManualApplyManager {
   /**
    * Validate profile content and return warnings
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private validateProfileContent(config: any, content: string): string[] {
+  private validateProfileContent(config: Record<string, unknown>, content: string): string[] {
     const warnings: string[] = [];
 
-    if (!config.instructions || config.instructions.length === 0) {
+    if (!Array.isArray(config.instructions) || config.instructions.length === 0) {
       warnings.push("No instructions defined");
     }
 
@@ -408,7 +390,6 @@ class ManualApplyManager {
       warnings.push("Profile content is very long (>50KB)");
     }
 
-    // Check for potentially problematic content
     const problematicPatterns = [
       /delete|remove|destroy/gi,
       /system|admin|root/gi,
@@ -525,7 +506,6 @@ class ManualApplyManager {
       console.log(chalk.yellow(`Warnings: ${profile.warnings.join(", ")}`));
     }
 
-    // Show preview of content
     try {
       const content = await fs.readFile(profile.path, "utf-8");
       const preview = content.substring(0, 300);
@@ -588,7 +568,6 @@ class ManualApplyManager {
       console.log(); // Blank line for spacing
     }
 
-    // Store results for potential undo
     this.appliedProfiles = results;
   }
 
@@ -609,11 +588,9 @@ class ManualApplyManager {
     };
 
     try {
-      // Read profile content
       const content = await fs.readFile(profile.path, "utf-8");
       const config = this.configManager.parseClaude(content);
 
-      // Validate configuration
       if (!options.force && profile.warnings.length > 0) {
         result.errors.push(
           "Profile has warnings. Use --force to apply anyway.",
@@ -621,7 +598,6 @@ class ManualApplyManager {
         return result;
       }
 
-      // Dry run mode
       if (options.dryRun) {
         console.log(
           chalk.blue("INSIGHTS Dry run mode - no changes will be made"),
@@ -631,18 +607,14 @@ class ManualApplyManager {
         return result;
       }
 
-      // Create backup if requested
       if (options.backup) {
         result.backupPath = await this.createBackup();
       }
 
-      // Generate and apply behavior
       const behaviorInstructions =
         BehaviorGenerator.generateInstructions(config);
       result.appliedBehavior = behaviorInstructions;
 
-      // Here you would apply the configuration to the actual system
-      // For now, we'll simulate success
       await this.sleep(100); // Simulate processing time
 
       result.success = true;
@@ -664,10 +636,8 @@ class ManualApplyManager {
     const backupDir = path.join(process.cwd(), ".omni-backups");
     const backupPath = path.join(backupDir, `backup-${timestamp}.json`);
 
-    // Ensure backup directory exists
     await fs.mkdir(backupDir, { recursive: true });
 
-    // Create backup data (would contain actual current state)
     const backupData = {
       timestamp: new Date().toISOString(),
       type: "profile-application",
@@ -696,7 +666,6 @@ class ManualApplyManager {
       console.log(`  Sections: ${profile2.sections.length}`);
       console.log(`  Summary: ${profile2.summary}`);
 
-      // Show differences
       console.log(chalk.yellow("\nDifferences:"));
 
       const sizeDiff = profile1.size - profile2.size;
@@ -776,27 +745,22 @@ class ManualApplyManager {
       applyResult.backupPath &&
       (await this.fileExists(applyResult.backupPath))
     ) {
-      // Restore from backup
       const _backupData = JSON.parse(
         await fs.readFile(applyResult.backupPath, "utf-8"),
       );
-      // Restore the previous state (implementation would depend on actual state storage)
       console.log(chalk.blue("Restoring from backup..."));
     } else {
-      // Manual undo process
       console.log(
         chalk.yellow("No backup available, performing manual undo..."),
       );
     }
 
-    // Remove from applied profiles list
     const index = this.appliedProfiles.findIndex((r) => r === applyResult);
     if (index > -1) {
       this.appliedProfiles.splice(index, 1);
     }
   }
 
-  // Utility methods
   private formatFileSize(bytes: number): string {
     const sizes = ["B", "KB", "MB", "GB"];
     if (bytes === 0) return "0 B";
@@ -818,7 +782,6 @@ class ManualApplyManager {
   }
 }
 
-// CLI Program Definition
 program
   .name("omni-manual-apply")
   .description("Enhanced manual profile application with intuitive UX")
@@ -872,7 +835,6 @@ program
   .action(async () => {
     console.log(chalk.blue.bold("REPORT Current Status\n"));
 
-    // Show current applied profile information
     console.log("Current applied profile: Not implemented yet");
     console.log("Last application: Not implemented yet");
     console.log("Available backups: Not implemented yet");
@@ -880,12 +842,10 @@ program
   });
 
 export async function run(args: string[]): Promise<void> {
-  // Parse arguments without exiting process
   program.exitOverride();
   await program.parseAsync(args, { from: "user" });
 }
 
-// Handle errors gracefully when run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   process.on("unhandledRejection", (error) => {
     console.error(chalk.red("CRITICAL Unhandled error:"), error);

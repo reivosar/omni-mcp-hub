@@ -40,7 +40,6 @@ export class MCPProxyManager extends EventEmitter {
       return;
     }
 
-    // Check and auto-install dependencies if needed
     await this.ensureServerDependencies(config);
 
     this.logger.info(`[PROXY-MGR] Creating MCPProxyClient for ${config.name}`);
@@ -54,7 +53,6 @@ export class MCPProxyManager extends EventEmitter {
       this.clients.set(config.name, client);
       this.logger.info(`[PROXY-MGR] Client stored for ${config.name}`);
 
-      // Update aggregated tools and resources
       this.logger.info(`[PROXY-MGR] Updating aggregated capabilities...`);
       this.updateAggregatedCapabilities();
       this.logger.info(`[PROXY-MGR] Aggregated capabilities updated`);
@@ -81,7 +79,6 @@ export class MCPProxyManager extends EventEmitter {
     await client.disconnect();
     this.clients.delete(name);
 
-    // Update aggregated capabilities
     this.updateAggregatedCapabilities();
 
     this.logger.debug(`Removed MCP server: ${name}`);
@@ -92,7 +89,6 @@ export class MCPProxyManager extends EventEmitter {
   ): Promise<void> {
     const execAsync = promisify(exec);
 
-    // Check if this is a Serena configuration
     if (
       config.command === "uvx" &&
       config.args?.includes("git+https://github.com/oraios/serena")
@@ -100,7 +96,6 @@ export class MCPProxyManager extends EventEmitter {
       this.logger.info(`[PROXY-MGR] Detected Serena server: ${config.name}`);
 
       try {
-        // Check if uv is installed
         await execAsync("uv --version");
         this.logger.info(`[PROXY-MGR] uv is already installed`);
       } catch (_error) {
@@ -109,14 +104,11 @@ export class MCPProxyManager extends EventEmitter {
         );
 
         try {
-          // Auto-install uv
           await execAsync("curl -LsSf https://astral.sh/uv/install.sh | sh");
           this.logger.info(`[PROXY-MGR] uv installed successfully`);
 
-          // Update PATH for current process
           process.env.PATH = `${process.env.HOME}/.cargo/bin:${process.env.PATH}`;
 
-          // Verify installation
           await execAsync("uv --version");
           this.logger.info(`[PROXY-MGR] uv verification successful`);
         } catch (installError) {
@@ -127,7 +119,6 @@ export class MCPProxyManager extends EventEmitter {
         }
       }
 
-      // Pre-download Serena to improve startup time
       try {
         this.logger.info(`[PROXY-MGR] Pre-downloading Serena...`);
         await execAsync(
@@ -142,22 +133,17 @@ export class MCPProxyManager extends EventEmitter {
         );
       }
     }
-
-    // Add other auto-install patterns here for different MCP servers
-    // Example: codebase, desktop-commander, etc.
   }
 
   private updateAggregatedCapabilities(): void {
     this.logger.info(`[PROXY-MGR] Starting capability aggregation...`);
 
-    // Clear existing aggregations
     this.aggregatedTools.clear();
     this.aggregatedResources.clear();
     this.logger.info(`[PROXY-MGR] Cleared existing aggregations`);
 
     this.logger.info(`[PROXY-MGR] Processing ${this.clients.size} clients`);
 
-    // Aggregate tools and resources from all connected clients
     for (const [serverName, client] of this.clients) {
       this.logger.info(`[PROXY-MGR] Processing server: ${serverName}`);
       this.logger.info(
@@ -171,7 +157,6 @@ export class MCPProxyManager extends EventEmitter {
         continue;
       }
 
-      // Aggregate tools
       const tools = client.getTools();
       this.logger.info(
         `[PROXY-MGR] Server ${serverName} has ${tools.length} tools`,
@@ -184,7 +169,6 @@ export class MCPProxyManager extends EventEmitter {
         this.aggregatedTools.set(tool.name, { client, tool });
       }
 
-      // Aggregate resources
       const resources = client.getResources();
       this.logger.info(
         `[PROXY-MGR] Server ${serverName} has ${resources.length} resources`,
@@ -202,13 +186,11 @@ export class MCPProxyManager extends EventEmitter {
       `[PROXY-MGR] Aggregated ${this.aggregatedTools.size} tools and ${this.aggregatedResources.size} resources from ${this.clients.size} servers`,
     );
 
-    // Log all aggregated tools
     this.logger.info(`[PROXY-MGR] Final aggregated tools:`);
     for (const [name, entry] of this.aggregatedTools) {
       this.logger.info(`[PROXY-MGR] - ${name}: ${entry.tool.description}`);
     }
 
-    // Emit tools changed event for MCP notifications
     this.emit("toolsChanged");
     this.logger.info(`[PROXY-MGR] Emitted toolsChanged event`);
   }
@@ -415,7 +397,6 @@ export class MCPProxyManager extends EventEmitter {
             `[HEALTH-CHECK] Server ${serverName} is not connected`,
           );
 
-          // Attempt to reconnect
           try {
             await client.connect();
             this.logger.info(
@@ -439,7 +420,6 @@ export class MCPProxyManager extends EventEmitter {
       }
     }
 
-    // Log health metrics
     const healthMetrics = {
       type: "mcp_health_check",
       timestamp: new Date().toISOString(),

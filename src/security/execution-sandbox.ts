@@ -111,7 +111,6 @@ export class ExecutionSandbox extends EventEmitter {
     const warnings: string[] = [];
     const securityViolations: string[] = [];
 
-    // Check concurrent task limit
     if (this.activeTasks.size >= this.options.maxConcurrentTasks) {
       return {
         success: false,
@@ -126,7 +125,6 @@ export class ExecutionSandbox extends EventEmitter {
     this.activeTasks.add(taskId);
 
     try {
-      // Validate code for security issues
       const codeAnalysis = this.analyzeCode(code);
       if (codeAnalysis.violations.length > 0) {
         securityViolations.push(...codeAnalysis.violations);
@@ -143,13 +141,10 @@ export class ExecutionSandbox extends EventEmitter {
         }
       }
 
-      // Create sandbox context
       const sandboxContext = this.createSandboxContext(filename, context);
 
-      // Create VM context with timeout
       const vmContext = vm.createContext(sandboxContext);
 
-      // Track memory usage
       const initialMemory = process.memoryUsage().heapUsed;
 
       let result: unknown;
@@ -157,7 +152,6 @@ export class ExecutionSandbox extends EventEmitter {
       let success = true;
 
       try {
-        // Execute with timeout
         result = await Promise.race([
           this.executeWithMemoryLimit(code, vmContext, filename),
           new Promise((_, reject) =>
@@ -179,7 +173,6 @@ export class ExecutionSandbox extends EventEmitter {
       const finalMemory = process.memoryUsage().heapUsed;
       const memoryUsedMB = (finalMemory - initialMemory) / (1024 * 1024);
 
-      // Check memory limit
       if (memoryUsedMB > this.options.memoryLimitMB) {
         warnings.push(
           `Memory usage (${memoryUsedMB.toFixed(2)}MB) exceeded limit (${this.options.memoryLimitMB}MB)`,
@@ -234,7 +227,6 @@ export class ExecutionSandbox extends EventEmitter {
     this.activeTasks.add(taskId);
 
     return new Promise((resolve) => {
-      // Create worker script that includes the sandbox
       const workerScript = `
         const { parentPort } = require('worker_threads');
         const vm = require('vm');
@@ -329,7 +321,6 @@ export class ExecutionSandbox extends EventEmitter {
         resolve(executionResult);
       });
 
-      // Set timeout for worker
       setTimeout(() => {
         worker.terminate();
         if (this.activeTasks.has(taskId)) {
@@ -355,7 +346,6 @@ export class ExecutionSandbox extends EventEmitter {
     context?: Record<string, unknown>,
   ): Promise<ExecutionResult> {
     try {
-      // Validate file path
       const resolvedPath = path.resolve(profilePath);
 
       if (
@@ -373,7 +363,6 @@ export class ExecutionSandbox extends EventEmitter {
         };
       }
 
-      // Check file size
       const stats = await fs.stat(resolvedPath);
       if (stats.size > this.options.maxFileSize) {
         return {
@@ -388,11 +377,9 @@ export class ExecutionSandbox extends EventEmitter {
         };
       }
 
-      // Read and execute profile
       const content = await fs.readFile(resolvedPath, "utf-8");
 
       if (resolvedPath.endsWith(".md")) {
-        // Extract JavaScript from markdown
         const jsCode = this.extractJavaScriptFromMarkdown(content);
         if (!jsCode) {
           return {
@@ -481,12 +468,10 @@ export class ExecutionSandbox extends EventEmitter {
       __dirname: path.dirname(filename),
     };
 
-    // Add safe require function if modules are allowed
     if (this.options.allowedModules.length > 0) {
       sandboxContext.require = this.createSafeRequire();
     }
 
-    // Merge user-provided context
     if (userContext) {
       Object.assign(sandboxContext, userContext);
     }
@@ -499,23 +484,19 @@ export class ExecutionSandbox extends EventEmitter {
    */
   private createSafeRequire(): (id: string) => unknown {
     return (id: string) => {
-      // Check if module is explicitly blocked
       if (this.options.blockedModules.includes(id)) {
         throw new Error(`Module '${id}' is blocked for security reasons`);
       }
 
-      // Check if module is in allowed list
       if (!this.options.allowedModules.includes(id)) {
         throw new Error(`Module '${id}' is not in the allowed modules list`);
       }
 
-      // Check cache first
       if (this.moduleCache.has(id)) {
         return this.moduleCache.get(id);
       }
 
       try {
-        // Use dynamic import for allowed modules
         const module = require(id);
         this.moduleCache.set(id, module);
         return module;
@@ -573,7 +554,6 @@ export class ExecutionSandbox extends EventEmitter {
     const violations: string[] = [];
     let critical = false;
 
-    // Dangerous patterns to detect
     const dangerousPatterns = [
       {
         pattern: /eval\s*\(/,
@@ -710,5 +690,4 @@ export class ExecutionSandbox extends EventEmitter {
   }
 }
 
-// Export default sandbox instance
 export const defaultSandbox = new ExecutionSandbox();

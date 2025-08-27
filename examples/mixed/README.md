@@ -1,114 +1,161 @@
-# Omni MCP Hub - Mixed MCP Servers Configuration
+# 🔄 Mixed MCP Servers Configuration
 
-This example demonstrates how to configure multiple MCP servers through the Omni MCP Hub, providing a flexible setup for various development tools and integrations.
+**Professional Development Environment with Multiple MCP Integrations**
 
-## Overview
+This example demonstrates how to configure multiple external MCP servers through the Omni MCP Hub, providing a complete development environment with ~50+ tools from multiple integrations.
 
-The Mixed configuration allows you to enable and configure multiple MCP servers according to your needs:
+## 🏗️ Architecture Overview
 
-- **Serena** - Semantic code editing and retrieval
-- **Codebase** - Whole codebase search and analysis  
-- **Desktop Commander** - Desktop automation tools
-- **Sourcegraph** - Code intelligence platform
-- **CodeMCP** - Advanced code analysis
-- **Tree-sitter** - Syntax tree analysis
-- **Custom servers** - Add your own MCP integrations
+The Mixed configuration provides a comprehensive development environment:
 
-## Quick Start
+### 🛠️ **Active MCP Servers** (Enabled by Default)
+- **🧠 Serena** - ~25 tools for semantic code editing and retrieval
+- **💾 Filesystem** - ~14 tools for file system operations
+- **📄 Local-files** - ~14 tools for local markdown and text reading
+
+### 🔧 **Available Servers** (Easily Configurable)
+- **📊 Codebase** - Whole repository search and analysis
+- **🖥️ Desktop Commander** - Desktop automation tools
+- **🌐 Sourcegraph** - Code intelligence platform
+- **🔍 CodeMCP** - Advanced static code analysis
+- **🌳 Tree-sitter** - Syntax tree parsing and analysis
+- **⚙️ Custom servers** - Add your own MCP integrations
+
+## 🚀 Quick Start
 
 ```bash
-# Start mixed MCP environment
+# Start complete development environment (30 seconds)
 ./start.sh
+
+# Or run manually with full build
+npm run build && node dist/index.js
 ```
+
+**What You Get Instantly:**
+- 🧠 **~25 Serena tools** for semantic code operations
+- 💾 **~14 Filesystem tools** for file operations
+- 📄 **~14 Local-files tools** for document reading
+- 👤 **2 behavior profiles** (dev-assistant, code-reviewer)
+- 📊 **Full monitoring** and admin tools
 
 ## Usage Examples
 
-### Development Profiles
+### 👨‍💻 Professional Development Profiles
 ```bash
-# Switch to development mode
-/use apply_claude_config profileName:"dev-assistant"
+# Switch between professional modes
+/use apply_claude_config profileName:"dev-assistant"   # 🛠️ Full-stack development focus
+/use apply_claude_config profileName:"code-reviewer"   # 🔍 Code quality and review focus
 
-# Switch to code review mode  
-/use apply_claude_config profileName:"code-reviewer"
-
-# List available profiles
-/use list_claude_configs
-
-# Check current configuration
-/use get_applied_config
+# Profile management
+/use list_claude_configs                              # List all available profiles  
+/use get_applied_config                               # Check current active profile
 ```
 
-### Integrated MCP Tools
+**Profile Features:**
+- **🛠️ dev-assistant:** TypeScript focus, testing emphasis, security-first development
+- **🔍 code-reviewer:** Code quality focus, performance analysis, architectural guidance
+
+### 🛠️ Integrated Tool Examples
+
+#### 🧠 **Semantic Code Operations** (Serena - 25 tools)
 ```bash
-# Semantic code search (Serena)
+# Symbol search and manipulation
 /use serena__find_symbol className:"UserController"
 /use serena__find_referencing_symbols symbol:"getUserById"
+/use serena__replace_symbol_body name:"updateUser" body:"new implementation"
+/use serena__get_symbols_overview relative_path:"src/controllers/"
+```
 
-# File operations (Filesystem)
+#### 💾 **File System Operations** (Filesystem - 14 tools)
+```bash
+# File and directory operations
 /use filesystem__read_file path:"README.md"
 /use filesystem__list_directory path:"src/"
-
-# Local documentation (Local-files)
-/use local-files__read_file path:"docs/api.md"
+/use filesystem__create_directory path:"tests/integration/"
+/use filesystem__search_files pattern:"*.test.ts"
 ```
 
-## Configuration
-
+#### 📄 **Documentation Access** (Local-files - 14 tools)
 ```bash
-# Run from the examples/mixed directory
-./start.sh
+# Local markdown and documentation
+/use local-files__read_file path:"docs/api.md"
+/use local-files__list_files directory:"docs/"
+/use local-files__search_content query:"authentication" directory:"docs/"
 ```
 
-## Configuration
+## ⚙️ Configuration Management
 
-Edit `omni-config.yaml` to enable/disable servers and customize settings:
+### 🛠️ **CLI Tools Integration**
+```bash
+# Interactive configuration management
+npm run admin                   # Full admin interface
+npm run config:doctor          # Configuration troubleshooting
+npm run profile:admin          # Profile management
+npm run monitoring             # System monitoring
+npm run scan:secrets           # Security scanning
+```
+
+### ⚙️ **Server Configuration**
+
+Edit `omni-config.yaml` to customize your environment:
 
 ```yaml
-# Enable/disable external MCP servers
+# Current active configuration (enabled by default)
 externalServers:
   enabled: true
   autoConnect: true
   servers:
-    # Semantic code editing (default enabled)
+    # Semantic code editing - 25 tools
     - name: "serena"
       command: "uvx"
       args: ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server", "--enable-web-dashboard", "false"]
       description: "Semantic code retrieval and editing for large codebases"
     
-    # Uncomment to enable additional servers:
-    
+    # File system operations - 14 tools  
+    - name: "filesystem"
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+      description: "File system operations with security"
+      
+    # Local file access - 14 tools
+    - name: "local-files"
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-local-files", "docs/"]
+      description: "Local markdown and text file reading"
+
+# Add more servers by uncommenting:
     # - name: "codebase"
     #   command: "npx"
-    #   args: ["-y", "@modelcontextprotocol/server-codebase", "/path/to/codebase"]
-    #   description: "Whole codebase search and analysis"
-    
-    # - name: "desktop"
-    #   command: "uvx"
-    #   args: ["desktop-commander"]
-    #   description: "Desktop automation and control"
+    #   args: ["-y", "@modelcontextprotocol/server-codebase", "."]  
+    #   description: "Whole repository analysis"
 ```
 
-## Available Tool Categories
+## 📋 Tool Categories Available
 
-### Semantic Code Tools (Serena)
-- Symbol finding and referencing
-- Semantic code insertion and replacement
-- Code structure analysis
+### 🧠 **Semantic Code Tools** (Serena - 25 tools)
+- 🔍 Symbol finding and referencing (`find_symbol`, `find_referencing_symbols`)
+- ⚙️ Code insertion and replacement (`replace_symbol_body`, `insert_after_symbol`)
+- 🏗️ Code structure analysis (`get_symbols_overview`, `search_for_pattern`)
+- 📝 Memory management (`write_memory`, `read_memory`, `list_memories`)
+- 📊 Project management (`activate_project`, `switch_modes`, `execute_shell_command`)
 
-### Codebase Analysis Tools
-- Full repository search
-- File content analysis
-- Directory structure exploration
+### 💾 **File System Tools** (Filesystem - 14 tools) 
+- 📄 File operations (`read_file`, `write_file`, `create_directory`)
+- 🔍 Search capabilities (`search_files`, `list_directory`)
+- ⚙️ Path operations with security validation
+- 🔒 Permission-aware file management
 
-### Desktop Automation Tools
-- Application control
-- File system operations
-- System integration
+### 📄 **Documentation Tools** (Local-files - 14 tools)
+- 📜 Markdown file reading (`read_file`, `list_files`)
+- 🔍 Content search (`search_content`)
+- 📁 Directory browsing with filtering
+- 📊 Documentation analysis
 
-### Code Intelligence Tools (Sourcegraph)
-- Cross-repository code search
-- Dependency analysis
-- Code insights
+### 🔧 **Available Extensions** (Configure as needed)
+- **📊 Codebase:** Repository-wide analysis and search
+- **🖥️ Desktop:** Application and system automation
+- **🌐 Sourcegraph:** Code intelligence and insights
+- **🌳 Tree-sitter:** Advanced syntax analysis
 
 ## Customization Examples
 
@@ -180,15 +227,80 @@ Dependencies are installed automatically based on enabled servers:
 /use desktop__copy_to_clipboard
 ```
 
-## Troubleshooting
+## 🛠️ Troubleshooting
 
-1. **Server not starting**: Check logs in `logs/omni-mcp-hub.log`
-2. **Missing dependencies**: Ensure required tools are installed
-3. **Configuration errors**: Validate YAML syntax in `omni-config.yaml`
-4. **Tool conflicts**: Disable conflicting servers if needed
+### 🚑 **Quick Diagnostics**
+```bash
+# Automated troubleshooting
+npm run config:doctor          # Interactive diagnosis
+npm run admin:status           # System health check
+npm run monitoring             # Real-time monitoring
+```
 
-## Documentation
+### ⚠️ **Common Issues**
 
-- [MCP Specification](https://modelcontextprotocol.io/)
-- [Serena Repository](https://github.com/oraios/serena)
-- [Omni MCP Hub Documentation](../../README.md)
+**🔴 Server not starting**
+```bash
+# Check system status and logs
+npm run admin:status
+tail -f logs/omni-mcp-hub.log
+```
+
+**📦 Missing dependencies**
+```bash
+# Ensure required tools are installed
+npm install                    # Node.js dependencies
+pip install uv                 # For Python-based servers (Serena)
+```
+
+**⚙️ Configuration errors**
+```bash
+# Validate configuration
+npm run config:validate        # Schema validation
+npm run config:check          # Quick syntax check
+```
+
+**⚡ Tool conflicts**
+```bash
+# Check tool availability and conflicts
+npm run admin                  # Interactive admin interface
+# Use interface to enable/disable servers as needed
+```
+
+### 📊 **Performance Monitoring**
+```bash
+# Monitor system performance
+npm run monitoring             # Web dashboard access
+# Visit http://localhost:3099 for real-time metrics
+```
+
+## 📚 Documentation & Support
+
+### 📝 **Core Documentation**
+- **📖 Main README:** [../../README.md](../../README.md)
+- **🏗️ Architecture:** [../../docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md)
+- **⚙️ Configuration:** [../../docs/CONFIGURATION.md](../../docs/CONFIGURATION.md)
+- **🛡️ Security:** [../../docs/THREAT_MODEL.md](../../docs/THREAT_MODEL.md)
+
+### 🔗 **External References** 
+- **📜 MCP Specification:** [modelcontextprotocol.io](https://modelcontextprotocol.io/)
+- **🧠 Serena Repository:** [github.com/oraios/serena](https://github.com/oraios/serena)
+- **📋 Official MCP Servers:** [github.com/modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers)
+
+### 🔍 **Testing & Monitoring**
+```bash
+# Comprehensive testing (99.94% coverage)
+npm test                       # Full test suite
+npm run test:coverage         # Coverage report
+npm run monitoring           # System monitoring dashboard
+
+# Configuration validation
+npm run config:doctor        # Interactive troubleshooting
+npm run config:check         # Quick validation
+npm run scan:secrets         # Security scanning
+```
+
+### 🆘 **Getting Help**
+- **🚀 Quick Issues:** Use `npm run config:doctor` for troubleshooting
+- **📊 System Status:** Use `npm run admin:status` for overview
+- **📝 Logs:** Check `logs/omni-mcp-hub.log` for detailed information

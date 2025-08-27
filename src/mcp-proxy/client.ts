@@ -1,7 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { ChildProcess } from "child_process";
-import * as path from 'path';
+import * as path from "path";
 import {
   Tool,
   Resource,
@@ -38,26 +38,31 @@ export class MCPProxyClient {
       },
       {
         capabilities: {},
-      }
+      },
     );
     // Filter out undefined values from environment
     const cleanEnv: Record<string, string> = {};
-    for (const [key, value] of Object.entries({ ...process.env, ...(config.env || {}) })) {
+    for (const [key, value] of Object.entries({
+      ...process.env,
+      ...(config.env || {}),
+    })) {
       if (value !== undefined) {
         cleanEnv[key] = value;
       }
     }
-    
+
     // Convert relative paths in args to absolute paths
-    const resolvedArgs = (config.args || []).map(arg => {
-      if (arg.endsWith('.js') && !arg.startsWith('/')) {
+    const resolvedArgs = (config.args || []).map((arg) => {
+      if (arg.endsWith(".js") && !arg.startsWith("/")) {
         const resolved = path.resolve(process.cwd(), arg);
-        this.logger.debug(`Resolved external server arg: ${arg} -> ${resolved}`);
+        this.logger.debug(
+          `Resolved external server arg: ${arg} -> ${resolved}`,
+        );
         return resolved;
       }
       return arg;
     });
-    
+
     this.transport = new StdioClientTransport({
       command: config.command,
       args: resolvedArgs,
@@ -73,8 +78,10 @@ export class MCPProxyClient {
     try {
       await this.client.connect(this.transport);
       this.connected = true;
-      this.logger.debug(`Connected to external MCP server: ${this.config.name}`);
-      
+      this.logger.debug(
+        `Connected to external MCP server: ${this.config.name}`,
+      );
+
       // Fetch available tools and resources
       await this.fetchCapabilities();
     } catch (error) {
@@ -90,7 +97,9 @@ export class MCPProxyClient {
 
     try {
       await this.client.close();
-      this.logger.debug(`Disconnected from external MCP server: ${this.config.name}`);
+      this.logger.debug(
+        `Disconnected from external MCP server: ${this.config.name}`,
+      );
     } catch (error) {
       this.logger.debug(`Error disconnecting from ${this.config.name}:`, error);
     } finally {
@@ -102,21 +111,26 @@ export class MCPProxyClient {
     try {
       // Fetch tools
       const toolsResponse = await this.client.listTools();
-      this.tools = toolsResponse.tools.map(tool => ({
+      this.tools = toolsResponse.tools.map((tool) => ({
         ...tool,
         name: `${this.config.name}__${tool.name}`, // Prefix with server name to avoid conflicts
       }));
 
       // Fetch resources
       const resourcesResponse = await this.client.listResources();
-      this.resources = resourcesResponse.resources.map(resource => ({
+      this.resources = resourcesResponse.resources.map((resource) => ({
         ...resource,
         uri: `${this.config.name}://${resource.uri}`, // Prefix URI with server name
       }));
 
-      this.logger.debug(`Loaded ${this.tools.length} tools and ${this.resources.length} resources from ${this.config.name}`);
+      this.logger.debug(
+        `Loaded ${this.tools.length} tools and ${this.resources.length} resources from ${this.config.name}`,
+      );
     } catch (error) {
-      this.logger.debug(`Error fetching capabilities from ${this.config.name}:`, error);
+      this.logger.debug(
+        `Error fetching capabilities from ${this.config.name}:`,
+        error,
+      );
     }
   }
 
@@ -135,12 +149,18 @@ export class MCPProxyClient {
 
     // Remove server prefix from tool name
     const originalName = name.replace(`${this.config.name}__`, "");
-    
+
     try {
-      const result = await this.client.callTool({ name: originalName, arguments: args as { [x: string]: unknown } });
+      const result = await this.client.callTool({
+        name: originalName,
+        arguments: args as { [x: string]: unknown },
+      });
       return result as CallToolResult;
     } catch (error) {
-      this.logger.debug(`Error calling tool ${originalName} on ${this.config.name}:`, error);
+      this.logger.debug(
+        `Error calling tool ${originalName} on ${this.config.name}:`,
+        error,
+      );
       throw error;
     }
   }
@@ -152,12 +172,15 @@ export class MCPProxyClient {
 
     // Remove server prefix from URI
     const originalUri = uri.replace(`${this.config.name}://`, "");
-    
+
     try {
       const result = await this.client.readResource({ uri: originalUri });
       return result;
     } catch (error) {
-      this.logger.debug(`Error reading resource ${originalUri} from ${this.config.name}:`, error);
+      this.logger.debug(
+        `Error reading resource ${originalUri} from ${this.config.name}:`,
+        error,
+      );
       throw error;
     }
   }

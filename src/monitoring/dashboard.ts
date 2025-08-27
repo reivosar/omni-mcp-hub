@@ -1,6 +1,6 @@
 /**
  * P1-7: Monitoring and Observability - Dashboard System
- * 
+ *
  * Comprehensive monitoring dashboard with:
  * - Real-time metrics visualization
  * - System health overview
@@ -10,12 +10,12 @@
  * - WebSocket-based live updates
  */
 
-import * as http from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
-import { EventEmitter } from 'events';
-import { Logger } from '../utils/logger.js';
-import { MetricsCollector, PerformanceMetrics } from './metrics-collector.js';
-import { HealthChecker, SystemHealth } from './health-checker.js';
+import * as http from "http";
+import { WebSocketServer, WebSocket } from "ws";
+import { EventEmitter } from "events";
+import { Logger } from "../utils/logger.js";
+import { MetricsCollector, PerformanceMetrics } from "./metrics-collector.js";
+import { HealthChecker, SystemHealth } from "./health-checker.js";
 
 export interface DashboardConfig {
   enabled: boolean;
@@ -72,14 +72,17 @@ export interface SystemInfo {
   hostname: string;
   uptime: number;
   loadAverage: number[];
-  networkInterfaces: Record<string, Array<{
-    address: string;
-    netmask: string;
-    family: string;
-    mac: string;
-    internal: boolean;
-    cidr: string | null;
-  }>>;
+  networkInterfaces: Record<
+    string,
+    Array<{
+      address: string;
+      netmask: string;
+      family: string;
+      mac: string;
+      internal: boolean;
+      cidr: string | null;
+    }>
+  >;
   environment: Record<string, string>;
 }
 
@@ -115,13 +118,13 @@ export class MonitoringDashboard extends EventEmitter {
     config: Partial<DashboardConfig>,
     metricsCollector: MetricsCollector,
     healthChecker: HealthChecker,
-    logger?: Logger
+    logger?: Logger,
   ) {
     super();
     this.logger = logger || Logger.getInstance();
     this.metricsCollector = metricsCollector;
     this.healthChecker = healthChecker;
-    
+
     this.config = {
       enabled: true,
       port: 3003,
@@ -129,16 +132,16 @@ export class MonitoringDashboard extends EventEmitter {
       refreshInterval: 5000, // 5 seconds
       maxHistoryPoints: 1000,
       authentication: {
-        enabled: false
+        enabled: false,
       },
       features: {
         liveMetrics: true,
         historicalCharts: true,
         alertManagement: true,
         systemInfo: true,
-        exportData: true
+        exportData: true,
       },
-      ...config
+      ...config,
     };
 
     this.initializeHistoricalData();
@@ -150,16 +153,16 @@ export class MonitoringDashboard extends EventEmitter {
    */
   private initializeHistoricalData(): void {
     const metricsToTrack = [
-      'memory_usage',
-      'cpu_usage',
-      'request_rate',
-      'error_rate',
-      'response_time',
-      'active_connections',
-      'event_loop_delay'
+      "memory_usage",
+      "cpu_usage",
+      "request_rate",
+      "error_rate",
+      "response_time",
+      "active_connections",
+      "event_loop_delay",
     ];
 
-    metricsToTrack.forEach(metric => {
+    metricsToTrack.forEach((metric) => {
       this.historicalData.set(metric, []);
     });
   }
@@ -169,18 +172,18 @@ export class MonitoringDashboard extends EventEmitter {
    */
   private setupEventListeners(): void {
     // Listen for metrics updates
-    this.metricsCollector.on('metrics-collected', () => {
+    this.metricsCollector.on("metrics-collected", () => {
       this.updateHistoricalData();
       this.broadcastUpdate();
     });
 
     // Listen for health check updates
-    this.healthChecker.on('check-completed', () => {
+    this.healthChecker.on("check-completed", () => {
       this.broadcastUpdate();
     });
 
     // Listen for alerts
-    this.healthChecker.on('critical-failure', (data) => {
+    this.healthChecker.on("critical-failure", (data) => {
       this.broadcastAlert(data);
     });
   }
@@ -190,17 +193,17 @@ export class MonitoringDashboard extends EventEmitter {
    */
   public async start(): Promise<void> {
     if (this.isRunning) {
-      this.logger.warn('Dashboard is already running');
+      this.logger.warn("Dashboard is already running");
       return;
     }
 
     if (!this.config.enabled) {
-      this.logger.info('Dashboard is disabled');
+      this.logger.info("Dashboard is disabled");
       return;
     }
 
     this.isRunning = true;
-    this.logger.info('Starting monitoring dashboard...');
+    this.logger.info("Starting monitoring dashboard...");
 
     // Start HTTP server
     await this.startHttpServer();
@@ -211,8 +214,10 @@ export class MonitoringDashboard extends EventEmitter {
     // Start refresh timer
     this.startRefreshTimer();
 
-    this.emit('started');
-    this.logger.info(`Dashboard started on http://localhost:${this.config.port}`);
+    this.emit("started");
+    this.logger.info(
+      `Dashboard started on http://localhost:${this.config.port}`,
+    );
   }
 
   /**
@@ -224,7 +229,7 @@ export class MonitoringDashboard extends EventEmitter {
     }
 
     this.isRunning = false;
-    this.logger.info('Stopping dashboard...');
+    this.logger.info("Stopping dashboard...");
 
     // Stop refresh timer
     if (this.refreshTimer) {
@@ -233,7 +238,7 @@ export class MonitoringDashboard extends EventEmitter {
     }
 
     // Close WebSocket connections
-    this.connectedClients.forEach(ws => ws.close());
+    this.connectedClients.forEach((ws) => ws.close());
     this.connectedClients.clear();
 
     // Stop servers
@@ -248,8 +253,8 @@ export class MonitoringDashboard extends EventEmitter {
       this.server = undefined;
     }
 
-    this.emit('stopped');
-    this.logger.info('Dashboard stopped');
+    this.emit("stopped");
+    this.logger.info("Dashboard stopped");
   }
 
   /**
@@ -277,50 +282,53 @@ export class MonitoringDashboard extends EventEmitter {
   private async startWebSocketServer(): Promise<void> {
     this.wsServer = new WebSocketServer({ port: this.config.wsPort });
 
-    this.wsServer.on('connection', (ws) => {
+    this.wsServer.on("connection", (ws) => {
       this.handleWebSocketConnection(ws);
     });
 
-    this.wsServer.on('error', (error) => {
-      this.logger.error('WebSocket server error:', error);
+    this.wsServer.on("error", (error) => {
+      this.logger.error("WebSocket server error:", error);
     });
   }
 
   /**
    * Handle HTTP requests
    */
-  private handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Cache-Control', 'no-cache');
+  private handleHttpRequest(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+  ): void {
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cache-Control", "no-cache");
 
-    const url = req.url || '';
+    const url = req.url || "";
 
     try {
-      if (url === '/') {
+      if (url === "/") {
         this.sendDashboardHTML(res);
-      } else if (url === '/api/dashboard') {
+      } else if (url === "/api/dashboard") {
         this.sendDashboardData(res);
-      } else if (url === '/api/metrics') {
+      } else if (url === "/api/metrics") {
         this.sendMetricsData(res);
-      } else if (url === '/api/health') {
+      } else if (url === "/api/health") {
         this.sendHealthData(res);
-      } else if (url === '/api/alerts') {
+      } else if (url === "/api/alerts") {
         this.sendAlertsData(res);
-      } else if (url === '/api/system') {
+      } else if (url === "/api/system") {
         this.sendSystemInfo(res);
-      } else if (url.startsWith('/api/export/')) {
+      } else if (url.startsWith("/api/export/")) {
         this.handleExportRequest(url, res);
-      } else if (url.startsWith('/api/history/')) {
+      } else if (url.startsWith("/api/history/")) {
         this.sendHistoricalData(url, res);
       } else {
         res.statusCode = 404;
-        res.end(JSON.stringify({ error: 'Not Found' }));
+        res.end(JSON.stringify({ error: "Not Found" }));
       }
     } catch (error) {
-      this.logger.error('Error handling HTTP request:', error);
+      this.logger.error("Error handling HTTP request:", error);
       res.statusCode = 500;
-      res.end(JSON.stringify({ error: 'Internal Server Error' }));
+      res.end(JSON.stringify({ error: "Internal Server Error" }));
     }
   }
 
@@ -328,7 +336,7 @@ export class MonitoringDashboard extends EventEmitter {
    * Send dashboard HTML
    */
   private sendDashboardHTML(res: http.ServerResponse): void {
-    res.setHeader('Content-Type', 'text/html');
+    res.setHeader("Content-Type", "text/html");
     res.end(this.generateDashboardHTML());
   }
 
@@ -341,9 +349,9 @@ export class MonitoringDashboard extends EventEmitter {
       systemHealth: this.healthChecker.getSystemHealth(),
       metrics: this.metricsCollector.getCurrentMetrics(),
       alerts: this.getAlertSummary(),
-      systemInfo: this.getSystemInfo()
+      systemInfo: this.getSystemInfo(),
     };
-    
+
     res.end(JSON.stringify(data, null, 2));
   }
 
@@ -383,10 +391,10 @@ export class MonitoringDashboard extends EventEmitter {
    * Send historical data
    */
   private sendHistoricalData(url: string, res: http.ServerResponse): void {
-    const metricName = url.split('/').pop();
+    const metricName = url.split("/").pop();
     if (!metricName) {
       res.statusCode = 400;
-      res.end(JSON.stringify({ error: 'Metric name required' }));
+      res.end(JSON.stringify({ error: "Metric name required" }));
       return;
     }
 
@@ -398,23 +406,23 @@ export class MonitoringDashboard extends EventEmitter {
    * Handle export requests
    */
   private handleExportRequest(url: string, res: http.ServerResponse): void {
-    const format = url.split('/').pop();
-    
+    const format = url.split("/").pop();
+
     switch (format) {
-      case 'prometheus':
-        res.setHeader('Content-Type', 'text/plain');
+      case "prometheus":
+        res.setHeader("Content-Type", "text/plain");
         res.end(this.metricsCollector.exportPrometheusMetrics());
         break;
-      case 'json':
+      case "json":
         res.end(this.metricsCollector.exportJSON());
         break;
-      case 'csv':
-        res.setHeader('Content-Type', 'text/csv');
+      case "csv":
+        res.setHeader("Content-Type", "text/csv");
         res.end(this.metricsCollector.exportCSV());
         break;
       default:
         res.statusCode = 400;
-        res.end(JSON.stringify({ error: 'Unsupported export format' }));
+        res.end(JSON.stringify({ error: "Unsupported export format" }));
     }
   }
 
@@ -423,27 +431,27 @@ export class MonitoringDashboard extends EventEmitter {
    */
   private handleWebSocketConnection(ws: WebSocket): void {
     this.connectedClients.add(ws);
-    this.logger.debug('New WebSocket connection established');
+    this.logger.debug("New WebSocket connection established");
 
     // Send initial data
     this.sendInitialData(ws);
 
-    ws.on('close', () => {
+    ws.on("close", () => {
       this.connectedClients.delete(ws);
-      this.logger.debug('WebSocket connection closed');
+      this.logger.debug("WebSocket connection closed");
     });
 
-    ws.on('error', (error) => {
-      this.logger.error('WebSocket error:', error);
+    ws.on("error", (error) => {
+      this.logger.error("WebSocket error:", error);
       this.connectedClients.delete(ws);
     });
 
-    ws.on('message', (message) => {
+    ws.on("message", (message) => {
       try {
         const data = JSON.parse(message.toString());
         this.handleWebSocketMessage(ws, data);
       } catch (error) {
-        this.logger.error('Invalid WebSocket message:', error);
+        this.logger.error("Invalid WebSocket message:", error);
       }
     });
   }
@@ -453,13 +461,13 @@ export class MonitoringDashboard extends EventEmitter {
    */
   private sendInitialData(ws: WebSocket): void {
     const data = {
-      type: 'initial',
+      type: "initial",
       data: {
         timestamp: Date.now(),
         systemHealth: this.healthChecker.getSystemHealth(),
         metrics: this.metricsCollector.getCurrentMetrics(),
-        alerts: this.getAlertSummary()
-      }
+        alerts: this.getAlertSummary(),
+      },
     };
 
     this.sendWebSocketMessage(ws, data);
@@ -468,49 +476,59 @@ export class MonitoringDashboard extends EventEmitter {
   /**
    * Handle WebSocket messages
    */
-  private handleWebSocketMessage(ws: WebSocket, message: {
-    type: string;
-    payload?: unknown;
-    metric?: string;
-    timeRange?: number;
-  }): void {
+  private handleWebSocketMessage(
+    ws: WebSocket,
+    message: {
+      type: string;
+      payload?: unknown;
+      metric?: string;
+      timeRange?: number;
+    },
+  ): void {
     switch (message.type) {
-      case 'subscribe':
+      case "subscribe":
         // Handle subscription to specific metrics
         break;
-      case 'unsubscribe':
+      case "unsubscribe":
         // Handle unsubscription
         break;
-      case 'get-history':
+      case "get-history":
         if (message.metric && message.timeRange) {
           this.sendHistoryToWebSocket(ws, message.metric, message.timeRange);
         }
         break;
       default:
-        this.logger.warn('Unknown WebSocket message type:', message.type);
+        this.logger.warn("Unknown WebSocket message type:", message.type);
     }
   }
 
   /**
    * Send history data via WebSocket
    */
-  private sendHistoryToWebSocket(ws: WebSocket, metric: string, timeRange?: number): void {
+  private sendHistoryToWebSocket(
+    ws: WebSocket,
+    metric: string,
+    timeRange?: number,
+  ): void {
     const data = this.historicalData.get(metric) || [];
-    const filteredData = timeRange ? 
-      data.filter(d => d.timestamp >= Date.now() - timeRange) : 
-      data;
+    const filteredData = timeRange
+      ? data.filter((d) => d.timestamp >= Date.now() - timeRange)
+      : data;
 
     this.sendWebSocketMessage(ws, {
-      type: 'history',
+      type: "history",
       metric,
-      data: filteredData
+      data: filteredData,
     });
   }
 
   /**
    * Send WebSocket message
    */
-  private sendWebSocketMessage(ws: WebSocket, message: Record<string, unknown>): void {
+  private sendWebSocketMessage(
+    ws: WebSocket,
+    message: Record<string, unknown>,
+  ): void {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(message));
     }
@@ -523,16 +541,16 @@ export class MonitoringDashboard extends EventEmitter {
     if (this.connectedClients.size === 0) return;
 
     const update = {
-      type: 'update',
+      type: "update",
       timestamp: Date.now(),
       data: {
         systemHealth: this.healthChecker.getSystemHealth(),
         metrics: this.metricsCollector.getCurrentMetrics(),
-        alerts: this.getAlertSummary()
-      }
+        alerts: this.getAlertSummary(),
+      },
     };
 
-    this.connectedClients.forEach(ws => {
+    this.connectedClients.forEach((ws) => {
       this.sendWebSocketMessage(ws, update);
     });
   }
@@ -547,12 +565,12 @@ export class MonitoringDashboard extends EventEmitter {
     component?: string;
   }): void {
     const alert = {
-      type: 'alert',
+      type: "alert",
       timestamp: Date.now(),
-      data: alertData
+      data: alertData,
     };
 
-    this.connectedClients.forEach(ws => {
+    this.connectedClients.forEach((ws) => {
       this.sendWebSocketMessage(ws, alert);
     });
   }
@@ -573,27 +591,47 @@ export class MonitoringDashboard extends EventEmitter {
   private updateHistoricalData(): void {
     const timestamp = Date.now();
     const metrics = this.metricsCollector.getCurrentMetrics();
-    
+
     // Add data points for tracked metrics
-    this.addHistoricalPoint('memory_usage', timestamp, metrics.memoryUsage.heapUsed);
-    this.addHistoricalPoint('request_rate', timestamp, metrics.requestsPerSecond);
-    this.addHistoricalPoint('error_rate', timestamp, metrics.errorRate);
-    this.addHistoricalPoint('response_time', timestamp, metrics.averageResponseTime);
-    this.addHistoricalPoint('active_connections', timestamp, metrics.activeConnections);
+    this.addHistoricalPoint(
+      "memory_usage",
+      timestamp,
+      metrics.memoryUsage.heapUsed,
+    );
+    this.addHistoricalPoint(
+      "request_rate",
+      timestamp,
+      metrics.requestsPerSecond,
+    );
+    this.addHistoricalPoint("error_rate", timestamp, metrics.errorRate);
+    this.addHistoricalPoint(
+      "response_time",
+      timestamp,
+      metrics.averageResponseTime,
+    );
+    this.addHistoricalPoint(
+      "active_connections",
+      timestamp,
+      metrics.activeConnections,
+    );
   }
 
   /**
    * Add historical data point
    */
-  private addHistoricalPoint(metric: string, timestamp: number, value: number): void {
+  private addHistoricalPoint(
+    metric: string,
+    timestamp: number,
+    value: number,
+  ): void {
     const data = this.historicalData.get(metric) || [];
     data.push({ timestamp, value });
-    
+
     // Keep only recent points
     if (data.length > this.config.maxHistoryPoints) {
       data.splice(0, data.length - this.config.maxHistoryPoints);
     }
-    
+
     this.historicalData.set(metric, data);
   }
 
@@ -609,7 +647,7 @@ export class MonitoringDashboard extends EventEmitter {
       high: 0,
       medium: 0,
       low: 0,
-      recent: []
+      recent: [],
     };
   }
 
@@ -617,8 +655,8 @@ export class MonitoringDashboard extends EventEmitter {
    * Get system information
    */
   private getSystemInfo(): SystemInfo {
-    const os = require('os');
-    
+    const os = require("os");
+
     return {
       nodeVersion: process.version,
       platform: process.platform,
@@ -628,9 +666,9 @@ export class MonitoringDashboard extends EventEmitter {
       loadAverage: os.loadavg(),
       networkInterfaces: os.networkInterfaces(),
       environment: {
-        NODE_ENV: process.env.NODE_ENV || 'development',
-        TZ: process.env.TZ || 'UTC'
-      }
+        NODE_ENV: process.env.NODE_ENV || "development",
+        TZ: process.env.TZ || "UTC",
+      },
     };
   }
 

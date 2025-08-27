@@ -22,7 +22,7 @@ class BehaviorStateManager {
     currentHash: null,
     generatedBehavior: null,
     lastAppliedAt: null,
-    isApplying: false
+    isApplying: false,
   };
 
   /**
@@ -50,8 +50,8 @@ class BehaviorStateManager {
    * Atomic swap of behavior state
    */
   atomicSwapBehavior(
-    behavior: string, 
-    metadata: { profile: string; hash: string }
+    behavior: string,
+    metadata: { profile: string; hash: string },
   ): void {
     this.state.generatedBehavior = behavior;
     this.state.currentProfileId = metadata.profile;
@@ -104,7 +104,7 @@ class BehaviorStateManager {
       currentHash: null,
       generatedBehavior: null,
       lastAppliedAt: null,
-      isApplying: false
+      isApplying: false,
     };
   }
 }

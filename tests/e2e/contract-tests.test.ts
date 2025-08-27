@@ -625,7 +625,7 @@ main().catch(console.error);
           method: 'tools/call',
           params: {
             name: 'read_file',
-            arguments: { path: '/src/todo-file.js' }
+            arguments: { path: '../../src/todo-file.js' }
           }
         })
       });

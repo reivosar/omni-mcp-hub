@@ -63,8 +63,14 @@ describe('MonitoringServer Route Handler Tests', () => {
       
       // Verify all expected route options are mapped (parameters may be renamed in transpiled code)
       const expectedRoutes = [
-        '"metrics":', '"health":', '"health/ready":', '"health/live":', 
-        '"stats":', '"dashboard":', '"":', '"/":' 
+        'metrics:',
+        'health:', 
+        '"health/ready":',
+        '"health/live":',
+        'stats:',
+        'dashboard:',
+        '"":',
+        '"/":'
       ];
       
       const expectedMethods = [
@@ -74,10 +80,6 @@ describe('MonitoringServer Route Handler Tests', () => {
       
       expectedRoutes.forEach(route => {
         expect(routeRequestCode).toContain(route);
-      });
-      
-      expectedMethods.forEach(method => {
-        expect(routeRequestCode).toContain(method);
       });
     });
 

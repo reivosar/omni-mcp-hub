@@ -25,33 +25,33 @@ export interface MergeOptions {
 
 export enum MergeStrategy {
   /** Complete replacement (default) */
-  REPLACE = 'replace',
+  REPLACE = "replace",
   /** Append to existing content (only for whitelisted sections) */
-  APPEND = 'append',
+  APPEND = "append",
   /** Union of arrays (for allowToolsAppend only) */
-  UNION = 'union'
+  UNION = "union",
 }
 
 /**
  * Sections that can be appended to (whitelist)
  */
 export const APPEND_ALLOWED_SECTIONS = new Set([
-  'allowToolsAppend',
-  'stopwords',
-  'memory_dict',
-  'glossary'
+  "allowToolsAppend",
+  "stopwords",
+  "memory_dict",
+  "glossary",
 ]);
 
 /**
  * Sections that must always be replaced (never merged)
  */
 export const REPLACE_ONLY_SECTIONS = new Set([
-  'instructions',
-  'customInstructions', 
-  'rules',
-  'context',
-  'knowledge',
-  'memory'
+  "instructions",
+  "customInstructions",
+  "rules",
+  "context",
+  "knowledge",
+  "memory",
 ]);
 
 /**
@@ -64,7 +64,7 @@ export class ProfileMerger {
   static merge(
     previousProfile: ProfileMergeResult | null,
     newProfile: ProfileMergeResult,
-    options: MergeOptions = {}
+    options: MergeOptions = {},
   ): ProfileMergeResult {
     // Default: complete replacement of previous profile
     if (!previousProfile) {
@@ -76,7 +76,7 @@ export class ProfileMerger {
     // Process each section in the new profile
     for (const [key, value] of Object.entries(newProfile)) {
       const strategy = this.determineStrategy(key, options);
-      
+
       switch (strategy) {
         case MergeStrategy.REPLACE:
           // Complete replacement (default behavior)
@@ -95,7 +95,11 @@ export class ProfileMerger {
 
         case MergeStrategy.UNION:
           // Union for allowToolsAppend
-          if (key === 'allowToolsAppend' && Array.isArray(value) && Array.isArray(previousProfile[key])) {
+          if (
+            key === "allowToolsAppend" &&
+            Array.isArray(value) &&
+            Array.isArray(previousProfile[key])
+          ) {
             const previousTools = previousProfile[key] as string[];
             const newTools = value as string[];
             result[key] = [...new Set([...previousTools, ...newTools])]; // Remove duplicates
@@ -115,19 +119,25 @@ export class ProfileMerger {
   /**
    * Determine merge strategy for a given section
    */
-  private static determineStrategy(sectionName: string, options: MergeOptions): MergeStrategy {
+  private static determineStrategy(
+    sectionName: string,
+    options: MergeOptions,
+  ): MergeStrategy {
     // Force replacement for prohibited sections
     if (REPLACE_ONLY_SECTIONS.has(sectionName)) {
       return MergeStrategy.REPLACE;
     }
 
     // Union strategy for allowToolsAppend
-    if (sectionName === 'allowToolsAppend' && options.preserveToolsAppend) {
+    if (sectionName === "allowToolsAppend" && options.preserveToolsAppend) {
       return MergeStrategy.UNION;
     }
 
     // Append strategy for explicitly requested sections
-    if (options.appendSections?.includes(sectionName) && APPEND_ALLOWED_SECTIONS.has(sectionName)) {
+    if (
+      options.appendSections?.includes(sectionName) &&
+      APPEND_ALLOWED_SECTIONS.has(sectionName)
+    ) {
       return MergeStrategy.APPEND;
     }
 
@@ -138,15 +148,20 @@ export class ProfileMerger {
   /**
    * Validate merge configuration
    */
-  static validateMergeOptions(options: MergeOptions): { valid: boolean; errors: string[] } {
+  static validateMergeOptions(options: MergeOptions): {
+    valid: boolean;
+    errors: string[];
+  } {
     const errors: string[] = [];
 
     if (options.appendSections) {
       for (const section of options.appendSections) {
         if (REPLACE_ONLY_SECTIONS.has(section)) {
-          errors.push(`Section '${section}' cannot be appended - it must be replaced completely`);
+          errors.push(
+            `Section '${section}' cannot be appended - it must be replaced completely`,
+          );
         }
-        
+
         if (!APPEND_ALLOWED_SECTIONS.has(section)) {
           errors.push(`Section '${section}' is not in the append whitelist`);
         }
@@ -155,7 +170,7 @@ export class ProfileMerger {
 
     return {
       valid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -175,7 +190,7 @@ export class ProfileMerger {
 - Duplicates are automatically removed
 
 ## Exception 2: Append-Only Sections
-- Whitelisted sections: ${Array.from(APPEND_ALLOWED_SECTIONS).join(', ')}
+- Whitelisted sections: ${Array.from(APPEND_ALLOWED_SECTIONS).join(", ")}
 - Must be explicitly requested in merge options
 
 ## Prohibited Merging

@@ -3,11 +3,11 @@
  * Provides comprehensive audit trail with integrity verification
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as crypto from 'crypto';
-import { EventEmitter } from 'events';
-import { ILogger, SilentLogger } from '../utils/logger.js';
+import * as fs from "fs";
+import * as path from "path";
+import * as crypto from "crypto";
+import { EventEmitter } from "events";
+import { ILogger, SilentLogger } from "../utils/logger.js";
 
 export interface AuditEvent {
   id: string;
@@ -25,25 +25,25 @@ export interface AuditEvent {
 }
 
 export enum AuditEventType {
-  AUTHENTICATION = 'authentication',
-  AUTHORIZATION = 'authorization',
-  DATA_ACCESS = 'data_access',
-  DATA_MODIFICATION = 'data_modification',
-  CONFIGURATION_CHANGE = 'configuration_change',
-  SECURITY_VIOLATION = 'security_violation',
-  SYSTEM_EVENT = 'system_event',
-  PROFILE_APPLICATION = 'profile_application',
-  TOOL_EXECUTION = 'tool_execution',
-  RESOURCE_ACCESS = 'resource_access',
-  ERROR = 'error',
-  COMPLIANCE = 'compliance'
+  AUTHENTICATION = "authentication",
+  AUTHORIZATION = "authorization",
+  DATA_ACCESS = "data_access",
+  DATA_MODIFICATION = "data_modification",
+  CONFIGURATION_CHANGE = "configuration_change",
+  SECURITY_VIOLATION = "security_violation",
+  SYSTEM_EVENT = "system_event",
+  PROFILE_APPLICATION = "profile_application",
+  TOOL_EXECUTION = "tool_execution",
+  RESOURCE_ACCESS = "resource_access",
+  ERROR = "error",
+  COMPLIANCE = "compliance",
 }
 
 export enum AuditSeverity {
-  LOW = 'low',
-  MEDIUM = 'medium',
-  HIGH = 'high',
-  CRITICAL = 'critical'
+  LOW = "low",
+  MEDIUM = "medium",
+  HIGH = "high",
+  CRITICAL = "critical",
 }
 
 export interface AuditLogEntry {
@@ -68,7 +68,7 @@ export interface AuditConfig {
 }
 
 export interface ExternalSink {
-  type: 'file' | 's3' | 'cloudwatch' | 'elasticsearch' | 'webhook';
+  type: "file" | "s3" | "cloudwatch" | "elasticsearch" | "webhook";
   config: Record<string, unknown>;
   enabled: boolean;
 }
@@ -86,7 +86,7 @@ export interface AuditMetrics {
 export class AuditLogger extends EventEmitter {
   private config: AuditConfig;
   private logger: ILogger;
-  private lastHash: string = '';
+  private lastHash: string = "";
   private sequenceNumber: number = 0;
   private metrics: AuditMetrics;
   private rotationInProgress = false;
@@ -95,9 +95,9 @@ export class AuditLogger extends EventEmitter {
   constructor(config?: Partial<AuditConfig>, logger?: ILogger) {
     super();
     this.logger = logger || new SilentLogger();
-    
+
     this.config = {
-      logFilePath: path.join(process.cwd(), 'logs', 'audit.jsonl'),
+      logFilePath: path.join(process.cwd(), "logs", "audit.jsonl"),
       maxFileSize: 100 * 1024 * 1024, // 100MB
       retentionDays: 90,
       enableTamperEvidence: true,
@@ -107,7 +107,7 @@ export class AuditLogger extends EventEmitter {
       compressionEnabled: true,
       backupEnabled: true,
       backupInterval: 24 * 60 * 60 * 1000, // 24 hours
-      ...config
+      ...config,
     };
 
     this.metrics = {
@@ -117,7 +117,7 @@ export class AuditLogger extends EventEmitter {
       integrityViolations: 0,
       lastLogTime: null,
       logFileSize: 0,
-      failedSinkDeliveries: 0
+      failedSinkDeliveries: 0,
     };
 
     this.initialize();
@@ -142,10 +142,10 @@ export class AuditLogger extends EventEmitter {
       // Start background tasks
       this.startBackgroundTasks();
 
-      this.logger.info('Audit logging system initialized');
+      this.logger.info("Audit logging system initialized");
     } catch (error) {
-      this.logger.error('Failed to initialize audit logging system:', error);
-      this.emit('initialization-error', error);
+      this.logger.error("Failed to initialize audit logging system:", error);
+      this.emit("initialization-error", error);
     }
   }
 
@@ -153,11 +153,13 @@ export class AuditLogger extends EventEmitter {
     // In production, this should come from a secure key management system
     const keyEnv = process.env.AUDIT_ENCRYPTION_KEY;
     if (keyEnv) {
-      this.encryptionKey = Buffer.from(keyEnv, 'base64');
+      this.encryptionKey = Buffer.from(keyEnv, "base64");
     } else {
       // Generate a new key for development (should be persisted securely)
       this.encryptionKey = crypto.randomBytes(32);
-      this.logger.warn('Generated new encryption key for audit logs. In production, use AUDIT_ENCRYPTION_KEY environment variable.');
+      this.logger.warn(
+        "Generated new encryption key for audit logs. In production, use AUDIT_ENCRYPTION_KEY environment variable.",
+      );
     }
   }
 
@@ -181,23 +183,28 @@ export class AuditLogger extends EventEmitter {
       // Verify integrity of existing log
       await this.verifyLogIntegrity();
     } catch (error) {
-      this.logger.error('Failed to load log state:', error);
+      this.logger.error("Failed to load log state:", error);
     }
   }
 
   private readLastEntries(count: number): AuditLogEntry[] {
     try {
-      const content = fs.readFileSync(this.config.logFilePath, 'utf8');
-      const lines = content.trim().split('\n').filter(line => line.trim());
+      const content = fs.readFileSync(this.config.logFilePath, "utf8");
+      const lines = content
+        .trim()
+        .split("\n")
+        .filter((line) => line.trim());
       const lastLines = lines.slice(-count);
-      
-      return lastLines.map(line => {
-        try {
-          return JSON.parse(line) as AuditLogEntry;
-        } catch {
-          return null;
-        }
-      }).filter(entry => entry !== null) as AuditLogEntry[];
+
+      return lastLines
+        .map((line) => {
+          try {
+            return JSON.parse(line) as AuditLogEntry;
+          } catch {
+            return null;
+          }
+        })
+        .filter((entry) => entry !== null) as AuditLogEntry[];
     } catch {
       return [];
     }
@@ -206,12 +213,12 @@ export class AuditLogger extends EventEmitter {
   /**
    * Log an audit event
    */
-  async logEvent(event: Omit<AuditEvent, 'id' | 'timestamp'>): Promise<void> {
+  async logEvent(event: Omit<AuditEvent, "id" | "timestamp">): Promise<void> {
     try {
       const fullEvent: AuditEvent = {
         id: crypto.randomUUID(),
         timestamp: new Date(),
-        ...event
+        ...event,
       };
 
       const logEntry = await this.createLogEntry(fullEvent);
@@ -219,10 +226,10 @@ export class AuditLogger extends EventEmitter {
       await this.deliverToExternalSinks(logEntry);
 
       this.updateMetrics(fullEvent);
-      this.emit('event-logged', fullEvent);
+      this.emit("event-logged", fullEvent);
     } catch (error) {
-      this.logger.error('Failed to log audit event:', error);
-      this.emit('log-error', { event, error });
+      this.logger.error("Failed to log audit event:", error);
+      this.emit("log-error", { event, error });
     }
   }
 
@@ -234,7 +241,7 @@ export class AuditLogger extends EventEmitter {
       event,
       hash,
       previousHash: this.lastHash,
-      sequenceNumber: ++this.sequenceNumber
+      sequenceNumber: ++this.sequenceNumber,
     };
 
     // Add digital signature if enabled
@@ -247,37 +254,37 @@ export class AuditLogger extends EventEmitter {
   }
 
   private calculateHash(data: string): string {
-    return crypto.createHash('sha256').update(data).digest('hex');
+    return crypto.createHash("sha256").update(data).digest("hex");
   }
 
   private signEntry(entry: AuditLogEntry): string {
     if (!this.encryptionKey) {
-      return '';
+      return "";
     }
-    
+
     const data = JSON.stringify({
       event: entry.event,
       hash: entry.hash,
       previousHash: entry.previousHash,
-      sequenceNumber: entry.sequenceNumber
+      sequenceNumber: entry.sequenceNumber,
     });
-    
-    const hmac = crypto.createHmac('sha256', this.encryptionKey);
-    return hmac.update(data).digest('hex');
+
+    const hmac = crypto.createHmac("sha256", this.encryptionKey);
+    return hmac.update(data).digest("hex");
   }
 
   private async writeLogEntry(entry: AuditLogEntry): Promise<void> {
-    const logLine = JSON.stringify(entry) + '\n';
-    
+    const logLine = JSON.stringify(entry) + "\n";
+
     // Check if rotation is needed
     if (this.shouldRotateLog()) {
       await this.rotateLog();
     }
 
     // Encrypt if enabled
-    const finalLogLine = this.config.enableEncryption ? 
-      this.encryptData(logLine) + '\n' : 
-      logLine;
+    const finalLogLine = this.config.enableEncryption
+      ? this.encryptData(logLine) + "\n"
+      : logLine;
 
     fs.appendFileSync(this.config.logFilePath, finalLogLine);
     this.metrics.logFileSize += finalLogLine.length;
@@ -289,15 +296,15 @@ export class AuditLogger extends EventEmitter {
     }
 
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv('aes-256-gcm', this.encryptionKey, iv);
-    let encrypted = cipher.update(data, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    
+    const cipher = crypto.createCipheriv("aes-256-gcm", this.encryptionKey, iv);
+    let encrypted = cipher.update(data, "utf8", "hex");
+    encrypted += cipher.final("hex");
+
     const authTag = cipher.getAuthTag();
     return JSON.stringify({
-      iv: iv.toString('hex'),
+      iv: iv.toString("hex"),
       encrypted,
-      authTag: authTag.toString('hex')
+      authTag: authTag.toString("hex"),
     });
   }
 
@@ -311,22 +318,25 @@ export class AuditLogger extends EventEmitter {
     }
 
     this.rotationInProgress = true;
-    
+
     try {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const rotatedPath = this.config.logFilePath.replace('.jsonl', `-${timestamp}.jsonl`);
-      
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const rotatedPath = this.config.logFilePath.replace(
+        ".jsonl",
+        `-${timestamp}.jsonl`,
+      );
+
       fs.renameSync(this.config.logFilePath, rotatedPath);
-      
+
       if (this.config.compressionEnabled) {
         await this.compressFile(rotatedPath);
       }
 
       this.metrics.logFileSize = 0;
       this.logger.info(`Audit log rotated: ${rotatedPath}`);
-      this.emit('log-rotated', { rotatedPath });
+      this.emit("log-rotated", { rotatedPath });
     } catch (error) {
-      this.logger.error('Failed to rotate audit log:', error);
+      this.logger.error("Failed to rotate audit log:", error);
     } finally {
       this.rotationInProgress = false;
     }
@@ -335,13 +345,13 @@ export class AuditLogger extends EventEmitter {
   private async compressFile(filePath: string): Promise<void> {
     // Simple compression implementation - in production, use proper compression library
     try {
-      const zlib = await import('zlib');
+      const zlib = await import("zlib");
       const content = fs.readFileSync(filePath);
       const compressed = zlib.gzipSync(content);
-      fs.writeFileSync(filePath + '.gz', compressed);
+      fs.writeFileSync(filePath + ".gz", compressed);
       fs.unlinkSync(filePath);
     } catch (error) {
-      this.logger.error('Failed to compress audit log:', error);
+      this.logger.error("Failed to compress audit log:", error);
     }
   }
 
@@ -357,18 +367,24 @@ export class AuditLogger extends EventEmitter {
         await this.deliverToSink(sink, entry);
       } catch (error) {
         this.metrics.failedSinkDeliveries++;
-        this.logger.error(`Failed to deliver to external sink ${sink.type}:`, error);
-        this.emit('sink-delivery-failed', { sink, entry, error });
+        this.logger.error(
+          `Failed to deliver to external sink ${sink.type}:`,
+          error,
+        );
+        this.emit("sink-delivery-failed", { sink, entry, error });
       }
     }
   }
 
-  private async deliverToSink(sink: ExternalSink, entry: AuditLogEntry): Promise<void> {
+  private async deliverToSink(
+    sink: ExternalSink,
+    entry: AuditLogEntry,
+  ): Promise<void> {
     switch (sink.type) {
-      case 'file':
+      case "file":
         await this.deliverToFileSink(sink, entry);
         break;
-      case 'webhook':
+      case "webhook":
         await this.deliverToWebhookSink(sink, entry);
         break;
       default:
@@ -376,45 +392,53 @@ export class AuditLogger extends EventEmitter {
     }
   }
 
-  private async deliverToFileSink(sink: ExternalSink, entry: AuditLogEntry): Promise<void> {
+  private async deliverToFileSink(
+    sink: ExternalSink,
+    entry: AuditLogEntry,
+  ): Promise<void> {
     const filePath = sink.config.path as string;
     if (!filePath) {
-      throw new Error('File sink path not configured');
+      throw new Error("File sink path not configured");
     }
 
-    const logLine = JSON.stringify(entry) + '\n';
+    const logLine = JSON.stringify(entry) + "\n";
     fs.appendFileSync(filePath, logLine);
   }
 
-  private async deliverToWebhookSink(sink: ExternalSink, entry: AuditLogEntry): Promise<void> {
+  private async deliverToWebhookSink(
+    sink: ExternalSink,
+    entry: AuditLogEntry,
+  ): Promise<void> {
     const url = sink.config.url as string;
     if (!url) {
-      throw new Error('Webhook sink URL not configured');
+      throw new Error("Webhook sink URL not configured");
     }
 
     // Simple webhook delivery - in production, add retry logic and proper error handling
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        ...((sink.config.headers as Record<string, string>) || {})
+        "Content-Type": "application/json",
+        ...((sink.config.headers as Record<string, string>) || {}),
       },
-      body: JSON.stringify(entry)
+      body: JSON.stringify(entry),
     });
 
     if (!response.ok) {
-      throw new Error(`Webhook delivery failed: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Webhook delivery failed: ${response.status} ${response.statusText}`,
+      );
     }
   }
 
   private updateMetrics(event: AuditEvent): void {
     this.metrics.totalEvents++;
     this.metrics.lastLogTime = new Date();
-    
-    this.metrics.eventsByType[event.eventType] = 
+
+    this.metrics.eventsByType[event.eventType] =
       (this.metrics.eventsByType[event.eventType] || 0) + 1;
-    
-    this.metrics.eventsBySeverity[event.severity] = 
+
+    this.metrics.eventsBySeverity[event.severity] =
       (this.metrics.eventsBySeverity[event.severity] || 0) + 1;
   }
 
@@ -424,16 +448,16 @@ export class AuditLogger extends EventEmitter {
   async verifyLogIntegrity(): Promise<boolean> {
     try {
       const entries = this.readAllEntries();
-      let previousHash = '';
-      
+      let previousHash = "";
+
       for (const entry of entries) {
         // Verify hash chain
         if (entry.previousHash !== previousHash) {
           this.metrics.integrityViolations++;
-          this.emit('integrity-violation', { 
-            entry, 
-            expected: previousHash, 
-            actual: entry.previousHash 
+          this.emit("integrity-violation", {
+            entry,
+            expected: previousHash,
+            actual: entry.previousHash,
           });
           return false;
         }
@@ -443,11 +467,11 @@ export class AuditLogger extends EventEmitter {
         const expectedHash = this.calculateHash(eventData + entry.previousHash);
         if (entry.hash !== expectedHash) {
           this.metrics.integrityViolations++;
-          this.emit('integrity-violation', { 
-            entry, 
-            type: 'hash-mismatch',
-            expected: expectedHash, 
-            actual: entry.hash 
+          this.emit("integrity-violation", {
+            entry,
+            type: "hash-mismatch",
+            expected: expectedHash,
+            actual: entry.hash,
           });
           return false;
         }
@@ -457,9 +481,9 @@ export class AuditLogger extends EventEmitter {
           const expectedSignature = this.signEntry(entry);
           if (entry.signature !== expectedSignature) {
             this.metrics.integrityViolations++;
-            this.emit('integrity-violation', { 
-              entry, 
-              type: 'signature-mismatch' 
+            this.emit("integrity-violation", {
+              entry,
+              type: "signature-mismatch",
             });
             return false;
           }
@@ -470,7 +494,7 @@ export class AuditLogger extends EventEmitter {
 
       return true;
     } catch (error) {
-      this.logger.error('Error verifying log integrity:', error);
+      this.logger.error("Error verifying log integrity:", error);
       return false;
     }
   }
@@ -481,16 +505,21 @@ export class AuditLogger extends EventEmitter {
         return [];
       }
 
-      const content = fs.readFileSync(this.config.logFilePath, 'utf8');
-      const lines = content.trim().split('\n').filter(line => line.trim());
-      
-      return lines.map(line => {
-        try {
-          return JSON.parse(line) as AuditLogEntry;
-        } catch {
-          return null;
-        }
-      }).filter(entry => entry !== null) as AuditLogEntry[];
+      const content = fs.readFileSync(this.config.logFilePath, "utf8");
+      const lines = content
+        .trim()
+        .split("\n")
+        .filter((line) => line.trim());
+
+      return lines
+        .map((line) => {
+          try {
+            return JSON.parse(line) as AuditLogEntry;
+          } catch {
+            return null;
+          }
+        })
+        .filter((entry) => entry !== null) as AuditLogEntry[];
     } catch {
       return [];
     }
@@ -498,9 +527,12 @@ export class AuditLogger extends EventEmitter {
 
   private startBackgroundTasks(): void {
     // Cleanup old logs
-    setInterval(() => {
-      this.cleanupOldLogs();
-    }, 24 * 60 * 60 * 1000); // Daily
+    setInterval(
+      () => {
+        this.cleanupOldLogs();
+      },
+      24 * 60 * 60 * 1000,
+    ); // Daily
 
     // Backup logs
     if (this.config.backupEnabled) {
@@ -510,22 +542,29 @@ export class AuditLogger extends EventEmitter {
     }
 
     // Integrity verification
-    setInterval(() => {
-      this.verifyLogIntegrity();
-    }, 4 * 60 * 60 * 1000); // Every 4 hours
+    setInterval(
+      () => {
+        this.verifyLogIntegrity();
+      },
+      4 * 60 * 60 * 1000,
+    ); // Every 4 hours
   }
 
   private cleanupOldLogs(): void {
     try {
       const logDir = path.dirname(this.config.logFilePath);
       const files = fs.readdirSync(logDir);
-      const cutoffTime = Date.now() - (this.config.retentionDays * 24 * 60 * 60 * 1000);
+      const cutoffTime =
+        Date.now() - this.config.retentionDays * 24 * 60 * 60 * 1000;
 
       for (const file of files) {
-        if (file.includes('audit-') && (file.endsWith('.jsonl') || file.endsWith('.jsonl.gz'))) {
+        if (
+          file.includes("audit-") &&
+          (file.endsWith(".jsonl") || file.endsWith(".jsonl.gz"))
+        ) {
           const filePath = path.join(logDir, file);
           const stats = fs.statSync(filePath);
-          
+
           if (stats.mtime.getTime() < cutoffTime) {
             fs.unlinkSync(filePath);
             this.logger.info(`Deleted old audit log: ${file}`);
@@ -533,31 +572,37 @@ export class AuditLogger extends EventEmitter {
         }
       }
     } catch (error) {
-      this.logger.error('Failed to cleanup old logs:', error);
+      this.logger.error("Failed to cleanup old logs:", error);
     }
   }
 
   private async backupLogs(): Promise<void> {
     try {
-      const backupDir = path.join(path.dirname(this.config.logFilePath), 'backup');
+      const backupDir = path.join(
+        path.dirname(this.config.logFilePath),
+        "backup",
+      );
       if (!fs.existsSync(backupDir)) {
         fs.mkdirSync(backupDir, { recursive: true });
       }
 
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const backupPath = path.join(backupDir, `audit-backup-${timestamp}.jsonl`);
-      
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const backupPath = path.join(
+        backupDir,
+        `audit-backup-${timestamp}.jsonl`,
+      );
+
       if (fs.existsSync(this.config.logFilePath)) {
         fs.copyFileSync(this.config.logFilePath, backupPath);
-        
+
         if (this.config.compressionEnabled) {
           await this.compressFile(backupPath);
         }
-        
+
         this.logger.info(`Audit log backed up: ${backupPath}`);
       }
     } catch (error) {
-      this.logger.error('Failed to backup audit logs:', error);
+      this.logger.error("Failed to backup audit logs:", error);
     }
   }
 
@@ -580,89 +625,105 @@ export class AuditLogger extends EventEmitter {
     action?: string;
   }): AuditEvent[] {
     const entries = this.readAllEntries();
-    
+
     return entries
-      .filter(entry => {
+      .filter((entry) => {
         const event = entry.event;
-        
+
         if (criteria.eventType && event.eventType !== criteria.eventType) {
           return false;
         }
-        
+
         if (criteria.severity && event.severity !== criteria.severity) {
           return false;
         }
-        
+
         if (criteria.userId && event.userId !== criteria.userId) {
           return false;
         }
-        
+
         if (criteria.startTime && event.timestamp < criteria.startTime) {
           return false;
         }
-        
+
         if (criteria.endTime && event.timestamp > criteria.endTime) {
           return false;
         }
-        
+
         if (criteria.action && event.action !== criteria.action) {
           return false;
         }
-        
+
         return true;
       })
-      .map(entry => entry.event);
+      .map((entry) => entry.event);
   }
 
   /**
    * Export audit logs for compliance
    */
-  exportLogs(format: 'json' | 'csv' | 'xml' = 'json'): string {
+  exportLogs(format: "json" | "csv" | "xml" = "json"): string {
     const entries = this.readAllEntries();
-    
+
     switch (format) {
-      case 'json':
-        return JSON.stringify(entries.map(e => e.event), null, 2);
-      case 'csv':
-        return this.exportToCsv(entries.map(e => e.event));
-      case 'xml':
-        return this.exportToXml(entries.map(e => e.event));
+      case "json":
+        return JSON.stringify(
+          entries.map((e) => e.event),
+          null,
+          2,
+        );
+      case "csv":
+        return this.exportToCsv(entries.map((e) => e.event));
+      case "xml":
+        return this.exportToXml(entries.map((e) => e.event));
       default:
         throw new Error(`Unsupported export format: ${format}`);
     }
   }
 
   private exportToCsv(events: AuditEvent[]): string {
-    if (events.length === 0) return '';
-    
-    const headers = ['id', 'timestamp', 'eventType', 'userId', 'action', 'severity', 'source'];
-    const rows = events.map(event => [
+    if (events.length === 0) return "";
+
+    const headers = [
+      "id",
+      "timestamp",
+      "eventType",
+      "userId",
+      "action",
+      "severity",
+      "source",
+    ];
+    const rows = events.map((event) => [
       event.id,
       new Date(event.timestamp).toISOString(),
       event.eventType,
-      event.userId || '',
+      event.userId || "",
       event.action,
       event.severity,
-      event.source
+      event.source,
     ]);
-    
-    return [headers, ...rows].map(row => row.join(',')).join('\n');
+
+    return [headers, ...rows].map((row) => row.join(",")).join("\n");
   }
 
   private exportToXml(events: AuditEvent[]): string {
-    const eventXml = events.map(event => `
+    const eventXml = events
+      .map(
+        (event) => `
       <event>
         <id>${event.id}</id>
         <timestamp>${new Date(event.timestamp).toISOString()}</timestamp>
         <eventType>${event.eventType}</eventType>
-        <userId>${event.userId || ''}</userId>
+        <userId>${event.userId || ""}</userId>
         <action>${event.action}</action>
         <severity>${event.severity}</severity>
         <source>${event.source}</source>
         <details>${JSON.stringify(event.details)}</details>
       </event>
-    `).join('');
-    
+    `,
+      )
+      .join("");
+
     return `<?xml version="1.0" encoding="UTF-8"?>
     <auditLog>
       ${eventXml}
@@ -680,14 +741,17 @@ export class AuditLogger extends EventEmitter {
 // Singleton audit logger for global use
 export class GlobalAuditLogger {
   private static instance: AuditLogger;
-  
-  static getInstance(config?: Partial<AuditConfig>, logger?: ILogger): AuditLogger {
+
+  static getInstance(
+    config?: Partial<AuditConfig>,
+    logger?: ILogger,
+  ): AuditLogger {
     if (!GlobalAuditLogger.instance) {
       GlobalAuditLogger.instance = new AuditLogger(config, logger);
     }
     return GlobalAuditLogger.instance;
   }
-  
+
   static resetInstance(): void {
     if (GlobalAuditLogger.instance) {
       GlobalAuditLogger.instance.cleanup();
@@ -699,39 +763,55 @@ export class GlobalAuditLogger {
 
 // Convenience functions for common audit events
 export class AuditEventHelpers {
-  static createAuthEvent(action: string, userId?: string, details: Record<string, unknown> = {}): Omit<AuditEvent, 'id' | 'timestamp'> {
+  static createAuthEvent(
+    action: string,
+    userId?: string,
+    details: Record<string, unknown> = {},
+  ): Omit<AuditEvent, "id" | "timestamp"> {
     return {
       eventType: AuditEventType.AUTHENTICATION,
       userId,
       action,
       details,
       severity: AuditSeverity.MEDIUM,
-      source: 'auth-system'
+      source: "auth-system",
     };
   }
 
-  static createSecurityEvent(action: string, details: Record<string, unknown> = {}): Omit<AuditEvent, 'id' | 'timestamp'> {
+  static createSecurityEvent(
+    action: string,
+    details: Record<string, unknown> = {},
+  ): Omit<AuditEvent, "id" | "timestamp"> {
     return {
       eventType: AuditEventType.SECURITY_VIOLATION,
       action,
       details,
       severity: AuditSeverity.HIGH,
-      source: 'security-system'
+      source: "security-system",
     };
   }
 
-  static createConfigEvent(action: string, userId?: string, details: Record<string, unknown> = {}): Omit<AuditEvent, 'id' | 'timestamp'> {
+  static createConfigEvent(
+    action: string,
+    userId?: string,
+    details: Record<string, unknown> = {},
+  ): Omit<AuditEvent, "id" | "timestamp"> {
     return {
       eventType: AuditEventType.CONFIGURATION_CHANGE,
       userId,
       action,
       details,
       severity: AuditSeverity.MEDIUM,
-      source: 'config-system'
+      source: "config-system",
     };
   }
 
-  static createToolEvent(action: string, userId?: string, toolName?: string, details: Record<string, unknown> = {}): Omit<AuditEvent, 'id' | 'timestamp'> {
+  static createToolEvent(
+    action: string,
+    userId?: string,
+    toolName?: string,
+    details: Record<string, unknown> = {},
+  ): Omit<AuditEvent, "id" | "timestamp"> {
     return {
       eventType: AuditEventType.TOOL_EXECUTION,
       userId,
@@ -739,7 +819,7 @@ export class AuditEventHelpers {
       action,
       details,
       severity: AuditSeverity.LOW,
-      source: 'tool-system'
+      source: "tool-system",
     };
   }
 }

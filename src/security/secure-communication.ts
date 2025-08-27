@@ -3,11 +3,11 @@
  * Provides comprehensive encryption and authentication for MCP communications
  */
 
-import * as tls from 'tls';
-import * as fs from 'fs/promises';
-import * as crypto from 'crypto';
-import { EventEmitter } from 'events';
-import { ILogger, SilentLogger } from '../utils/logger.js';
+import * as tls from "tls";
+import * as fs from "fs/promises";
+import * as crypto from "crypto";
+import { EventEmitter } from "events";
+import { ILogger, SilentLogger } from "../utils/logger.js";
 
 export interface TLSConfig {
   enabled: boolean;
@@ -75,9 +75,12 @@ export class CertificateManager extends EventEmitter {
   /**
    * Load and validate a certificate file
    */
-  async loadCertificate(name: string, certPath: string): Promise<CertificateInfo> {
+  async loadCertificate(
+    name: string,
+    certPath: string,
+  ): Promise<CertificateInfo> {
     try {
-      const certContent = await fs.readFile(certPath, 'utf8');
+      const certContent = await fs.readFile(certPath, "utf8");
       const x509Cert = new crypto.X509Certificate(certContent);
       const info: CertificateInfo = {
         subject: x509Cert.subject,
@@ -87,27 +90,32 @@ export class CertificateManager extends EventEmitter {
         validFrom: new Date(x509Cert.validFrom),
         validTo: new Date(x509Cert.validTo),
         isExpired: new Date() > new Date(x509Cert.validTo),
-        isExpiringSoon: (new Date(x509Cert.validTo).getTime() - Date.now()) < (30 * 24 * 60 * 60 * 1000)
+        isExpiringSoon:
+          new Date(x509Cert.validTo).getTime() - Date.now() <
+          30 * 24 * 60 * 60 * 1000,
       };
 
       this.certificates.set(name, info);
       this.logger.info(`Certificate loaded: ${name} - ${info.subject}`);
-      
+
       if (info.isExpired) {
-        this.logger.error(`Certificate ${name} is expired! Valid until: ${info.validTo}`);
-        this.emit('certificate-expired', { name, info });
+        this.logger.error(
+          `Certificate ${name} is expired! Valid until: ${info.validTo}`,
+        );
+        this.emit("certificate-expired", { name, info });
       } else if (info.isExpiringSoon) {
         this.logger.warn(`Certificate ${name} expires soon: ${info.validTo}`);
-        this.emit('certificate-expiring', { name, info });
+        this.emit("certificate-expiring", { name, info });
       }
 
       return info;
     } catch (error) {
       this.logger.error(`Failed to load certificate ${name}:`, error);
-      throw new Error(`Certificate loading failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Certificate loading failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
-
 
   /**
    * Watch certificate files for changes
@@ -122,7 +130,7 @@ export class CertificateManager extends EventEmitter {
       // For now, just track that we're watching the file
       this.logger.info(`Watching certificate file: ${certPath}`);
       this.watchedFiles.add(certPath);
-      this.emit('certificate-watch-started', { name, path: certPath });
+      this.emit("certificate-watch-started", { name, path: certPath });
     } catch (error) {
       this.logger.error(`Failed to watch certificate ${certPath}:`, error);
     }
@@ -133,12 +141,12 @@ export class CertificateManager extends EventEmitter {
    */
   startRotationMonitoring(intervalMs: number = 24 * 60 * 60 * 1000): void {
     this.stopRotationMonitoring();
-    
+
     this.rotationInterval = setInterval(() => {
       this.checkCertificateExpiration();
     }, intervalMs);
-    
-    this.logger.info('Certificate rotation monitoring started');
+
+    this.logger.info("Certificate rotation monitoring started");
   }
 
   /**
@@ -148,7 +156,7 @@ export class CertificateManager extends EventEmitter {
     if (this.rotationInterval) {
       clearInterval(this.rotationInterval);
       this.rotationInterval = undefined;
-      this.logger.info('Certificate rotation monitoring stopped');
+      this.logger.info("Certificate rotation monitoring stopped");
     }
   }
 
@@ -157,10 +165,13 @@ export class CertificateManager extends EventEmitter {
       const now = new Date();
       if (now > info.validTo) {
         this.logger.error(`Certificate ${name} has expired!`);
-        this.emit('certificate-expired', { name, info });
-      } else if ((info.validTo.getTime() - now.getTime()) < (30 * 24 * 60 * 60 * 1000)) {
+        this.emit("certificate-expired", { name, info });
+      } else if (
+        info.validTo.getTime() - now.getTime() <
+        30 * 24 * 60 * 60 * 1000
+      ) {
         this.logger.warn(`Certificate ${name} expires in less than 30 days`);
-        this.emit('certificate-expiring', { name, info });
+        this.emit("certificate-expiring", { name, info });
       }
     }
   }
@@ -182,26 +193,29 @@ export class CertificateManager extends EventEmitter {
   /**
    * Validate certificate chain
    */
-  async validateCertificateChain(certPath: string, caPath?: string): Promise<boolean> {
+  async validateCertificateChain(
+    certPath: string,
+    caPath?: string,
+  ): Promise<boolean> {
     try {
-      const certContent = await fs.readFile(certPath, 'utf8');
+      const certContent = await fs.readFile(certPath, "utf8");
       const cert = new crypto.X509Certificate(certContent);
-      
+
       if (caPath) {
-        const caContent = await fs.readFile(caPath, 'utf8');
+        const caContent = await fs.readFile(caPath, "utf8");
         const caCert = new crypto.X509Certificate(caContent);
-        
+
         // Verify certificate against CA
         const isValid = cert.verify(caCert.publicKey);
         this.logger.debug(`Certificate chain validation result: ${isValid}`);
         return isValid;
       }
-      
+
       // Basic validation without CA
       const now = new Date();
       return now >= new Date(cert.validFrom) && now <= new Date(cert.validTo);
     } catch (error) {
-      this.logger.error('Certificate chain validation failed:', error);
+      this.logger.error("Certificate chain validation failed:", error);
       return false;
     }
   }
@@ -232,36 +246,36 @@ export class TLSServer extends EventEmitter {
       tlsHandshakeFailures: 0,
       mutualAuthFailures: 0,
       totalDataTransferred: 0,
-      activeSessions: 0
+      activeSessions: 0,
     };
   }
 
   /**
    * Start TLS server
    */
-  async start(port: number, host: string = '0.0.0.0'): Promise<void> {
+  async start(port: number, host: string = "0.0.0.0"): Promise<void> {
     if (!this.config.enabled) {
-      throw new Error('TLS is not enabled in configuration');
+      throw new Error("TLS is not enabled in configuration");
     }
 
     try {
       const options = await this.buildTLSOptions();
       this.server = tls.createServer(options, this.handleConnection.bind(this));
 
-      this.server.on('error', this.handleServerError.bind(this));
-      this.server.on('tlsClientError', this.handleTLSClientError.bind(this));
+      this.server.on("error", this.handleServerError.bind(this));
+      this.server.on("tlsClientError", this.handleTLSClientError.bind(this));
 
       return new Promise((resolve, reject) => {
         this.server!.listen(port, host, () => {
           this.logger.info(`TLS server listening on ${host}:${port}`);
-          this.emit('server-started', { host, port });
+          this.emit("server-started", { host, port });
           resolve();
         });
 
-        this.server!.on('error', reject);
+        this.server!.on("error", reject);
       });
     } catch (error) {
-      this.logger.error('Failed to start TLS server:', error);
+      this.logger.error("Failed to start TLS server:", error);
       throw error;
     }
   }
@@ -271,11 +285,13 @@ export class TLSServer extends EventEmitter {
       key: await fs.readFile(this.config.keyPath),
       cert: await fs.readFile(this.config.certPath),
       passphrase: this.config.passphrase,
-      ciphers: this.config.ciphers || 'ECDHE-RSA-AES128-GCM-SHA256:!RC4:!LOW:!MD5:!aNULL:!EDH',
-      secureProtocol: 'TLSv1_2_method',
+      ciphers:
+        this.config.ciphers ||
+        "ECDHE-RSA-AES128-GCM-SHA256:!RC4:!LOW:!MD5:!aNULL:!EDH",
+      secureProtocol: "TLSv1_2_method",
       honorCipherOrder: true,
       requestCert: this.config.requireClientCert,
-      rejectUnauthorized: this.config.requireClientCert
+      rejectUnauthorized: this.config.requireClientCert,
     };
 
     if (this.config.caPath) {
@@ -309,38 +325,45 @@ export class TLSServer extends EventEmitter {
       cert: clientCert,
       cipher: socket.getCipher(),
       protocol: socket.getProtocol(),
-      remoteAddress: socket.remoteAddress
+      remoteAddress: socket.remoteAddress,
     };
 
-    this.logger.info(`TLS connection established from ${clientInfo.remoteAddress}`);
-    this.logger.debug('Client info:', clientInfo);
+    this.logger.info(
+      `TLS connection established from ${clientInfo.remoteAddress}`,
+    );
+    this.logger.debug("Client info:", clientInfo);
 
-    if (this.config.requireClientCert && !this.validateClientCertificate(clientCert)) {
-      this.logger.warn('Client certificate validation failed');
+    if (
+      this.config.requireClientCert &&
+      !this.validateClientCertificate(clientCert)
+    ) {
+      this.logger.warn("Client certificate validation failed");
       this.metrics.mutualAuthFailures++;
       socket.destroy();
       return;
     }
 
-    socket.on('data', (data) => {
+    socket.on("data", (data) => {
       this.metrics.totalDataTransferred += data.length;
-      this.emit('data', data, socket, clientInfo);
+      this.emit("data", data, socket, clientInfo);
     });
 
-    socket.on('close', () => {
+    socket.on("close", () => {
       this.activeSessions.delete(socket);
       this.metrics.activeSessions = this.activeSessions.size;
-      this.logger.debug(`TLS connection closed from ${clientInfo.remoteAddress}`);
-      this.emit('connection-closed', clientInfo);
+      this.logger.debug(
+        `TLS connection closed from ${clientInfo.remoteAddress}`,
+      );
+      this.emit("connection-closed", clientInfo);
     });
 
-    socket.on('error', (error) => {
-      this.logger.error('TLS socket error:', error);
+    socket.on("error", (error) => {
+      this.logger.error("TLS socket error:", error);
       this.metrics.connectionsFailed++;
-      this.emit('connection-error', error, clientInfo);
+      this.emit("connection-error", error, clientInfo);
     });
 
-    this.emit('connection', socket, clientInfo);
+    this.emit("connection", socket, clientInfo);
   }
 
   private validateClientCertificate(cert: tls.PeerCertificate): boolean {
@@ -350,16 +373,25 @@ export class TLSServer extends EventEmitter {
 
     // Check allowed subjects
     if (this.config.allowedSubjects && this.config.allowedSubjects.length > 0) {
-      if (!this.config.allowedSubjects.includes(cert.subject.CN || '')) {
-        this.logger.warn(`Client certificate subject not allowed: ${cert.subject.CN}`);
+      if (!this.config.allowedSubjects.includes(cert.subject.CN || "")) {
+        this.logger.warn(
+          `Client certificate subject not allowed: ${cert.subject.CN}`,
+        );
         return false;
       }
     }
 
     // Check allowed fingerprints
-    if (this.config.allowedFingerprints && this.config.allowedFingerprints.length > 0) {
-      if (!this.config.allowedFingerprints.includes(cert.fingerprint256 || '')) {
-        this.logger.warn(`Client certificate fingerprint not allowed: ${cert.fingerprint256}`);
+    if (
+      this.config.allowedFingerprints &&
+      this.config.allowedFingerprints.length > 0
+    ) {
+      if (
+        !this.config.allowedFingerprints.includes(cert.fingerprint256 || "")
+      ) {
+        this.logger.warn(
+          `Client certificate fingerprint not allowed: ${cert.fingerprint256}`,
+        );
         return false;
       }
     }
@@ -373,15 +405,15 @@ export class TLSServer extends EventEmitter {
   }
 
   private handleServerError(error: Error): void {
-    this.logger.error('TLS server error:', error);
+    this.logger.error("TLS server error:", error);
     this.metrics.connectionsFailed++;
-    this.emit('server-error', error);
+    this.emit("server-error", error);
   }
 
   private handleTLSClientError(error: Error, socket: tls.TLSSocket): void {
-    this.logger.error('TLS client error:', error);
+    this.logger.error("TLS client error:", error);
     this.metrics.tlsHandshakeFailures++;
-    this.emit('tls-error', error, socket);
+    this.emit("tls-error", error, socket);
   }
 
   /**
@@ -394,14 +426,14 @@ export class TLSServer extends EventEmitter {
 
     return new Promise((resolve) => {
       // Close all active sessions
-      this.activeSessions.forEach(socket => {
+      this.activeSessions.forEach((socket) => {
         socket.destroy();
       });
       this.activeSessions.clear();
 
       this.server!.close(() => {
-        this.logger.info('TLS server stopped');
-        this.emit('server-stopped');
+        this.logger.info("TLS server stopped");
+        this.emit("server-stopped");
         resolve();
       });
     });
@@ -437,7 +469,11 @@ export class TLSClient extends EventEmitter {
   private metrics: SecurityMetrics;
   private reconnectTimer?: NodeJS.Timeout;
 
-  constructor(tlsConfig: TLSConfig, connectionConfig: SecureConnectionConfig, logger?: ILogger) {
+  constructor(
+    tlsConfig: TLSConfig,
+    connectionConfig: SecureConnectionConfig,
+    logger?: ILogger,
+  ) {
     super();
     this.config = tlsConfig;
     this.connectionConfig = connectionConfig;
@@ -449,7 +485,7 @@ export class TLSClient extends EventEmitter {
       tlsHandshakeFailures: 0,
       mutualAuthFailures: 0,
       totalDataTransferred: 0,
-      activeSessions: 0
+      activeSessions: 0,
     };
   }
 
@@ -475,15 +511,20 @@ export class TLSClient extends EventEmitter {
       } catch (error) {
         retryCount++;
         this.metrics.connectionsFailed++;
-        
+
         if (retryCount > maxRetries) {
-          this.logger.error(`Failed to connect after ${maxRetries} retries:`, error);
+          this.logger.error(
+            `Failed to connect after ${maxRetries} retries:`,
+            error,
+          );
           throw error;
         }
 
         const delay = this.connectionConfig.retryDelay || 1000;
-        this.logger.warn(`Connection attempt ${retryCount} failed, retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        this.logger.warn(
+          `Connection attempt ${retryCount} failed, retrying in ${delay}ms...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
@@ -494,13 +535,13 @@ export class TLSClient extends EventEmitter {
       port: this.connectionConfig.port,
       rejectUnauthorized: true,
       checkServerIdentity: this.checkServerIdentity.bind(this),
-      timeout: this.connectionConfig.timeout || 10000
+      timeout: this.connectionConfig.timeout || 10000,
     };
 
     if (this.config.keyPath && this.config.certPath) {
       options.key = await fs.readFile(this.config.keyPath);
       options.cert = await fs.readFile(this.config.certPath);
-      
+
       if (this.config.passphrase) {
         options.passphrase = this.config.passphrase;
       }
@@ -525,25 +566,29 @@ export class TLSClient extends EventEmitter {
     return options;
   }
 
-  private async attemptConnection(options: tls.ConnectionOptions): Promise<void> {
+  private async attemptConnection(
+    options: tls.ConnectionOptions,
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       this.socket = tls.connect(options, () => {
-        this.logger.info(`TLS connection established to ${this.connectionConfig.host}:${this.connectionConfig.port}`);
+        this.logger.info(
+          `TLS connection established to ${this.connectionConfig.host}:${this.connectionConfig.port}`,
+        );
         this.setupSocketHandlers();
-        this.emit('connected');
+        this.emit("connected");
         resolve();
       });
 
-      this.socket.on('error', (error) => {
-        this.logger.error('TLS connection error:', error);
+      this.socket.on("error", (error) => {
+        this.logger.error("TLS connection error:", error);
         this.metrics.connectionsFailed++;
         reject(error);
       });
 
-      this.socket.on('timeout', () => {
-        this.logger.error('TLS connection timeout');
+      this.socket.on("timeout", () => {
+        this.logger.error("TLS connection timeout");
         this.socket?.destroy();
-        reject(new Error('Connection timeout'));
+        reject(new Error("Connection timeout"));
       });
     });
   }
@@ -552,32 +597,38 @@ export class TLSClient extends EventEmitter {
     if (!this.socket) return;
 
     if (this.connectionConfig.keepAlive) {
-      this.socket.setKeepAlive(true, this.connectionConfig.keepAliveInitialDelay || 0);
+      this.socket.setKeepAlive(
+        true,
+        this.connectionConfig.keepAliveInitialDelay || 0,
+      );
     }
 
-    this.socket.on('data', (data) => {
+    this.socket.on("data", (data) => {
       this.metrics.totalDataTransferred += data.length;
-      this.emit('data', data);
+      this.emit("data", data);
     });
 
-    this.socket.on('close', () => {
-      this.logger.debug('TLS connection closed');
+    this.socket.on("close", () => {
+      this.logger.debug("TLS connection closed");
       this.metrics.activeSessions = 0;
-      this.emit('disconnected');
+      this.emit("disconnected");
     });
 
-    this.socket.on('end', () => {
-      this.logger.debug('TLS connection ended');
-      this.emit('end');
+    this.socket.on("end", () => {
+      this.logger.debug("TLS connection ended");
+      this.emit("end");
     });
 
-    this.socket.on('error', (error) => {
-      this.logger.error('TLS socket error:', error);
-      this.emit('error', error);
+    this.socket.on("error", (error) => {
+      this.logger.error("TLS socket error:", error);
+      this.emit("error", error);
     });
   }
 
-  private checkServerIdentity(hostname: string, cert: tls.PeerCertificate): Error | undefined {
+  private checkServerIdentity(
+    hostname: string,
+    cert: tls.PeerCertificate,
+  ): Error | undefined {
     try {
       // Perform additional server certificate validation
       const now = new Date();
@@ -587,9 +638,14 @@ export class TLSClient extends EventEmitter {
       }
 
       // Check hostname matching
-      if (cert.subject.CN !== hostname && !cert.subjectaltname?.includes(`DNS:${hostname}`)) {
+      if (
+        cert.subject.CN !== hostname &&
+        !cert.subjectaltname?.includes(`DNS:${hostname}`)
+      ) {
         this.metrics.certificateValidationFailures++;
-        return new Error(`Server certificate does not match hostname ${hostname}`);
+        return new Error(
+          `Server certificate does not match hostname ${hostname}`,
+        );
       }
 
       return undefined;
@@ -604,13 +660,13 @@ export class TLSClient extends EventEmitter {
    */
   async write(data: Buffer | string): Promise<boolean> {
     if (!this.socket || this.socket.destroyed) {
-      throw new Error('TLS connection is not established');
+      throw new Error("TLS connection is not established");
     }
 
     return new Promise((resolve, reject) => {
       this.socket!.write(data, (error) => {
         if (error) {
-          this.logger.error('Failed to write data:', error);
+          this.logger.error("Failed to write data:", error);
           reject(error);
         } else {
           resolve(true);
@@ -631,7 +687,7 @@ export class TLSClient extends EventEmitter {
     if (this.socket && !this.socket.destroyed) {
       return new Promise((resolve) => {
         this.socket!.end(() => {
-          this.logger.info('TLS connection disconnected');
+          this.logger.info("TLS connection disconnected");
           resolve();
         });
       });
@@ -680,17 +736,23 @@ export class SecureCommunicationManager extends EventEmitter {
     this.certificateManager = new CertificateManager(logger);
 
     // Forward certificate manager events
-    this.certificateManager.on('certificate-expired', (data) => this.emit('certificate-expired', data));
-    this.certificateManager.on('certificate-expiring', (data) => this.emit('certificate-expiring', data));
+    this.certificateManager.on("certificate-expired", (data) =>
+      this.emit("certificate-expired", data),
+    );
+    this.certificateManager.on("certificate-expiring", (data) =>
+      this.emit("certificate-expiring", data),
+    );
   }
 
   /**
    * Initialize certificate manager
    */
-  async initializeCertificates(certificates: Array<{name: string, path: string, watch?: boolean}>): Promise<void> {
+  async initializeCertificates(
+    certificates: Array<{ name: string; path: string; watch?: boolean }>,
+  ): Promise<void> {
     for (const cert of certificates) {
       await this.certificateManager.loadCertificate(cert.name, cert.path);
-      
+
       if (cert.watch) {
         await this.certificateManager.watchCertificate(cert.name, cert.path);
       }
@@ -702,13 +764,23 @@ export class SecureCommunicationManager extends EventEmitter {
   /**
    * Start TLS server
    */
-  async startTLSServer(config: mTLSConfig, port: number, host?: string): Promise<void> {
+  async startTLSServer(
+    config: mTLSConfig,
+    port: number,
+    host?: string,
+  ): Promise<void> {
     this.tlsServer = new TLSServer(config, this.logger);
-    
+
     // Forward server events
-    this.tlsServer.on('connection', (socket, clientInfo) => this.emit('server-connection', socket, clientInfo));
-    this.tlsServer.on('connection-closed', (clientInfo) => this.emit('server-connection-closed', clientInfo));
-    this.tlsServer.on('data', (data, socket, clientInfo) => this.emit('server-data', data, socket, clientInfo));
+    this.tlsServer.on("connection", (socket, clientInfo) =>
+      this.emit("server-connection", socket, clientInfo),
+    );
+    this.tlsServer.on("connection-closed", (clientInfo) =>
+      this.emit("server-connection-closed", clientInfo),
+    );
+    this.tlsServer.on("data", (data, socket, clientInfo) =>
+      this.emit("server-data", data, socket, clientInfo),
+    );
 
     await this.tlsServer.start(port, host);
   }
@@ -716,18 +788,22 @@ export class SecureCommunicationManager extends EventEmitter {
   /**
    * Create TLS client connection
    */
-  async createTLSClient(name: string, tlsConfig: TLSConfig, connectionConfig: SecureConnectionConfig): Promise<TLSClient> {
+  async createTLSClient(
+    name: string,
+    tlsConfig: TLSConfig,
+    connectionConfig: SecureConnectionConfig,
+  ): Promise<TLSClient> {
     const client = new TLSClient(tlsConfig, connectionConfig, this.logger);
-    
+
     // Forward client events
-    client.on('connected', () => this.emit('client-connected', name));
-    client.on('disconnected', () => this.emit('client-disconnected', name));
-    client.on('data', (data) => this.emit('client-data', name, data));
-    client.on('error', (error) => this.emit('client-error', name, error));
+    client.on("connected", () => this.emit("client-connected", name));
+    client.on("disconnected", () => this.emit("client-disconnected", name));
+    client.on("data", (data) => this.emit("client-data", name, data));
+    client.on("error", (error) => this.emit("client-error", name, error));
 
     this.tlsClients.set(name, client);
     await client.connect();
-    
+
     return client;
   }
 
@@ -745,7 +821,7 @@ export class SecureCommunicationManager extends EventEmitter {
       certificates: Map<string, CertificateInfo>;
     } = {
       clients: {} as Record<string, SecurityMetrics>,
-      certificates: this.certificateManager.getAllCertificates()
+      certificates: this.certificateManager.getAllCertificates(),
     };
 
     if (this.tlsServer) {
@@ -762,14 +838,23 @@ export class SecureCommunicationManager extends EventEmitter {
   /**
    * Validate all certificates
    */
-  async validateAllCertificates(): Promise<Array<{name: string, valid: boolean, reason?: string}>> {
-    const results: Array<{name: string, valid: boolean, reason?: string}> = [];
-    
-    for (const [name, info] of this.certificateManager.getAllCertificates().entries()) {
+  async validateAllCertificates(): Promise<
+    Array<{ name: string; valid: boolean; reason?: string }>
+  > {
+    const results: Array<{ name: string; valid: boolean; reason?: string }> =
+      [];
+
+    for (const [name, info] of this.certificateManager
+      .getAllCertificates()
+      .entries()) {
       if (info.isExpired) {
-        results.push({ name, valid: false, reason: 'Certificate expired' });
+        results.push({ name, valid: false, reason: "Certificate expired" });
       } else if (info.isExpiringSoon) {
-        results.push({ name, valid: false, reason: 'Certificate expires within 30 days' });
+        results.push({
+          name,
+          valid: false,
+          reason: "Certificate expires within 30 days",
+        });
       } else {
         results.push({ name, valid: true });
       }
@@ -782,7 +867,7 @@ export class SecureCommunicationManager extends EventEmitter {
    * Cleanup all resources
    */
   async destroy(): Promise<void> {
-    this.logger.info('Shutting down secure communication manager...');
+    this.logger.info("Shutting down secure communication manager...");
 
     // Stop TLS server
     if (this.tlsServer) {
@@ -802,7 +887,7 @@ export class SecureCommunicationManager extends EventEmitter {
     this.tlsClients.clear();
     this.certificateManager.destroy();
     this.removeAllListeners();
-    
-    this.logger.info('Secure communication manager shutdown complete');
+
+    this.logger.info("Secure communication manager shutdown complete");
   }
 }

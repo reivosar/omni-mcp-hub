@@ -1,11 +1,11 @@
-import * as path from 'path';
-import { ClaudeConfig, ClaudeConfigManager } from './claude-config.js';
-import { ILogger, SilentLogger } from './logger.js';
+import * as path from "path";
+import { ClaudeConfig, ClaudeConfigManager } from "./claude-config.js";
+import { ILogger, SilentLogger } from "./logger.js";
 
 export interface InheritanceConfig {
   enabled: boolean;
   baseProfiles: string[];
-  overrideStrategy: 'merge' | 'replace';
+  overrideStrategy: "merge" | "replace";
   mergeArrays?: boolean;
   respectOrder?: boolean;
 }
@@ -39,7 +39,7 @@ export class ProfileInheritanceManager {
    */
   async resolveProfile(profilePath: string): Promise<ProfileResolutionResult> {
     const normalizedPath = path.resolve(profilePath);
-    
+
     // Check cache first
     if (this.resolutionCache.has(normalizedPath)) {
       return this.resolutionCache.get(normalizedPath)!;
@@ -51,7 +51,7 @@ export class ProfileInheritanceManager {
         config: {} as InheritableConfig,
         chain: [],
         errors: [`Circular dependency detected: ${normalizedPath}`],
-        warnings: []
+        warnings: [],
       };
     }
 
@@ -69,47 +69,63 @@ export class ProfileInheritanceManager {
   /**
    * Internal resolution logic
    */
-  private async resolveProfileInternal(profilePath: string): Promise<ProfileResolutionResult> {
+  private async resolveProfileInternal(
+    profilePath: string,
+  ): Promise<ProfileResolutionResult> {
     const result: ProfileResolutionResult = {
       config: {} as InheritableConfig,
       chain: [profilePath],
       errors: [],
-      warnings: []
+      warnings: [],
     };
 
     try {
       // Load the main profile
-      const mainConfig = await this.configManager.loadClaudeConfig(profilePath) as InheritableConfig;
-      
+      const mainConfig = (await this.configManager.loadClaudeConfig(
+        profilePath,
+      )) as InheritableConfig;
+
       // If no inheritance is configured, return as-is
-      if (!mainConfig.inheritance || !mainConfig.inheritance.enabled || !mainConfig.inheritance.baseProfiles?.length) {
+      if (
+        !mainConfig.inheritance ||
+        !mainConfig.inheritance.enabled ||
+        !mainConfig.inheritance.baseProfiles?.length
+      ) {
         result.config = mainConfig;
         return result;
       }
 
       this.logger.debug(`Resolving inheritance for ${profilePath}`);
-      
+
       // Resolve base profiles
       const resolvedBases: InheritableConfig[] = [];
-      
+
       for (const baseProfile of mainConfig.inheritance.baseProfiles) {
         try {
           const basePath = this.resolveProfilePath(baseProfile, profilePath);
           const baseResult = await this.resolveProfile(basePath);
-          
+
           if (baseResult.errors.length > 0) {
-            result.errors.push(...baseResult.errors.map(err => `Base profile ${baseProfile}: ${err}`));
+            result.errors.push(
+              ...baseResult.errors.map(
+                (err) => `Base profile ${baseProfile}: ${err}`,
+              ),
+            );
             continue;
           }
 
           resolvedBases.push(baseResult.config);
-          result.chain.unshift(...baseResult.chain.filter(p => !result.chain.includes(p)));
+          result.chain.unshift(
+            ...baseResult.chain.filter((p) => !result.chain.includes(p)),
+          );
           result.warnings.push(...baseResult.warnings);
-          
         } catch (error) {
           let errorMsg = `Failed to resolve base profile ${baseProfile}`;
           if (error instanceof Error) {
-            if (error.message.includes('ENOENT') || error.message.includes('no such file')) {
+            if (
+              error.message.includes("ENOENT") ||
+              error.message.includes("no such file")
+            ) {
               errorMsg += `: File not found`;
             } else {
               errorMsg += `: ${error.message}`;
@@ -130,16 +146,17 @@ export class ProfileInheritanceManager {
 
       // Merge configurations
       result.config = this.mergeConfigs(resolvedBases, mainConfig);
-      
+
       // Add inheritance metadata
       result.config._inheritanceChain = [...result.chain];
       result.config._resolvedFrom = [...mainConfig.inheritance.baseProfiles];
       result.config.inheritance = mainConfig.inheritance;
 
-      this.logger.debug(`Successfully resolved ${profilePath} with ${resolvedBases.length} base profiles`);
-      
+      this.logger.debug(
+        `Successfully resolved ${profilePath} with ${resolvedBases.length} base profiles`,
+      );
+
       return result;
-      
     } catch (error) {
       result.errors.push(`Failed to load profile ${profilePath}: ${error}`);
       return result;
@@ -149,15 +166,23 @@ export class ProfileInheritanceManager {
   /**
    * Merge multiple configurations according to inheritance rules
    */
-  private mergeConfigs(baseConfigs: InheritableConfig[], mainConfig: InheritableConfig): InheritableConfig {
-    const strategy = mainConfig.inheritance?.overrideStrategy || 'merge';
+  private mergeConfigs(
+    baseConfigs: InheritableConfig[],
+    mainConfig: InheritableConfig,
+  ): InheritableConfig {
+    const strategy = mainConfig.inheritance?.overrideStrategy || "merge";
     const mergeArrays = mainConfig.inheritance?.mergeArrays !== false;
-    
+
     let result: InheritableConfig = {};
 
     // Start with base configurations (in order)
     for (const baseConfig of baseConfigs) {
-      result = this.mergeSingleConfig(result, baseConfig, strategy, mergeArrays);
+      result = this.mergeSingleConfig(
+        result,
+        baseConfig,
+        strategy,
+        mergeArrays,
+      );
     }
 
     // Finally merge the main config
@@ -170,23 +195,24 @@ export class ProfileInheritanceManager {
    * Merge two configurations
    */
   private mergeSingleConfig(
-    target: InheritableConfig, 
-    source: InheritableConfig, 
-    strategy: 'merge' | 'replace',
-    mergeArrays: boolean
+    target: InheritableConfig,
+    source: InheritableConfig,
+    strategy: "merge" | "replace",
+    mergeArrays: boolean,
   ): InheritableConfig {
     const result = { ...target };
 
     for (const [key, value] of Object.entries(source)) {
       // Skip internal metadata fields from inheritance, except when merging the main config
-      if (key.startsWith('_') || key === 'inheritance') {
+      if (key.startsWith("_") || key === "inheritance") {
         continue;
       }
 
-      if (strategy === 'replace' && target[key]) {
+      if (strategy === "replace" && target[key]) {
         // Replace strategy: overwrite existing values
         result[key] = value;
-      } else { // merge strategy or no existing value
+      } else {
+        // merge strategy or no existing value
         if (!result[key]) {
           // No existing value, just use the new value
           result[key] = value;
@@ -194,16 +220,27 @@ export class ProfileInheritanceManager {
           if (mergeArrays) {
             // Merge arrays: combine and deduplicate
             const combined = [...(result[key] as unknown[]), ...value];
-            result[key] = combined.filter((item, index, arr) => 
-              arr.findIndex(i => JSON.stringify(i) === JSON.stringify(item)) === index
+            result[key] = combined.filter(
+              (item, index, arr) =>
+                arr.findIndex(
+                  (i) => JSON.stringify(i) === JSON.stringify(item),
+                ) === index,
             );
           } else {
             // Don't merge arrays, just replace
             result[key] = value;
           }
-        } else if (typeof value === 'object' && value !== null && typeof result[key] === 'object' && result[key] !== null) {
+        } else if (
+          typeof value === "object" &&
+          value !== null &&
+          typeof result[key] === "object" &&
+          result[key] !== null
+        ) {
           // Merge objects recursively
-          result[key] = this.mergeObjects(result[key] as Record<string, unknown>, value as Record<string, unknown>);
+          result[key] = this.mergeObjects(
+            result[key] as Record<string, unknown>,
+            value as Record<string, unknown>,
+          );
         } else {
           // For primitives in merge strategy, the source overwrites
           result[key] = value;
@@ -217,7 +254,10 @@ export class ProfileInheritanceManager {
   /**
    * Deep merge two objects
    */
-  private mergeObjects(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
+  private mergeObjects(
+    target: Record<string, unknown>,
+    source: Record<string, unknown>,
+  ): Record<string, unknown> {
     const result = { ...target };
 
     for (const [key, value] of Object.entries(source)) {
@@ -225,8 +265,16 @@ export class ProfileInheritanceManager {
         result[key] = value;
       } else if (Array.isArray(value) && Array.isArray(target[key])) {
         result[key] = [...(target[key] as unknown[]), ...value];
-      } else if (typeof value === 'object' && value !== null && typeof target[key] === 'object' && target[key] !== null) {
-        result[key] = this.mergeObjects(target[key] as Record<string, unknown>, value as Record<string, unknown>);
+      } else if (
+        typeof value === "object" &&
+        value !== null &&
+        typeof target[key] === "object" &&
+        target[key] !== null
+      ) {
+        result[key] = this.mergeObjects(
+          target[key] as Record<string, unknown>,
+          value as Record<string, unknown>,
+        );
       } else {
         result[key] = value;
       }
@@ -238,7 +286,10 @@ export class ProfileInheritanceManager {
   /**
    * Resolve profile path relative to current profile
    */
-  private resolveProfilePath(profilePath: string, currentProfilePath: string): string {
+  private resolveProfilePath(
+    profilePath: string,
+    currentProfilePath: string,
+  ): string {
     if (path.isAbsolute(profilePath)) {
       return profilePath;
     }
@@ -248,8 +299,8 @@ export class ProfileInheritanceManager {
     let resolved = path.resolve(currentDir, profilePath);
 
     // Add .md extension if not present
-    if (!resolved.endsWith('.md')) {
-      resolved += '.md';
+    if (!resolved.endsWith(".md")) {
+      resolved += ".md";
     }
 
     return resolved;
@@ -258,7 +309,11 @@ export class ProfileInheritanceManager {
   /**
    * Validate inheritance configuration
    */
-  validateInheritanceConfig(config: InheritableConfig): { valid: boolean; errors: string[]; warnings: string[] } {
+  validateInheritanceConfig(config: InheritableConfig): {
+    valid: boolean;
+    errors: string[];
+    warnings: string[];
+  } {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -269,45 +324,60 @@ export class ProfileInheritanceManager {
     const inheritance = config.inheritance;
 
     // Check required fields
-    if (typeof inheritance.enabled !== 'boolean') {
-      errors.push('inheritance.enabled must be a boolean');
+    if (typeof inheritance.enabled !== "boolean") {
+      errors.push("inheritance.enabled must be a boolean");
     }
 
     if (inheritance.enabled) {
       if (!Array.isArray(inheritance.baseProfiles)) {
-        errors.push('inheritance.baseProfiles must be an array when inheritance is enabled');
+        errors.push(
+          "inheritance.baseProfiles must be an array when inheritance is enabled",
+        );
       } else if (inheritance.baseProfiles.length === 0) {
-        warnings.push('inheritance.baseProfiles is empty but inheritance is enabled');
+        warnings.push(
+          "inheritance.baseProfiles is empty but inheritance is enabled",
+        );
       } else {
         // Validate base profile paths
         inheritance.baseProfiles.forEach((profile, index) => {
-          if (typeof profile !== 'string') {
+          if (typeof profile !== "string") {
             errors.push(`inheritance.baseProfiles[${index}] must be a string`);
-          } else if (profile.trim() === '') {
+          } else if (profile.trim() === "") {
             errors.push(`inheritance.baseProfiles[${index}] cannot be empty`);
           }
         });
       }
 
       // Validate override strategy
-      if (inheritance.overrideStrategy && !['merge', 'replace'].includes(inheritance.overrideStrategy)) {
-        errors.push('inheritance.overrideStrategy must be "merge" or "replace"');
+      if (
+        inheritance.overrideStrategy &&
+        !["merge", "replace"].includes(inheritance.overrideStrategy)
+      ) {
+        errors.push(
+          'inheritance.overrideStrategy must be "merge" or "replace"',
+        );
       }
 
       // Validate optional boolean fields
-      if (inheritance.mergeArrays !== undefined && typeof inheritance.mergeArrays !== 'boolean') {
-        errors.push('inheritance.mergeArrays must be a boolean');
+      if (
+        inheritance.mergeArrays !== undefined &&
+        typeof inheritance.mergeArrays !== "boolean"
+      ) {
+        errors.push("inheritance.mergeArrays must be a boolean");
       }
 
-      if (inheritance.respectOrder !== undefined && typeof inheritance.respectOrder !== 'boolean') {
-        errors.push('inheritance.respectOrder must be a boolean');
+      if (
+        inheritance.respectOrder !== undefined &&
+        typeof inheritance.respectOrder !== "boolean"
+      ) {
+        errors.push("inheritance.respectOrder must be a boolean");
       }
     }
 
     return {
       valid: errors.length === 0,
       errors,
-      warnings
+      warnings,
     };
   }
 
@@ -322,13 +392,17 @@ export class ProfileInheritanceManager {
   /**
    * Check if a profile has circular dependencies
    */
-  async checkCircularDependencies(profilePath: string): Promise<{ hasCircular: boolean; chain: string[] }> {
+  async checkCircularDependencies(
+    profilePath: string,
+  ): Promise<{ hasCircular: boolean; chain: string[] }> {
     const result = await this.resolveProfile(profilePath);
-    const hasCircular = result.errors.some(error => error.includes('Circular dependency'));
-    
+    const hasCircular = result.errors.some((error) =>
+      error.includes("Circular dependency"),
+    );
+
     return {
       hasCircular,
-      chain: result.chain
+      chain: result.chain,
     };
   }
 
@@ -345,20 +419,22 @@ export class ProfileInheritanceManager {
   getCacheStats(): { size: number; paths: string[] } {
     return {
       size: this.resolutionCache.size,
-      paths: Array.from(this.resolutionCache.keys())
+      paths: Array.from(this.resolutionCache.keys()),
     };
   }
 
   /**
    * Preview the resolved configuration without caching
    */
-  async previewResolution(profilePath: string): Promise<ProfileResolutionResult> {
+  async previewResolution(
+    profilePath: string,
+  ): Promise<ProfileResolutionResult> {
     const normalizedPath = path.resolve(profilePath);
-    
+
     // Temporarily clear from cache to force fresh resolution
     const cached = this.resolutionCache.get(normalizedPath);
     this.resolutionCache.delete(normalizedPath);
-    
+
     try {
       const result = await this.resolveProfile(normalizedPath);
       return result;

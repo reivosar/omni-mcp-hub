@@ -1,8 +1,8 @@
-import { BaseSecretProvider } from '../secret-provider';
+import { BaseSecretProvider } from "../secret-provider";
 
 export class EnvironmentSecretProvider extends BaseSecretProvider {
   constructor() {
-    super('ENV');
+    super("ENV");
   }
 
   async isAvailable(): Promise<boolean> {
@@ -12,11 +12,11 @@ export class EnvironmentSecretProvider extends BaseSecretProvider {
   async resolve(reference: string): Promise<string> {
     const envVar = this.sanitizeReference(reference).toUpperCase();
     const value = process.env[envVar];
-    
+
     if (!value) {
       throw new Error(`Environment variable ${envVar} not found`);
     }
-    
+
     return value;
   }
 
@@ -32,12 +32,12 @@ export class EnvironmentSecretProvider extends BaseSecretProvider {
 
   async list(pattern?: string): Promise<string[]> {
     const keys = Object.keys(process.env);
-    
+
     if (!pattern) {
       return keys;
     }
-    
-    const regex = new RegExp(pattern, 'i');
-    return keys.filter(key => regex.test(key));
+
+    const regex = new RegExp(pattern, "i");
+    return keys.filter((key) => regex.test(key));
   }
 }

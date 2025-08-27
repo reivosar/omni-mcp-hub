@@ -19,19 +19,7 @@ settings:
   qualityGates: true
   zeroTolerancePolicy: true
   riskStratification: true
-  
-  # Loading Strategy
-  loadingStrategy:
-    minimal: ["claude-main", "checklist"]
-    development: ["claude-main", "checklist", "development", "testing", "code-style", "quality-gates", "repo-flow"]
-    full: "all"
-  
-  # Validation Requirements
-  validation:
-    mandatoryChecks: true
-    testPyramid: true
-    securityScans: true
-    performanceTargets: true
+
 
 # Compliance and Standards
 compliance:
@@ -60,7 +48,22 @@ performance:
 
 # Logging Configuration
 logging:
-  level: "info"
+  level: "debug"
+  verboseFileLoading: true
   includeTaskValidation: true
   includeRiskAssessment: true
   includeComplianceChecks: true
+
+# External MCP Servers Configuration
+externalServers:
+  enabled: true
+  autoConnect: true
+  retry:
+    maxAttempts: 3
+    delayMs: 1000
+  servers:
+    # Serena - Semantic code retrieval and editing
+    - name: "serena"
+      command: "uvx"
+      args: ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server", "--enable-web-dashboard", "false"]
+      description: "Semantic code retrieval and editing for large codebases"

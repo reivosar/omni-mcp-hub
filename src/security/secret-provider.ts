@@ -13,29 +13,31 @@ export interface SecretReference {
   field?: string;
 }
 
-export function parseSecretReference(reference: string): SecretReference | null {
+export function parseSecretReference(
+  reference: string,
+): SecretReference | null {
   const match = reference.match(/^\$\{([^:]+):([^}]+)\}$/);
   if (!match) {
     return null;
   }
 
   const [, provider, fullPath] = match;
-  const parts = fullPath.split(':');
-  
+  const parts = fullPath.split(":");
+
   return {
     provider: provider.toUpperCase(),
     path: parts[0],
-    field: parts[1]
+    field: parts[1],
   };
 }
 
 export function maskSecret(value: string): string {
   if (!value || value.length <= 4) {
-    return '****';
+    return "****";
   }
-  
+
   const visibleChars = Math.min(4, Math.floor(value.length * 0.2));
-  const masked = '*'.repeat(value.length - visibleChars);
+  const masked = "*".repeat(value.length - visibleChars);
   return value.substring(0, visibleChars) + masked;
 }
 
@@ -57,6 +59,6 @@ export abstract class BaseSecretProvider implements SecretProvider {
   abstract list(pattern?: string): Promise<string[]>;
 
   protected sanitizeReference(reference: string): string {
-    return reference.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^_+|_+$/g, '');
+    return reference.replace(/[^a-zA-Z0-9_]/g, "_").replace(/^_+|_+$/g, "");
   }
 }

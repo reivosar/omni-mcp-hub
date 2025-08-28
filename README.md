@@ -2,60 +2,60 @@
 
 A comprehensive, enterprise-grade MCP (Model Context Protocol) server for Claude Code integration with **advanced security**, **monitoring**, and **CLAUDE.md configuration management**. This server provides a complete solution for externalizing Claude's behavior configuration, managing multiple profiles, and integrating with external MCP servers.
 
-## 🚀 Features
+## Features
 
 ### Core Capabilities
-- **🛠 Tools**: Built-in tools (add, echo) + comprehensive MCP tool integration
-- **📚 Resources**: Dynamic resource exposure through MCP protocol
-- **📝 TypeScript**: Full TypeScript support with comprehensive type safety
-- **🔌 Official SDK**: Built using the official `@modelcontextprotocol/sdk`
-- **⚡ Ready-to-use**: Works out of the box with Claude Code
-- **🎯 CLAUDE.md Management**: Load, manage, and apply external Claude configurations
-- **🔄 Dynamic Behavior**: Switch between different Claude personalities/behaviors seamlessly
-- **👥 Profile Management**: Support for multiple configuration profiles with inheritance
-- **💾 Persistent Storage**: Save and update CLAUDE.md files with integrity checking
-- **📄 YAML Configuration**: Advanced file scanning and configuration via `omni-config.yaml`
-- **🚀 Auto-loading**: Automatically load profiles on startup via configuration
-- **🎛️ File Filtering**: Exclude/include files with configurable patterns
+- **Tools**: Built-in tools (add, echo) + comprehensive MCP tool integration
+- **Resources**: Dynamic resource exposure through MCP protocol
+- **TypeScript**: Full TypeScript support with comprehensive type safety
+- **Official SDK**: Built using the official `@modelcontextprotocol/sdk`
+- **Ready-to-use**: Works out of the box with Claude Code
+- **CLAUDE.md Management**: Load, manage, and apply external Claude configurations
+- **Dynamic Behavior**: Switch between different Claude personalities/behaviors seamlessly
+- **Profile Management**: Support for multiple configuration profiles with inheritance
+- **Persistent Storage**: Save and update CLAUDE.md files with integrity checking
+- **YAML Configuration**: Advanced file scanning and configuration via `omni-config.yaml`
+- **Auto-loading**: Automatically load profiles on startup via configuration
+- **File Filtering**: Exclude/include files with configurable patterns
 
-### 🔒 Security Features
-- **🛡️ Secrets Scanner**: Advanced secrets detection with 40+ pattern types
-- **🔐 RBAC System**: Role-based access control with fine-grained permissions
-- **📋 Audit Logging**: Comprehensive audit trail for all operations
-- **🚨 Rate Limiting**: Configurable rate limiting with multiple strategies
-- **🔍 Input Sanitization**: SQL injection and XSS protection
-- **🏰 Execution Sandbox**: Secure command execution environment
-- **🔑 Secret Management**: Multi-provider secret storage (Vault, Keychain, Environment)
-- **✅ Signature Verification**: Cryptographic verification of configurations
-- **🛡️ Path Security**: Directory traversal protection and path validation
+### Security Features
+- **Secrets Scanner**: Advanced secrets detection with 40+ pattern types
+- **RBAC System**: Role-based access control with fine-grained permissions
+- **Audit Logging**: Comprehensive audit trail for all operations
+- **Rate Limiting**: Configurable rate limiting with multiple strategies
+- **Input Sanitization**: SQL injection and XSS protection
+- **Execution Sandbox**: Secure command execution environment
+- **Secret Management**: Multi-provider secret storage (Vault, Keychain, Environment)
+- **Signature Verification**: Cryptographic verification of configurations
+- **Path Security**: Directory traversal protection and path validation
 
-### 📊 Monitoring & Observability
-- **📈 Metrics Collection**: Real-time metrics with Prometheus compatibility
-- **🏥 Health Checking**: Comprehensive health monitoring for all components
-- **📊 Dashboard**: Web-based monitoring dashboard with real-time updates
-- **⚠️ Audit System**: Complete audit trail with structured logging
-- **📉 Performance Monitoring**: Request/response timing and resource usage
-- **🔄 Health Endpoints**: REST endpoints for external monitoring systems
+### Monitoring & Observability
+- **Metrics Collection**: Real-time metrics with Prometheus compatibility
+- **Health Checking**: Comprehensive health monitoring for all components
+- **Dashboard**: Web-based monitoring dashboard with real-time updates
+- **Audit System**: Complete audit trail with structured logging
+- **Performance Monitoring**: Request/response timing and resource usage
+- **Health Endpoints**: REST endpoints for external monitoring systems
 
-### 🖥️ CLI Tools Suite
-- **🎛️ Admin UI**: Interactive administration interface
-- **⚙️ Config Doctor**: Configuration validation and troubleshooting
-- **👤 Profile Admin**: Profile management and integrity checking
-- **🔍 Secrets Scanner**: Standalone secrets scanning with multiple output formats
-- **📊 Monitoring CLI**: System monitoring and metrics access
-- **📋 Manual Apply**: Manual configuration application with disclosure mode
+### CLI Tools Suite
+- **Admin UI**: Interactive administration interface
+- **Config Doctor**: Configuration validation and troubleshooting
+- **Profile Admin**: Profile management and integrity checking
+- **Secrets Scanner**: Standalone secrets scanning with multiple output formats
+- **Monitoring CLI**: System monitoring and metrics access
+- **Manual Apply**: Manual configuration application with disclosure mode
 
-### 🏗️ Advanced Architecture
-- **🔄 MCP Proxy**: Enhanced proxy manager with resilience features
-- **📝 Behavior System**: Advanced behavior generation and profile inheritance
-- **✅ Validation**: Schema validation with fail-fast error handling
-- **🔄 Auto-Recovery**: Automatic recovery from external server failures
-- **📊 Load Balancing**: Distribution across multiple external MCP servers
-- **🎯 Smart Routing**: Intelligent routing based on tool capabilities
+### Advanced Architecture
+- **MCP Proxy**: Enhanced proxy manager with resilience features
+- **Behavior System**: Advanced behavior generation and profile inheritance
+- **Validation**: Schema validation with fail-fast error handling
+- **Auto-Recovery**: Automatic recovery from external server failures
+- **Load Balancing**: Distribution across multiple external MCP servers
+- **Smart Routing**: Intelligent routing based on tool capabilities
 
-## 🚀 Quick Start
+## Quick Start
 
-### 🎯 One-Line Setup
+### One-Line Setup
 
 ```bash
 # Clone and start with minimal configuration
@@ -65,7 +65,7 @@ echo 'profiles: [{name: "default", path: "./examples/local-resources/dev-assista
 npm start
 ```
 
-### 🐳 Docker Setup (Recommended)
+### Docker Setup (Recommended)
 
 ```bash
 # Production deployment
@@ -81,7 +81,7 @@ docker-compose -f docker/docker-compose.yml --profile postgres --profile redis -
 docker-compose -f docker/docker-compose.yml --profile test up
 ```
 
-### 🛠️ Native Setup
+### Native Setup
 
 **Quick Start Options:**
 
@@ -97,29 +97,29 @@ docker-compose -f docker/docker-compose.yml --profile test up
 ```
 
 Each script automatically:
-1. 🏗️ Builds the project
-2. ⚙️ Configures Claude Code MCP settings
-3. 🚀 Starts Claude Code with the appropriate configuration
-4. 🔍 Runs initial health checks
+1. Builds the project
+2. Configures Claude Code MCP settings
+3. Starts Claude Code with the appropriate configuration
+4. Runs initial health checks
 
-## 🛠️ Available Tools
+## Available Tools
 
 ### Core MCP Tools
 - **add**: Add two numbers together (demo tool)
 - **echo**: Echo back a message (demo tool)
 
-### 📝 CLAUDE.md Management Tools (when fileSettings configured)
+### CLAUDE.md Management Tools (when fileSettings configured)
 - **apply_claude_config**: Load and apply CLAUDE.md configuration files
 - **list_claude_configs**: List all available configuration files (loaded + scannable)
 - **get_applied_config**: Get detailed information about currently applied configuration
 
-### 🌐 External MCP Server Tools (when configured)
-- **🧠 Serena Tools** (~25 tools): Semantic code search, symbol manipulation, memory management
-- **📂 Filesystem Tools** (~14 tools): File system browsing and operations with security
-- **📄 Local-files Tools** (~14 tools): Local markdown and text file reading
-- **🔄 Git Tools** (when available): Git repository operations and commit history
+### External MCP Server Tools (when configured)
+- **Serena Tools** (~25 tools): Semantic code search, symbol manipulation, memory management
+- **Filesystem Tools** (~14 tools): File system browsing and operations with security
+- **Local-files Tools** (~14 tools): Local markdown and text file reading
+- **Git Tools** (when available): Git repository operations and commit history
 
-### 🖥️ CLI Tools
+### CLI Tools
 ```bash
 # Interactive administration interface
 npm run admin
@@ -140,7 +140,7 @@ npm run monitoring
 npm run manual:apply
 ```
 
-## 📚 Available Resources
+## Available Resources
 
 - **info://server**: Server information and status
 - **greeting://world**: Demo greeting message
@@ -151,9 +151,9 @@ npm run manual:apply
 - **monitoring://health**: System health status
 - **monitoring://metrics**: Real-time system metrics
 
-## ⚙️ Configuration
+## Configuration
 
-### 🚫 重要な制限事項
+### 重要な制限事項
 
 **Claude Code限定機能:**
 - この外部CLAUDE.mdプロファイル機能は**Claude Code専用**です
@@ -169,7 +169,7 @@ npm run manual:apply
   ```
 - **優先順位**: ローカルCLAUDE.md > MCPプロファイル > デフォルト設定
 
-### 🎯 Quick Start Configuration (< 10 lines)
+### Quick Start Configuration (< 10 lines)
 
 The simplest configuration to get started:
 
@@ -191,7 +191,7 @@ externalServers:
 
 That's it! You're ready to use Claude Code with full MCP integration.
 
-### 📊 Configuration Levels
+### Configuration Levels
 
 Choose the configuration that fits your needs:
 
@@ -202,7 +202,7 @@ Choose the configuration that fits your needs:
 | **Advanced** | ~50 | Security + monitoring + multiple servers | Power users | `examples/mixed/` |
 | **Enterprise** | 100+ | Full security + RBAC + audit + monitoring | Production deployments | `examples/enterprise/` |
 
-### 🚀 Getting Started
+### Getting Started
 
 1. **Start with example config**:
    ```bash
@@ -226,51 +226,51 @@ Choose the configuration that fits your needs:
    npm run monitoring         # System monitoring
    ```
 
-### 📖 Documentation
+### Documentation
 
-- **📋 Configuration Guide**: [docs/CONFIGURATION.md](./docs/CONFIGURATION.md)
-- **🏗️ Architecture Guide**: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)  
-- **👤 Admin UI Guide**: [docs/ADMIN_UI.md](./docs/ADMIN_UI.md)
-- **🛡️ Security**: [docs/THREAT_MODEL.md](./docs/THREAT_MODEL.md)
-- **📊 Schema**: [schemas/omni-config.schema.json](./schemas/omni-config.schema.json)
-- **🎯 Examples**: [examples/](./examples/) directory with working configurations
+- **Configuration Guide**: [docs/CONFIGURATION.md](./docs/CONFIGURATION.md)
+- **Architecture Guide**: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)  
+- **Admin UI Guide**: [docs/ADMIN_UI.md](./docs/ADMIN_UI.md)
+- **Security**: [docs/THREAT_MODEL.md](./docs/THREAT_MODEL.md)
+- **Schema**: [schemas/omni-config.schema.json](./schemas/omni-config.schema.json)
+- **Examples**: [examples/](./examples/) directory with working configurations
 
-## 🏗️ Development
+## Development
 
-### 📁 Project Structure
+### Project Structure
 
 ```
 src/
-├── index.ts                     # 🎯 Main server orchestrator (slim, focused)
-├── behavior/                    # 🧠 Behavior management system
+├── index.ts                     # Main server orchestrator (slim, focused)
+├── behavior/                    # Behavior management system
 │   ├── apply.ts                 # Profile application logic
 │   ├── hash.ts                  # Configuration hashing
 │   ├── merge-rules.ts           # Profile inheritance and merging
 │   └── state.ts                 # State management
-├── cli/                         # 🖥️ Command-line interfaces (6 tools)
+├── cli/                         # Command-line interfaces (6 tools)
 │   ├── admin-ui.ts              # Interactive admin interface
 │   ├── config-doctor.ts         # Configuration validation/troubleshooting
 │   ├── manual-apply.ts          # Manual configuration application
 │   ├── monitoring-cli.ts        # System monitoring CLI
 │   ├── profile-admin.ts         # Profile management
 │   └── secrets-scan-cli.ts      # Secrets detection CLI
-├── config/                      # ⚙️ Configuration management
+├── config/                      # Configuration management
 │   ├── loader.ts                # Multi-format config loader (.mcp-config.json, YAML)
 │   └── yaml-config.ts           # YAML configuration manager
-├── mcp-proxy/                   # 🔄 Enhanced MCP proxy system
+├── mcp-proxy/                   # Enhanced MCP proxy system
 │   ├── client.ts                # MCP client implementation
 │   ├── enhanced-manager.ts      # Advanced proxy management
 │   ├── manager.ts               # Core proxy manager
 │   ├── resilience-manager.ts    # Resilience and recovery
 │   └── resilience.ts            # Resilience strategies
-├── monitoring/                  # 📊 Observability and monitoring
+├── monitoring/                  # Observability and monitoring
 │   ├── audit.ts                 # Audit logging system
 │   ├── dashboard.ts             # Web monitoring dashboard
 │   ├── health-checker.ts        # Health monitoring
 │   ├── metrics-collector.ts     # Metrics collection
 │   ├── monitoring-server.ts     # Monitoring HTTP server
 │   └── monitoring-service.ts    # Monitoring coordination
-├── security/                    # 🔒 Security framework
+├── security/                    # Security framework
 │   ├── audit-logging.ts         # Comprehensive audit trails
 │   ├── execution-sandbox.ts     # Secure command execution
 │   ├── input-sanitization.ts    # SQL injection/XSS protection
@@ -285,11 +285,11 @@ src/
 │   ├── secrets-scanner.ts       # 40+ secret pattern detection
 │   ├── secure-communication.ts  # Encrypted communication
 │   └── signature-verification.ts # Cryptographic verification
-├── tools/                       # 🛠️ MCP tool handlers
+├── tools/                       # MCP tool handlers
 │   └── handlers.ts              # Tool implementations (apply_claude_config, etc.)
-├── resources/                   # 📚 MCP resource handlers
+├── resources/                   # MCP resource handlers
 │   └── handlers.ts              # Resource implementations (server info, profiles)
-├── utils/                       # 🔧 Shared utilities
+├── utils/                       # Shared utilities
 │   ├── behavior-generator.ts    # Claude behavior instruction generator
 │   ├── claude-config.ts         # CLAUDE.md parser and manager
 │   ├── error-handler.ts         # Centralized error handling
@@ -301,30 +301,30 @@ src/
 │   ├── profile-inheritance.ts   # Profile inheritance logic
 │   ├── profile-manager.ts       # Profile lifecycle management
 │   └── schema-version-manager.ts # Schema version management
-└── validation/                  # ✅ Validation system
+└── validation/                  # Validation system
     ├── fail-fast.ts             # Fail-fast validation
     └── schema-validator.ts      # JSON schema validation
 ```
 
-### 🏛️ Architecture
+### Architecture
 
 The codebase follows an **enterprise-grade modular architecture** with clear separation of concerns:
 
-- **🎯 `index.ts`**: Slim orchestrator that coordinates all components
-- **⚙️ `config/`**: Multi-format configuration loading and management
-- **🛠️ `tools/`**: MCP tool implementations for Claude Code integration  
-- **📚 `resources/`**: MCP resource implementations for data exposure
-- **🔒 `security/`**: Comprehensive security framework with RBAC, audit logging, secrets scanning
-- **📊 `monitoring/`**: Full observability stack with metrics, health checks, dashboard
-- **🖥️ `cli/`**: Rich CLI tools for administration, monitoring, configuration management
-- **🧠 `behavior/`**: Advanced behavior management with profile inheritance
-- **🔄 `mcp-proxy/`**: Enhanced MCP proxy with resilience and load balancing
-- **✅ `validation/`**: Schema validation with fail-fast error handling
-- **🔧 `utils/`**: Shared utilities for configuration parsing, security, and behavior generation
+- **`index.ts`**: Slim orchestrator that coordinates all components
+- **`config/`**: Multi-format configuration loading and management
+- **`tools/`**: MCP tool implementations for Claude Code integration  
+- **`resources/`**: MCP resource implementations for data exposure
+- **`security/`**: Comprehensive security framework with RBAC, audit logging, secrets scanning
+- **`monitoring/`**: Full observability stack with metrics, health checks, dashboard
+- **`cli/`**: Rich CLI tools for administration, monitoring, configuration management
+- **`behavior/`**: Advanced behavior management with profile inheritance
+- **`mcp-proxy/`**: Enhanced MCP proxy with resilience and load balancing
+- **`validation/`**: Schema validation with fail-fast error handling
+- **`utils/`**: Shared utilities for configuration parsing, security, and behavior generation
 
 Each module is **independently testable**, **highly cohesive**, and has a **single responsibility**.
 
-### 🔧 Adding New Components
+### Adding New Components
 
 #### Adding New Tools
 1. Add tool definition to `src/tools/handlers.ts` in the tools array
@@ -353,7 +353,7 @@ Each module is **independently testable**, **highly cohesive**, and has a **sing
 3. Update dashboard if UI changes needed
 4. Add monitoring tests
 
-## 🧪 Testing
+## Testing
 
 **Test Coverage: 99.94% (1,200+ tests passing)**
 
@@ -382,25 +382,25 @@ npm run test:monitor
 npm run test:force-stop
 ```
 
-### 🏗️ Test Structure
+### Test Structure
 
 ```
 tests/
-├── behavior/                    # 🧠 Behavior system tests
-├── cli/                        # 🖥️ CLI tool tests (comprehensive coverage)
-├── config/                     # ⚙️ Configuration tests
-├── e2e/                       # 🔄 End-to-end integration tests
-├── integration/               # 🔗 System integration tests
-├── mcp-proxy/                 # 🔄 MCP proxy tests (stability, resilience)
-├── monitoring/                # 📊 Monitoring system tests
-├── performance/               # ⚡ Performance and load tests
-├── security/                  # 🔒 Security boundary tests
-├── tools/                     # 🛠️ MCP tool handler tests
-├── utils/                     # 🔧 Utility function tests
-└── validation/                # ✅ Validation system tests
+├── behavior/                    # Behavior system tests
+├── cli/                        # CLI tool tests (comprehensive coverage)
+├── config/                     # Configuration tests
+├── e2e/                       # End-to-end integration tests
+├── integration/               # System integration tests
+├── mcp-proxy/                 # MCP proxy tests (stability, resilience)
+├── monitoring/                # Monitoring system tests
+├── performance/               # Performance and load tests
+├── security/                  # Security boundary tests
+├── tools/                     # MCP tool handler tests
+├── utils/                     # Utility function tests
+└── validation/                # Validation system tests
 ```
 
-### 🎯 Test Categories
+### Test Categories
 
 - **Unit Tests**: Individual component testing with mocking
 - **Integration Tests**: Multi-component interaction testing
@@ -411,16 +411,16 @@ tests/
 - **Fuzz Tests**: Input fuzzing for robustness testing
 
 All tests use **Vitest** with TypeScript support and provide:
-- 🎯 Comprehensive mocking and stubbing
-- 📊 Detailed coverage reports with branch coverage
-- 🔄 Watch mode for development
-- 🎨 Interactive UI for test exploration
-- 🚀 Parallel execution for speed
-- 📈 Performance benchmarking
+- Comprehensive mocking and stubbing
+- Detailed coverage reports with branch coverage
+- Watch mode for development
+- Interactive UI for test exploration
+- Parallel execution for speed
+- Performance benchmarking
 
-## 📜 Scripts
+## Scripts
 
-### 🏗️ Development Scripts
+### Development Scripts
 ```bash
 npm run build           # Build TypeScript to JavaScript
 npm run start          # Run the built server  
@@ -430,7 +430,7 @@ npm run lint:fix       # Auto-fix ESLint issues
 npm run format         # Format code with Prettier
 ```
 
-### 🧪 Testing Scripts
+### Testing Scripts
 ```bash
 npm test              # Run all tests with coverage
 npm run test:watch    # Watch mode for development
@@ -440,14 +440,14 @@ npm run test:cleanup  # Clean up test processes
 npm run test:monitor  # Monitor running test processes
 ```
 
-### 🔒 Security Scripts  
+### Security Scripts  
 ```bash
 npm run scan:secrets           # Scan for hardcoded secrets
 npm run scan:secrets:pre-commit # Pre-commit secrets scan
 npm run scan:secrets:ci        # CI secrets scan with JSON output
 ```
 
-### 🖥️ CLI Scripts
+### CLI Scripts
 ```bash
 npm run admin           # Interactive admin UI
 npm run admin:status    # Show system status
@@ -460,16 +460,16 @@ npm run manual:apply    # Manual configuration application
 npm run disclosure      # Disclosure mode CLI
 ```
 
-### 🔄 Development Workflow
+### Development Workflow
 ```bash
 npm run install:hooks   # Install Git hooks
 npm run release        # Semantic release
 npm run release:dry    # Dry run release
 ```
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
-### 🎯 System Architecture
+### System Architecture
 
 ```mermaid
 graph TB
@@ -557,7 +557,7 @@ graph TB
     MetricsCollector --> MetricsDB
 ```
 
-### 🔄 Request Flow
+### Request Flow
 
 ```mermaid
 flowchart LR
@@ -594,7 +594,7 @@ flowchart LR
     RateLimit -->|Blocked| RateError[Rate Limit Error]
 ```
 
-## 🎨 CLAUDE.md Format
+## CLAUDE.md Format
 
 ```markdown
 # Project Configuration
@@ -662,15 +662,15 @@ Auto-apply: true
 Merge strategy: deep-merge
 ```
 
-## 📄 License
+## License
 
 MIT License - see [LICENSE](./LICENSE) file for details.
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) and [Code of Conduct](./CODE_OF_CONDUCT.md).
 
-### 🚀 Quick Contribution Setup
+### Quick Contribution Setup
 
 ```bash
 git clone https://github.com/reivosar/omni-mcp-hub.git
@@ -681,15 +681,15 @@ npm run build
 npm test                 # Ensure all tests pass
 ```
 
-## 🆘 Support
+## Support
 
-- **📚 Documentation**: Check the [docs/](./docs/) directory
-- **🐛 Issues**: Report bugs via [GitHub Issues](https://github.com/reivosar/omni-mcp-hub/issues)
-- **💬 Discussions**: Join [GitHub Discussions](https://github.com/reivosar/omni-mcp-hub/discussions)
-- **🔒 Security**: Report security issues via [security policy](./SECURITY.md)
+- **Documentation**: Check the [docs/](./docs/) directory
+- **Issues**: Report bugs via [GitHub Issues](https://github.com/reivosar/omni-mcp-hub/issues)
+- **Discussions**: Join [GitHub Discussions](https://github.com/reivosar/omni-mcp-hub/discussions)
+- **Security**: Report security issues via [security policy](./SECURITY.md)
 
 ---
 
-**⭐ Star this repository if you find it useful!**
+**Star this repository if you find it useful!**
 
 *Built with ❤️ for the Claude Code community*
